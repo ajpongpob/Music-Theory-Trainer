@@ -1,7 +1,7 @@
 <html lang="th" class=""><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Major Scale Notation Trainer — v0.6.24</title>
+<title>Major Scale Notation Trainer — v0.6.25</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Music&display=block');
 @font-face{
@@ -1048,7 +1048,7 @@ kbd{font:inherit;font-size:.76rem;padding:2px 6px;border-radius:6px;background:#
       </label>
       <button type="button" id="dashboardButton" class="btn auth-logout">แดชบอร์ด</button>
       <button type="button" id="logoutButton" class="btn auth-logout">ออกจากระบบ</button>
-      <span class="pill">v0.6.24</span>
+      <span class="pill">v0.6.25</span>
   </header>
 
   <main class="session-main">
@@ -1647,8 +1647,17 @@ kbd{font:inherit;font-size:.76rem;padding:2px 6px;border-radius:6px;background:#
 const $ = id => document.getElementById(id);
 const screen = $('authScreen'), dashboard = $('studentDashboard'), trainer = $('trainerApp');
 let client, busy = false, ready = false, revision = 0, activeUser = null;
-let dashboardLoadToken = 0, dashboardOpening = false, passwordRecoveryMode = false;
-const PASSWORD_RESET_REDIRECT = 'https://ajpongpob.github.io/Music-Theory-Trainer/';
+const PASSWORD_RESET_REDIRECT = 'https://ajpongpob.github.io/Music-Theory-Trainer/?mode=reset-password';
+const passwordRecoveryIntentFromUrl = (() => {
+  try{
+    const url=new URL(window.location.href);
+    const hashParams=new URLSearchParams((url.hash || '').replace(/^#/,''));
+    return url.searchParams.get('mode')==='reset-password' || hashParams.get('type')==='recovery';
+  }catch(_error){
+    return false;
+  }
+})();
+let dashboardLoadToken = 0, dashboardOpening = false, passwordRecoveryMode = passwordRecoveryIntentFromUrl;
 function message(id, text = '', error = false) {
   $(id).textContent = text;
   $(id).className = 'auth-message' + (error ? ' error' : '');
@@ -2256,17 +2265,15 @@ async function initializeAuth() {
    window.majorScaleSupabase = client;
     client.auth.onAuthStateChange((event, session) => {
       revision++;
-      if(event==='PASSWORD_RECOVERY'){
-        passwordRecoveryMode=true;
-        activeUser=session?.user?.id || null;
-        showResetPasswordPanel();
-        return;
-      }
+      if(event==='PASSWORD_RECOVERY') passwordRecoveryMode=true;
       if(passwordRecoveryMode){
         if(event==='SIGNED_OUT'){
           passwordRecoveryMode=false;
           sessionView(null);
+          return;
         }
+        activeUser=session?.user?.id || activeUser;
+        showResetPasswordPanel();
         return;
       }
       sessionView(session);
@@ -2274,7 +2281,12 @@ async function initializeAuth() {
     const start = revision;
     const {data,error} = await client.auth.getSession();
     if (error) throw error;
-    if (start === revision) sessionView(data.session);
+    if(passwordRecoveryMode){
+      activeUser=data.session?.user?.id || activeUser;
+      showResetPasswordPanel();
+    }else if (start === revision){
+      sessionView(data.session);
+    }
     ready = true;
   } catch (error) {
     sessionView(null);
@@ -4658,7 +4670,7 @@ async function createPracticeSessionRecord(generation, level){
         stage_id:stageId,
         mode:"practice",
         completed_questions:0,
-        app_version:"0.6.24"
+        app_version:"0.6.25"
       })
       .select("id")
       .single();
