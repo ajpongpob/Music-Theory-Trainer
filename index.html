@@ -219,7 +219,9 @@ kbd{font:inherit;font-size:.76rem;padding:2px 6px;border-radius:6px;background:#
   #studentDashboard[hidden],
   #trainerApp[hidden],
   #loginPanel[hidden],
-  #registerPanel[hidden]{
+  #registerPanel[hidden],
+  #forgotPasswordPanel[hidden],
+  #resetPasswordPanel[hidden]{
     display:none !important;
   }
 
@@ -326,6 +328,28 @@ kbd{font:inherit;font-size:.76rem;padding:2px 6px;border-radius:6px;background:#
     background:transparent;
     color:#315efb;
     font:inherit;
+    font-weight:700;
+    cursor:pointer;
+  }
+
+  .auth-hint{
+    margin:-2px 0 14px;
+    color:#667085;
+    font-size:.8rem;
+    line-height:1.5;
+  }
+
+  .auth-inline-link{
+    display:block;
+    width:max-content;
+    max-width:100%;
+    margin:-2px 0 12px auto;
+    padding:2px 0;
+    border:0;
+    background:transparent;
+    color:#315efb;
+    font:inherit;
+    font-size:.8rem;
     font-weight:700;
     cursor:pointer;
   }
@@ -786,6 +810,14 @@ kbd{font:inherit;font-size:.76rem;padding:2px 6px;border-radius:6px;background:#
     ></div>
 
     <button
+      id="showForgotPasswordButton"
+      class="auth-inline-link"
+      type="button"
+    >
+      ลืมรหัสผ่าน?
+    </button>
+
+    <button
       id="showRegisterButton"
       class="auth-switch"
       type="button"
@@ -859,6 +891,90 @@ kbd{font:inherit;font-size:.76rem;padding:2px 6px;border-radius:6px;background:#
       type="button"
     >
       มีบัญชีอยู่แล้ว? เข้าสู่ระบบ
+    </button>
+
+  </section>
+
+
+  <!-- FORGOT PASSWORD -->
+  <section id="forgotPasswordPanel" class="auth-card" hidden>
+
+    <div class="auth-brand">
+      <div class="auth-brand-icon">♫</div>
+      <div>
+        <h1>Major Scale Notation Trainer</h1>
+        <p>รับลิงก์สำหรับตั้งรหัสผ่านใหม่ทางอีเมล</p>
+      </div>
+    </div>
+
+    <h2>ลืมรหัสผ่าน</h2>
+    <p class="auth-hint">กรอกอีเมลที่ใช้สมัคร ระบบจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ให้คุณ</p>
+
+    <div class="auth-field">
+      <label for="forgotEmail">อีเมล</label>
+      <input
+        id="forgotEmail"
+        type="email"
+        autocomplete="email"
+        placeholder="name@example.com"
+      >
+    </div>
+
+    <button id="forgotPasswordButton" class="auth-primary" type="button">
+      ส่งลิงก์ตั้งรหัสผ่านใหม่
+    </button>
+
+    <div id="forgotMessage" class="auth-message" aria-live="polite"></div>
+
+    <button id="showLoginFromForgotButton" class="auth-switch" type="button">
+      กลับไปเข้าสู่ระบบ
+    </button>
+
+  </section>
+
+
+  <!-- RESET PASSWORD -->
+  <section id="resetPasswordPanel" class="auth-card" hidden>
+
+    <div class="auth-brand">
+      <div class="auth-brand-icon">♫</div>
+      <div>
+        <h1>Major Scale Notation Trainer</h1>
+        <p>กำหนดรหัสผ่านใหม่สำหรับบัญชีของคุณ</p>
+      </div>
+    </div>
+
+    <h2>ตั้งรหัสผ่านใหม่</h2>
+    <p class="auth-hint">กรอกรหัสผ่านใหม่สองครั้งให้ตรงกัน จากนั้นกดบันทึก</p>
+
+    <div class="auth-field">
+      <label for="resetPassword">รหัสผ่านใหม่</label>
+      <input
+        id="resetPassword"
+        type="password"
+        autocomplete="new-password"
+        placeholder="รหัสผ่านใหม่"
+      >
+    </div>
+
+    <div class="auth-field">
+      <label for="resetPasswordConfirm">ยืนยันรหัสผ่านใหม่</label>
+      <input
+        id="resetPasswordConfirm"
+        type="password"
+        autocomplete="new-password"
+        placeholder="กรอกรหัสผ่านใหม่อีกครั้ง"
+      >
+    </div>
+
+    <button id="resetPasswordButton" class="auth-primary" type="button">
+      บันทึกรหัสผ่านใหม่
+    </button>
+
+    <div id="resetPasswordMessage" class="auth-message" aria-live="polite"></div>
+
+    <button id="cancelResetPasswordButton" class="auth-switch" type="button">
+      ยกเลิกและกลับไปเข้าสู่ระบบ
     </button>
 
   </section>
@@ -1531,21 +1647,53 @@ kbd{font:inherit;font-size:.76rem;padding:2px 6px;border-radius:6px;background:#
 const $ = id => document.getElementById(id);
 const screen = $('authScreen'), dashboard = $('studentDashboard'), trainer = $('trainerApp');
 let client, busy = false, ready = false, revision = 0, activeUser = null;
-let dashboardLoadToken = 0, dashboardOpening = false;
+let dashboardLoadToken = 0, dashboardOpening = false, passwordRecoveryMode = false;
+const PASSWORD_RESET_REDIRECT = 'https://ajpongpob.github.io/Music-Theory-Trainer/';
 function message(id, text = '', error = false) {
   $(id).textContent = text;
   $(id).className = 'auth-message' + (error ? ' error' : '');
 }
 function controls() {
-  ['loginButton','registerButton','showLoginButton','showRegisterButton','logoutButton','dashboardLogoutButton','dashboardButton'].forEach(id => {
+  [
+    'loginButton','registerButton','showLoginButton','showRegisterButton',
+    'showForgotPasswordButton','forgotPasswordButton','showLoginFromForgotButton',
+    'resetPasswordButton','cancelResetPasswordButton',
+    'logoutButton','dashboardLogoutButton','dashboardButton'
+  ].forEach(id => {
     const control=$(id);
     if(control) control.disabled = busy || !ready;
   });
 }
+function showAuthPanel(name) {
+  const panels={
+    login:$('loginPanel'),
+    register:$('registerPanel'),
+    forgot:$('forgotPasswordPanel'),
+    reset:$('resetPasswordPanel')
+  };
+  Object.entries(panels).forEach(([key,element])=>{
+    if(element) element.hidden=key!==name;
+  });
+}
 function panel(register) {
-  $('loginPanel').hidden = register;
-  $('registerPanel').hidden = !register;
-  message('loginMessage'); message('registerMessage');
+  showAuthPanel(register ? 'register' : 'login');
+  message('loginMessage');
+  message('registerMessage');
+  message('forgotMessage');
+  message('resetPasswordMessage');
+}
+function showForgotPasswordPanel() {
+  const loginEmail=$('loginEmail')?.value.trim();
+  if(loginEmail) $('forgotEmail').value=loginEmail;
+  showAuthPanel('forgot');
+  message('forgotMessage');
+}
+function showResetPasswordPanel() {
+  screen.hidden=false;
+  dashboard.hidden=true; dashboard.inert=true;
+  trainer.hidden=true; trainer.inert=true;
+  showAuthPanel('reset');
+  message('resetPasswordMessage');
 }
 function escapeDashboardHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -1930,6 +2078,10 @@ function sessionView(session) {
   const user = session?.user?.id || null;
   const changed = user !== activeUser;
   activeUser = user;
+  if(passwordRecoveryMode){
+    showResetPasswordPanel();
+    return;
+  }
   screen.hidden = !!user;
   if (!user) {
     dashboardLoadToken++;
@@ -1954,12 +2106,96 @@ for (const type of ['keydown','keyup']) window.addEventListener(type, event => {
   if (type === 'keydown' && event.key === 'Enter' && !event.isComposing) {
     event.preventDefault();
     if (event.target.tagName === 'BUTTON') event.target.click();
-    else ($('registerPanel').hidden ? $('loginButton') : $('registerButton')).click();
+    else {
+      const button=!$('resetPasswordPanel').hidden
+        ? $('resetPasswordButton')
+        : !$('forgotPasswordPanel').hidden
+          ? $('forgotPasswordButton')
+          : !$('registerPanel').hidden
+            ? $('registerButton')
+            : $('loginButton');
+      button?.click();
+    }
   }
   event.stopImmediatePropagation();
 }, true);
 $('showRegisterButton').addEventListener('click', () => panel(true));
 $('showLoginButton').addEventListener('click', () => panel(false));
+$('showForgotPasswordButton').addEventListener('click', showForgotPasswordPanel);
+$('showLoginFromForgotButton').addEventListener('click', () => panel(false));
+
+async function sendPasswordResetEmail(){
+  if(busy || !ready) return;
+  const email=$('forgotEmail').value.trim();
+  if(!email) return message('forgotMessage','กรุณากรอกอีเมล',true);
+  if(!$('forgotEmail').checkValidity()) return message('forgotMessage','กรุณากรอกอีเมลให้ถูกต้อง',true);
+
+  busy=true; controls();
+  message('forgotMessage','กำลังส่งลิงก์ตั้งรหัสผ่านใหม่...');
+  try{
+    const {error}=await client.auth.resetPasswordForEmail(email,{
+      redirectTo:PASSWORD_RESET_REDIRECT
+    });
+    if(error) throw error;
+    message('forgotMessage','หากอีเมลนี้มีบัญชี ระบบได้ส่งลิงก์สำหรับตั้งรหัสผ่านใหม่แล้ว กรุณาตรวจสอบกล่องจดหมายและโฟลเดอร์สแปม');
+  }catch(error){
+    message('forgotMessage','ส่งลิงก์ไม่สำเร็จ: '+(error.message || 'กรุณาลองใหม่ภายหลัง'),true);
+  }finally{
+    busy=false; controls();
+  }
+}
+
+async function saveRecoveredPassword(){
+  if(busy || !ready) return;
+  const password=$('resetPassword').value;
+  const confirmPassword=$('resetPasswordConfirm').value;
+  if(!password || !confirmPassword) return message('resetPasswordMessage','กรุณากรอกรหัสผ่านใหม่ให้ครบทั้งสองช่อง',true);
+  if(password!==confirmPassword) return message('resetPasswordMessage','รหัสผ่านทั้งสองช่องไม่ตรงกัน',true);
+
+  busy=true; controls();
+  message('resetPasswordMessage','กำลังบันทึกรหัสผ่านใหม่...');
+  try{
+    const {error}=await client.auth.updateUser({password});
+    if(error) throw error;
+
+    $('resetPassword').value='';
+    $('resetPasswordConfirm').value='';
+    if(window.history?.replaceState){
+      window.history.replaceState({},document.title,window.location.pathname);
+    }
+
+    const {error:signOutError}=await client.auth.signOut({scope:'local'});
+    if(signOutError) throw signOutError;
+
+    passwordRecoveryMode=false;
+    sessionView(null);
+    panel(false);
+    message('loginMessage','ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่');
+  }catch(error){
+    message('resetPasswordMessage','ตั้งรหัสผ่านใหม่ไม่สำเร็จ: '+(error.message || 'ลิงก์อาจหมดอายุ กรุณาขอลิงก์ใหม่'),true);
+  }finally{
+    busy=false; controls();
+  }
+}
+
+$('forgotPasswordButton').addEventListener('click', sendPasswordResetEmail);
+$('resetPasswordButton').addEventListener('click', saveRecoveredPassword);
+$('cancelResetPasswordButton').addEventListener('click', async()=>{
+  if(busy || !ready) return;
+  busy=true; controls();
+  try{
+    await client.auth.signOut({scope:'local'});
+  }finally{
+    passwordRecoveryMode=false;
+    if(window.history?.replaceState){
+      window.history.replaceState({},document.title,window.location.pathname);
+    }
+    sessionView(null);
+    panel(false);
+    busy=false; controls();
+  }
+});
+
 async function submit(register) {
   if (busy || !ready) return;
   const prefix = register ? 'register' : 'login';
@@ -2018,8 +2254,22 @@ async function initializeAuth() {
     if (!window.supabase?.createClient) throw new Error('โหลดระบบเข้าสู่ระบบไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วรีเฟรชหน้า');
     client = window.supabase.createClient('https://ptksuomvpuiesbwrzzif.supabase.co','sb_publishable_Ws7zEY3M5Pa1J9pF8-8XZQ_rBtC9X_Y');
    window.majorScaleSupabase = client;
-    client.auth.onAuthStateChange((_event, session) => {
-      revision++; sessionView(session);
+    client.auth.onAuthStateChange((event, session) => {
+      revision++;
+      if(event==='PASSWORD_RECOVERY'){
+        passwordRecoveryMode=true;
+        activeUser=session?.user?.id || null;
+        showResetPasswordPanel();
+        return;
+      }
+      if(passwordRecoveryMode){
+        if(event==='SIGNED_OUT'){
+          passwordRecoveryMode=false;
+          sessionView(null);
+        }
+        return;
+      }
+      sessionView(session);
     });
     const start = revision;
     const {data,error} = await client.auth.getSession();
