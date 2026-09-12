@@ -21,6 +21,8 @@ jobs:
           node-version: '22'
       - name: Apply feedback answer snapshot patch
         run: node tools/apply-feedback-answer-snapshot.cjs
+      - name: Preserve exact historical boundary
+        run: node tools/apply-feedback-boundary-fix.cjs
       - name: Syntax checks
         run: |
           find src tests -type f \( -name '*.js' -o -name '*.cjs' \) -print0 | xargs -0 -n1 node --check
@@ -45,14 +47,17 @@ jobs:
           src/trainer.js
           styles/app.css
           tests/answer-feedback-transition.test.js
-          tests/exercise-routing.browser.cjs'
+          tests/exercise-routing.browser.cjs
+          tests/helpers/restore-feedback-answer-snapshot.cjs
+          tests/major-scale-domain.test.js
+          tests/notation-boundary.test.js'
           actual=$({ git diff --name-only; git ls-files --others --exclude-standard; } | grep -v '^tools/' | grep -v '^\.github/' | sort -u)
           expected=$(printf '%s\n' "$allowed" | sed 's/^ *//' | sed '/^$/d' | sort)
           printf 'Actual scope:\n%s\n' "$actual"
           test "$actual" = "$expected"
       - name: Remove temporary QA machinery
         run: |
-          rm -f tools/apply-feedback-answer-snapshot.cjs .github/workflows/feedback-answer-snapshot.yml
+          rm -f tools/apply-feedback-answer-snapshot.cjs tools/apply-feedback-boundary-fix.cjs .github/workflows/feedback-answer-snapshot.yml
           rmdir tools 2>/dev/null || true
           rmdir .github/workflows 2>/dev/null || true
           rmdir .github 2>/dev/null || true
