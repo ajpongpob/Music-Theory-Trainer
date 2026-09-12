@@ -114,7 +114,7 @@ assert(Object.isFrozen(repo), 'dashboardRepository should be frozen');
   assert.equal(history.data.attempts.length, 1);
   assert.equal(history.data.skillResults.length, 1);
 
-  const historyCalls=calls.slice(7);
+  const historyCalls=normalize(calls.slice(7));
   const sessionRead=historyCalls.find(call=>call.table==='practice_sessions' && call.select?.includes('overall_score'));
   const countRead=historyCalls.find(call=>call.table==='practice_sessions' && call.selectOptions?.head===true);
   const attemptRead=historyCalls.find(call=>call.table==='attempts');
