@@ -26,6 +26,12 @@ boundary=replaceExact(
   "const restoreNote=require('./helpers/restore-renderer-note-primitives.cjs');\nconst restoreFeedback=require('./helpers/restore-feedback-answer-snapshot.cjs');\nfor(const file of Object.keys(boundary.files))restore(restoreRenderer(restoreStatic(restoreNote(restoreFeedback(read(file),file),file),file),file),file);\n",
   'notation exact restoration chain'
 );
+boundary=replaceExact(
+  boundary,
+  "for(const [file,hash] of Object.entries(boundary.protectedProduction)){\n  assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,'protected production changed: '+file);\n}\n",
+  "for(const [file,hash] of Object.entries(boundary.protectedProduction)){\n  const source=restoreFeedback(read(file),file);\n  assert.equal(crypto.createHash('sha256').update(source).digest('hex'),hash,'protected production changed: '+file);\n}\n",
+  'protected production exact UI restoration'
+);
 write('tests/notation-boundary.test.js',boundary);
 
 console.log('Applied feedback exact-boundary restoration support');
