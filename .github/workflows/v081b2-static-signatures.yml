@@ -37,6 +37,8 @@ jobs:
         env:
           BROWSER_CHANNEL: chrome
         run: node tests/exercise-routing.browser.cjs
+      - name: Remove browser QA dependencies
+        run: rm -rf node_modules package-lock.json
       - name: Verify approved scope
         run: |
           allowed='src/domain/notation/notation-renderer.js
