@@ -69,6 +69,35 @@ function selectedNoteIdsInRange(notes,anchorIndex,currentIndex){
   return ids;
 }
 
+function dragDeltaSteps(startY,currentY,staffSpacing){
+  return Math.round((startY-currentY)/(staffSpacing/2));
+}
+
+function rangeGestureCompletion(interaction,mobileRangeAnchorIndex){
+  const completedByDrag=interaction.moved;
+  const completedBySecondTap=
+    mobileRangeAnchorIndex>=0 &&
+    interaction.rangeLastIndex!==mobileRangeAnchorIndex;
+  return {
+    completedByDrag,
+    completedBySecondTap,
+    complete:completedByDrag || completedBySecondTap
+  };
+}
+
+function resetPointerInteraction(interaction){
+  interaction.active=false;
+  interaction.pointerId=null;
+  interaction.noteId=null;
+  interaction.noteIndex=-1;
+  interaction.moved=false;
+  interaction.dragSelectionPrepared=false;
+  interaction.mode='note';
+  interaction.rangeAnchorIndex=-1;
+  interaction.rangeLastIndex=-1;
+  return interaction;
+}
+
 function eventPointInSvg(svg,ev){
   const ctm=svg.getScreenCTM();
   if(!ctm) return null;
@@ -108,6 +137,9 @@ app.notationInteraction=Object.freeze({
   nearestOccupiedIndexToX,
   noteTargetFromEvent,
   selectedNoteIdsInRange,
+  dragDeltaSteps,
+  rangeGestureCompletion,
+  resetPointerInteraction,
   eventPointInSvg,
   mapCompactScorePoint
 });
