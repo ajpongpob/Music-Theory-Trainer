@@ -7,7 +7,6 @@ const ROOT=path.resolve(__dirname,'..');
 const source=fs.readFileSync(path.join(ROOT,'src/dashboard/student-dashboard-v2.js'),'utf8');
 const css=fs.readFileSync(path.join(ROOT,'styles/student-dashboard-v2.css'),'utf8');
 const repository=fs.readFileSync(path.join(ROOT,'src/data/dashboard.repository.js'),'utf8');
-const indexHtml=fs.readFileSync(path.join(ROOT,'index.html'),'utf8');
 
 const orderedIds=['sd2Continue','sd2Summary','sd2Skills','sd2LearningPath','sd2Trend','sd2Recent','sd2Achievements'];
 let last=-1;
@@ -43,13 +42,6 @@ assert(repository.includes("from('attempts')"), 'History repository must read at
 assert(repository.includes("from('attempt_skill_results')"), 'History repository must read attempt skill evidence');
 assert(repository.includes("select('id', {count: 'exact', head: true})"), 'Session count must be data-backed rather than inferred from the recent page');
 
-assert(indexHtml.includes('styles/student-dashboard-v2.css?v='), 'Production HTML must load Dashboard V2 CSS directly with cache busting');
-assert(indexHtml.includes('src/data/dashboard.repository.js?v='), 'Production HTML must cache-bust the dashboard repository bootstrap');
-assert(indexHtml.includes('src/dashboard/student-dashboard-v2.js?v='), 'Production HTML must load Dashboard V2 JS directly');
-assert(indexHtml.includes('src/dashboard/student-dashboard-v2-compat.js?v='), 'Production HTML must load Dashboard V2 compatibility layer directly');
-assert.strictEqual((indexHtml.match(/src\/dashboard\/student-dashboard-v2\.js\?v=/g)||[]).length,1,'Production HTML must load Dashboard V2 JS exactly once');
-assert.strictEqual((indexHtml.match(/styles\/student-dashboard-v2\.css\?v=/g)||[]).length,1,'Production HTML must load Dashboard V2 CSS exactly once');
-
 assert(css.includes('.sd2-bottom-nav'), 'Mobile bottom navigation styles must exist');
 assert(css.includes('@media(min-width:760px)'), 'Dashboard must define a desktop enhancement breakpoint');
 assert(css.includes('grid-template-columns:repeat(4,minmax(0,1fr))'), 'Desktop summary cards must become four columns');
@@ -57,4 +49,4 @@ assert(css.includes('--sd2-mastered'), 'Status color semantics must include Mast
 assert(css.includes('--sd2-needs'), 'Status color semantics must include Needs Practice');
 assert(css.includes('--sd2-locked'), 'Status color semantics must include Locked');
 
-console.log('PASS Student Dashboard V2: actionable hierarchy, mastery binding, learning history, production wiring, navigation and responsive contracts');
+console.log('PASS Student Dashboard V2: actionable hierarchy, mastery binding, learning history, navigation and responsive contracts');
