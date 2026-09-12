@@ -1,0 +1,51 @@
+name: Dashboard V2 smoke-test hotfix v2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/dashboard-v2-smoke-hotfix-v2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update legacy dashboard smoke harness for cache-busted scripts
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/dashboard-runtime-smoke.test.js')
+          lines = path.read_text(encoding='utf-8').splitlines()
+          hits = [i for i, line in enumerate(lines) if 'const scripts=[...html.matchAll' in line]
+          if len(hits) != 1:
+              raise SystemExit(f'Expected exactly one script extraction line, found {len(hits)}')
+          i = hits[0]
+          lines[i] = "  const scripts=[...html.matchAll(/<script\\s+src=\"\\.\\/(src\\/[^\"?#]+\\.js)(?:[?#][^\"]*)?\"/g)].map(m=>m[1]).filter(f=>!['src/trainer.js','src/keyboard.js','src/dashboard/student-dashboard-v2.js','src/dashboard/student-dashboard-v2-compat.js'].includes(f));"
+          path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+
+          set -euo pipefail
+          for test_file in tests/*.test.js; do
+            echo "==> $test_file"
+            node "$test_file"
+          done
+
+      - name: Commit verified smoke fix and clean temporary workflows
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -f .github/workflows/dashboard-v2-smoke-hotfix.yml .github/workflows/dashboard-v2-smoke-hotfix-v2.yml
+          git add tests/dashboard-runtime-smoke.test.js
+          git commit -m "Fix dashboard smoke harness for versioned assets"
+          git push
