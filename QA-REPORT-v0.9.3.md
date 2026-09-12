@@ -1,7 +1,8 @@
 # QA Report — v0.9.3 Authoritative Mastery Evidence
 
 Date: 2026-09-12  
-Baseline: `v0.9.2` / `83242bb919c7e549f8335bc0f79f15c3d5e760d4`
+Baseline: `v0.9.2` / `83242bb919c7e549f8335bc0f79f15c3d5e760d4`  
+Release commit: `659600b7dd790b177de46cd40d5fb8af03196515`
 
 ## Purpose
 
@@ -59,27 +60,50 @@ The server scorer reproduces the existing Major Scale domain policy and is guard
 
 The operation writes the attempt and all five skill rows atomically and updates session progress. Existing question slots are idempotent: a retry returns the original persisted result rather than replacing it.
 
-The release migration removes direct authenticated INSERT policy/grant access to `attempts` and `attempt_skill_results` after the server path is deployed.
+Direct authenticated INSERT policy/grant access to `attempts` and `attempt_skill_results` is revoked in production.
 
-## Live Supabase verification performed before final cutover
+## Live Supabase verification
 
-The Edge Function `submit-major-scale-attempt` was deployed ACTIVE with JWT verification enabled.
+The Edge Function `submit-major-scale-attempt` is ACTIVE with JWT verification enabled.
 
-The persistence RPC was deployed and checked with:
+Final post-cutover privileges were verified as:
 
-- `authenticated` EXECUTE: false
-- `anon` EXECUTE: false
-- `service_role` EXECUTE: true
+- `authenticated` INSERT `attempts`: false
+- `authenticated` INSERT `attempt_skill_results`: false
+- `anon` INSERT `attempts`: false
+- `anon` INSERT `attempt_skill_results`: false
+- `service_role` INSERT `attempts`: true
+- `service_role` INSERT `attempt_skill_results`: true
+- `authenticated` EXECUTE `persist_scored_major_scale_attempt`: false
+- `anon` EXECUTE `persist_scored_major_scale_attempt`: false
+- `service_role` EXECUTE `persist_scored_major_scale_attempt`: true
+- learner INSERT policies remaining on the two evidence tables: 0
 
-A rollback-only database smoke transaction created a temporary Stage-authorized practice session, persisted one authoritative attempt plus all five skill rows, verified the persisted result, then retried the same question with conflicting score/evidence. The retry returned the original immutable attempt. The transaction was rolled back, leaving no test row in production.
+A rollback-only post-cutover transaction switched to `service_role`, persisted an authoritative attempt plus all five skill rows through the restricted RPC and returned the expected score/session progress. The transaction was rolled back, leaving no QA row in production.
 
-No real learner row was edited or deleted during this verification.
+A separate rollback-only pre-cutover test retried an existing question with conflicting score/evidence and confirmed that the original immutable attempt was returned rather than replaced.
+
+Post-cutover integrity verification returned:
+
+- orphan attempts: 0
+- orphan skill results: 0
+- duplicate question slots: 0
+- duplicate attempt/skill rows: 0
+- invalid Stage references: 0
+- exercise/Stage mismatches: 0
+- retained v0.9.3 QA sessions: 0
+
+No real learner row was edited or deleted during these verification transactions.
+
+The production migration history includes `v093_authoritative_attempt_submission` after v0.9.0 and v0.9.1 migrations.
 
 ## Automated regression
 
-GitHub Actions was added for Node 22 plus real Chrome.
+GitHub Actions runs Node 22 plus real Chrome.
 
-A full source run on commit `8830c2ba1e304a2ec82ebcd7abc2d9beb9558a6f` passed the Node step, including:
+PR-specific CI passed before merge. After merge, the `main` workflow for release commit `659600b7dd790b177de46cd40d5fb8af03196515` also completed successfully.
+
+The Node regression includes:
 
 - all inherited contract/runtime tests;
 - 29 Major Scale spellings/expected answers;
@@ -91,7 +115,7 @@ A full source run on commit `8830c2ba1e304a2ec82ebcd7abc2d9beb9558a6f` passed th
 - v0.9.3 authoritative-attempt security contract;
 - v0.9.3 server/client scoring parity.
 
-The same CI run passed the existing real-Chrome E2E suite after installing pinned Playwright. The browser suite uses a fixture backend; it validates real UI/interaction behavior, not live Supabase transport.
+The same CI workflow passed the existing real-Chrome E2E suite after installing pinned Playwright. The browser suite uses a fixture backend; it validates real UI/interaction behavior, not live Supabase transport.
 
 ## Scoring parity coverage added in v0.9.3
 
@@ -119,14 +143,29 @@ Malformed notation payloads and unsupported key codes are also rejected by the s
 - Stage, item, sequence and evidence-shape checks exist in the migration;
 - the service role marker does not appear in browser source.
 
-## Remaining limitations
+## Post-cutover advisors
+
+The new v0.9.3 persistence RPC does not appear in the `authenticated SECURITY DEFINER` warning because it is `SECURITY INVOKER` and service-role only.
+
+Remaining advisor findings are inherited/separate work:
+
+- 13 existing authenticated-callable `SECURITY DEFINER` RPC warnings require function-by-function authorization review rather than a blanket rewrite.
+- Supabase Auth leaked-password protection is disabled.
+- Performance advisor reports 10 unindexed foreign keys, 10 RLS auth-init-plan warnings and 5 currently unused indexes.
+
+These findings do not reopen the v0.9.3 Mastery-evidence forgery path.
+
+## Remaining limitations / follow-up
 
 - Real Chrome CI uses the fixture backend. A fresh authenticated browser-to-live-Edge-to-live-DB journey requires a dedicated disposable QA account/session and is not claimed by this report.
-- Supabase Auth leaked-password protection is still an account configuration item and was not changed by this source release.
-- Existing Security Advisor warnings for other intentionally exposed `SECURITY DEFINER` RPCs require function-by-function review; v0.9.3 does not broadly rewrite those functions.
-- Existing database performance-advisor findings (foreign-key indexes and RLS init-plan optimization) are separate scale/performance work, not part of this security correction.
-- The legacy trainer still contains historical internal version/copy literals. Runtime-visible version and persisted session provenance are centralized at `0.9.3`; a later controller cleanup can remove historical literals without mixing that refactor into this security release.
+- Supabase Auth leaked-password protection is an account configuration item and was not changed by this release.
+- Existing `SECURITY DEFINER` advisor warnings require targeted review of each RPC's internal authorization checks.
+- Database performance-advisor findings should be handled as separate scale/performance work after functional stability.
+- The legacy Trainer still contains historical internal version/copy literals. Runtime-visible version and persisted session provenance are centralized at `0.9.3`; a later controller cleanup can remove those literals without mixing controller refactoring into this security release.
+- The learner-facing BN01 feedback label in the legacy controller still uses older “Treble Pitch” wording even though the scoring semantics are already correct; this is a copy/UX issue, not a scoring defect.
 
 ## Release decision
 
-The P0 issue identified by the audit is addressed in architecture and regression coverage. Final release cutover requires the migration's direct authenticated INSERT revocations to be applied after the v0.9.3 client path is merged/deployed, followed by post-cutover privilege/integrity verification.
+**v0.9.3 production cutover is complete.**
+
+The P0 Mastery evidence-forgery issue identified by the audit is closed at the browser, database privilege and trusted-persistence layers. Automated Node + Chrome regression is green on `main`, the server scorer is active, the restricted RPC remains service-role only, and post-cutover database integrity checks are clean.
