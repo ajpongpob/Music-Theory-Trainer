@@ -65,6 +65,69 @@ const dashboardRepository = {
       .eq('active', true);
   },
 
+  async getStudentLearningHistory({limit = 40} = {}) {
+    const client = getClient();
+    const safeLimit = Math.max(5, Math.min(100, Number(limit) || 40));
+
+    try {
+      const [sessionsResult, practiceCountResult] = await Promise.all([
+        client
+          .from('practice_sessions')
+          .select('id,mode,planned_questions,completed_questions,overall_score,started_at,completed_at,last_activity_at,exercise_id,stage_id')
+          .order('started_at', {ascending: false})
+          .limit(safeLimit),
+        client
+          .from('practice_sessions')
+          .select('id', {count: 'exact', head: true})
+          .eq('mode', 'practice')
+      ]);
+
+      if (sessionsResult.error) return {data: null, error: sessionsResult.error};
+      if (practiceCountResult.error) return {data: null, error: practiceCountResult.error};
+
+      const sessions = Array.isArray(sessionsResult.data) ? sessionsResult.data : [];
+      const sessionIds = sessions.map(row => row.id).filter(Boolean);
+      let attempts = [];
+      let skillResults = [];
+
+      if (sessionIds.length) {
+        const attemptsResult = await client
+          .from('attempts')
+          .select('id,practice_session_id,question_number,score,item_code,checked_at,created_at')
+          .in('practice_session_id', sessionIds)
+          .order('question_number', {ascending: true});
+
+        if (attemptsResult.error) return {data: null, error: attemptsResult.error};
+        attempts = Array.isArray(attemptsResult.data) ? attemptsResult.data : [];
+
+        const attemptIds = attempts.map(row => row.id).filter(Boolean);
+        if (attemptIds.length) {
+          const skillsResult = await client
+            .from('attempt_skill_results')
+            .select('attempt_id,skill_code,correct_count,total_count,score,created_at')
+            .in('attempt_id', attemptIds);
+
+          if (skillsResult.error) return {data: null, error: skillsResult.error};
+          skillResults = Array.isArray(skillsResult.data) ? skillsResult.data : [];
+        }
+      }
+
+      return {
+        data: {
+          sessions,
+          attempts,
+          skillResults,
+          totalPracticeSessions: Number.isFinite(Number(practiceCountResult.count))
+            ? Number(practiceCountResult.count)
+            : sessions.filter(row => row.mode === 'practice').length
+        },
+        error: null
+      };
+    } catch (error) {
+      return {data: null, error};
+    }
+  },
+
   getTeacherDashboard() {
     return getClient().rpc('get_my_teacher_dashboard');
   },
@@ -100,10 +163,27 @@ const dashboardRepository = {
 
 app.dashboardRepository = Object.freeze(dashboardRepository);
 
-// M1.5/M1.6 are additive presentation/orchestration layers loaded after the
-// original dashboard/trainer scripts so notation and scoring remain frozen.
+function loadOptionalScript(src, dataAttribute) {
+  if (typeof document === 'undefined' || !document.body) return null;
+  if (document.querySelector(`script[${dataAttribute}]`)) return null;
+  const script = document.createElement('script');
+  script.src = src;
+  script.setAttribute(dataAttribute, 'true');
+  document.body.appendChild(script);
+  return script;
+}
+
+// Additive presentation layers are loaded after the original dashboard/trainer
+// scripts so notation, scoring and the authenticated exercise host stay frozen.
 if (typeof window.addEventListener === 'function' && typeof document !== 'undefined') {
   window.addEventListener('load', () => {
+    const dashboardV2 = loadOptionalScript('./src/dashboard/student-dashboard-v2.js', 'data-student-dashboard-v2');
+    const loadDashboardCompat = () => loadOptionalScript('./src/dashboard/student-dashboard-v2-compat.js', 'data-student-dashboard-v2-compat');
+    if (dashboardV2) dashboardV2.addEventListener('load', loadDashboardCompat, {once:true});
+    else loadDashboardCompat();
+
+    loadOptionalScript('./src/feedback-notation-errors.js', 'data-feedback-notation-errors');
+
     if (document.querySelector('script[data-m15-learning-feedback]')) return;
     const feedback = document.createElement('script');
     feedback.src = './src/m15-learning-feedback.js';

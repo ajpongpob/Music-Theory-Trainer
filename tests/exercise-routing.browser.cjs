@@ -125,8 +125,12 @@ window.supabase={createClient:()=>{
     await page.locator('#dashboardButton').click();
     await page.waitForFunction(()=>!document.getElementById('studentDashboard').hidden);
     assert.equal(await page.evaluate(()=>MajorScaleApp.exerciseHost.getCurrentContext()),null);
+    // Dashboard V2 intentionally moves the legacy recommendation into a hidden
+    // compatibility container. Exercise routing still owns that action, so use
+    // the native DOM click here to keep the legacy diagnostic route covered;
+    // visible V2 interaction is tested by the Dashboard V2-specific contracts.
     const diagnostic=page.locator('#dashboardRecommendation .dashboard-continue');
-    await diagnostic.click();
+    await diagnostic.evaluate(button=>button.click());
     await page.waitForFunction(()=>!document.getElementById('trainerApp').hidden && __qa.state.sessionMode==='pretest');
     assert.equal(await page.evaluate(()=>MajorScaleApp.exerciseHost.getCurrentContext().sessionMode),'pretest','Host carries diagnostic mode');
     assert.equal(await page.locator('#levelSelect').isDisabled(),true,'Diagnostic path Stage must also lock Level');
