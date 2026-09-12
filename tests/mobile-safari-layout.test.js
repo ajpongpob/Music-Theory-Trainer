@@ -1,4 +1,4 @@
-\'use strict\';
+'use strict';
 const fs=require('fs'),path=require('path'),assert=require('assert');
 const root=path.resolve(__dirname,'..');
 const css=fs.readFileSync(path.join(root,'styles/mobile-safari-fix.css'),'utf8');
