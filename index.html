@@ -1,7 +1,7 @@
 <html lang="th" class=""><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Major Scale Notation Trainer — v0.8.1-a</title>
+<title>Major Scale Notation Trainer — v0.9.0</title>
 <link rel="stylesheet" href="./styles/app.css">
 </head>
 <body>
@@ -268,6 +268,7 @@
           </div>
           <span id="dashboardFocusStatus" class="dashboard-status-badge in-progress">กำลังเรียน</span>
         </div>
+        <div id="dashboardRecommendation" class="dashboard-recommendation" aria-live="polite"></div>
         <div id="dashboardMasteryBody" class="dashboard-message" style="margin-top:14px;">กำลังโหลดผลการเรียน...</div>
       </aside>
     </main>
@@ -394,7 +395,7 @@
       </label>
       <button type="button" id="dashboardButton" class="btn auth-logout">แดชบอร์ด</button>
       <button type="button" id="logoutButton" class="btn auth-logout">ออกจากระบบ</button>
-      <span class="pill">v0.8.1-a</span>
+      <span class="pill">v0.9.0</span>
   </header>
 
   <main class="session-main">
@@ -611,6 +612,8 @@
 <script src="./src/data/dashboard.repository.js"></script>
 <script src="./src/data/practice.repository.js"></script>
 <script src="./src/data/mastery.repository.js"></script>
+<script src="./src/data/learning.repository.js"></script>
+<script src="./src/domain/mastery/mastery-learning-core.js"></script>
 <script src="./src/domain/notation/notation-core.js"></script>
 <script src="./src/domain/notation/notation-renderer.js"></script>
 <script src="./src/domain/notation/notation-interaction.js"></script>

@@ -290,7 +290,7 @@ $('dashboardButton').addEventListener('click', () => {
 dashboard.addEventListener('click', event => {
   const button=event.target.closest('.dashboard-continue[data-exercise-code]');
   if(!button) return;
-  studentDashboardController?.openExercise?.(button.dataset.exerciseCode,button.dataset.stageCode);
+  studentDashboardController?.openExercise?.(button.dataset.exerciseCode,button.dataset.stageCode,button.dataset.sessionMode || 'practice');
 });
 $('logoutButton').addEventListener('click', async () => {
   if (busy || !ready) return;

@@ -8,8 +8,8 @@ const ROOT = path.resolve(__dirname, '..');
 const read = rel => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 const html = read('index.html');
 
-assert(html.includes('Major Scale Notation Trainer — v0.8.1-a'), 'document title version must be v0.8.1-a');
-assert(html.includes('<span class="pill">v0.8.1-a</span>'), 'visible version pill must be v0.8.1-a');
+assert(html.includes('Major Scale Notation Trainer — v0.9.0'), 'document title version must be v0.9.0');
+assert(html.includes('<span class="pill">v0.9.0</span>'), 'visible version pill must be v0.9.0');
 
 const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
 const duplicateIds = ids.filter((id, i) => ids.indexOf(id) !== i);

@@ -47,6 +47,15 @@ const practiceRepository = {
       .is('completed_at', null);
   },
 
+  getOpenLearningSessions(userId) {
+    return getClient()
+      .from('practice_sessions')
+      .select('id,started_at,last_activity_at,mode')
+      .eq('user_id', userId)
+      .in('mode', ['practice','pretest'])
+      .is('completed_at', null);
+  },
+
   closePracticeSession({sessionId, completedAt, onlyIfOpen = false}) {
     let query = getClient()
       .from('practice_sessions')

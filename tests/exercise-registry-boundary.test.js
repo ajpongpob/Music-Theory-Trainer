@@ -39,7 +39,7 @@ assert(!registry.includes('supabase'), 'exercise registry must not know Supabase
 assert(!definition.includes('supabase'), 'exercise definition must not know Supabase');
 
 assert(!student.includes('MAJOR_SCALE_NOTATION'), 'Dashboard routing must be generic');
-assert(student.includes('host.launch({exerciseCode,stageCode,userId:activeUser})'));
+assert(student.includes('host.launch({exerciseCode,stageCode,userId:activeUser,sessionMode})'));
 assert(trainer.includes('window.majorScaleTrainerStartForAuthenticatedUser'), 'legacy Major Scale runtime must remain intact');
 assert(!student.includes('exerciseRegistry.get('), 'Dashboard must delegate Registry lookup to Host');
 

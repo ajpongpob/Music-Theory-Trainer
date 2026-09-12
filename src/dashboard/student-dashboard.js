@@ -4,6 +4,8 @@ const app = window.MajorScaleApp = window.MajorScaleApp || {};
 const $ = id => document.getElementById(id);
 const authRepository = app.authRepository;
 const dashboardRepository = app.dashboardRepository;
+const learningRepository = app.learningRepository;
+const masteryLearningCore = app.masteryLearningCore;
 const dashboard = $('studentDashboard');
 const teacherDashboard = $('teacherDashboard');
 const trainer = $('trainerApp');
@@ -262,6 +264,38 @@ async function loadDashboardCurrentMastery(currentRow,skillNameMap,token) {
     body.textContent='โหลดผลการเรียนไม่สำเร็จ กรุณาลองใหม่';
   }
 }
+function renderDashboardRecommendation(rawRecommendation,skillNameMap){
+  const box=$('dashboardRecommendation');
+  if(!box) return;
+  const recommendation=masteryLearningCore?.normalizeRecommendation(rawRecommendation);
+  if(!recommendation){
+    box.innerHTML='';
+    box.hidden=true;
+    return;
+  }
+  box.hidden=false;
+  const skillName=recommendation.targetSkillCode
+    ? (skillNameMap.get(recommendation.targetSkillCode) || recommendation.targetSkillCode)
+    : null;
+  const target=skillName
+    ? `<div class="dashboard-recommendation-target">เป้าหมาย: ${escapeDashboardHtml(skillName)}</div>`
+    : recommendation.targetItemCode
+      ? `<div class="dashboard-recommendation-target">โจทย์เป้าหมาย: ${escapeDashboardHtml(recommendation.targetItemCode)}</div>`
+      : '';
+  const canLaunch=!!(recommendation.exerciseCode && recommendation.stageCode && recommendation.actionType!=='completed');
+  const sessionMode=recommendation.actionType==='diagnostic' ? 'pretest' : 'practice';
+  const label=masteryLearningCore?.recommendationActionLabel(recommendation) || 'เรียนต่อ';
+  const action=canLaunch
+    ? `<button type="button" class="dashboard-continue dashboard-recommendation-action" data-exercise-code="${escapeDashboardHtml(recommendation.exerciseCode)}" data-stage-code="${escapeDashboardHtml(recommendation.stageCode)}" data-session-mode="${sessionMode}">${escapeDashboardHtml(label)} →</button>`
+    : '';
+  box.innerHTML=`
+    <div class="dashboard-focus-label">คำแนะนำถัดไป</div>
+    <div class="dashboard-recommendation-title">${escapeDashboardHtml(label)}</div>
+    <div class="dashboard-stage-meta">${escapeDashboardHtml(recommendation.reasonTh || '')}</div>
+    ${target}
+    ${action}`;
+}
+
 async function loadStudentDashboard() {
   if(!dashboardRepository || !activeUser) return;
   const token=++dashboardLoadToken;
@@ -277,10 +311,16 @@ async function loadStudentDashboard() {
     if(userError) throw userError;
     if(!user) throw new Error('Authentication required');
 
-    const [dashboardResult,profileResult,skillsResult]=await Promise.all([
+    if(learningRepository){
+      const progression=await learningRepository.ensureProgression();
+      if(progression?.error) console.warn('ENSURE LEARNING PROGRESSION WARNING:',progression.error);
+    }
+
+    const [dashboardResult,profileResult,skillsResult,recommendationResult]=await Promise.all([
       dashboardRepository.getStudentDashboard(),
       dashboardRepository.getStudentProfile(user.id),
-      dashboardRepository.getActiveSkills()
+      dashboardRepository.getActiveSkills(),
+      learningRepository ? learningRepository.getRecommendedNextAction() : Promise.resolve({data:null,error:null})
     ]);
     if(dashboardResult.error) throw dashboardResult.error;
     if(token!==dashboardLoadToken) return;
@@ -297,6 +337,12 @@ async function loadStudentDashboard() {
     ]));
     const rows=Array.isArray(dashboardResult.data) ? dashboardResult.data : [];
     const currentRow=renderDashboardRows(rows);
+    if(recommendationResult?.error){
+      console.warn('LOAD RECOMMENDATION WARNING:',recommendationResult.error);
+      renderDashboardRecommendation(null,skillNameMap);
+    }else{
+      renderDashboardRecommendation(recommendationResult?.data,skillNameMap);
+    }
 
     messageBox.hidden=true;
     content.hidden=false;
@@ -312,13 +358,13 @@ async function loadStudentDashboard() {
 }
 
 
-async function openExerciseFromDashboard(exerciseCode,stageCode) {
+async function openExerciseFromDashboard(exerciseCode,stageCode,sessionMode='practice') {
   if(dashboardOpening) return;
   dashboardOpening=true;
   try{
     const host=app.exerciseHost;
     if(!host) throw new Error('Exercise Host ยังไม่พร้อมใช้งาน');
-    const result=await host.launch({exerciseCode,stageCode,userId:activeUser});
+    const result=await host.launch({exerciseCode,stageCode,userId:activeUser,sessionMode});
     if(!result.ok && result.message) alert(result.message);
     return result;
   }catch(error){
@@ -339,8 +385,8 @@ app.studentDashboard = Object.freeze({
     activeUser = userId || null;
     return loadStudentDashboard();
   },
-  openExercise(exerciseCode, stageCode) {
-    return openExerciseFromDashboard(exerciseCode, stageCode);
+  openExercise(exerciseCode, stageCode, sessionMode='practice') {
+    return openExerciseFromDashboard(exerciseCode, stageCode, sessionMode);
   },
   invalidate() {
     app.exerciseHost?.close();
