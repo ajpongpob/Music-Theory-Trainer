@@ -51,7 +51,7 @@ jobs:
           tests/helpers/restore-feedback-answer-snapshot.cjs
           tests/major-scale-domain.test.js
           tests/notation-boundary.test.js'
-          actual=$({ git diff --name-only; git ls-files --others --exclude-standard; } | grep -v '^tools/' | grep -v '^\.github/' | sort -u)
+          actual=$({ git diff --name-only origin/main...HEAD; git diff --name-only; git ls-files --others --exclude-standard; } | grep -v '^tools/' | grep -v '^\.github/' | sort -u)
           expected=$(printf '%s\n' "$allowed" | sed 's/^ *//' | sed '/^$/d' | sort)
           printf 'Actual scope:\n%s\n' "$actual"
           test "$actual" = "$expected"
