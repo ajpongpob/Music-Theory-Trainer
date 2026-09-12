@@ -19,7 +19,7 @@ permissions:
 jobs:
   live-pilot:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     environment: pilot-qa
     steps:
       - name: Checkout
@@ -63,3 +63,13 @@ jobs:
           QA_CLASS_ID: ${{ vars.QA_CLASS_ID }}
           QA_EXPECT_STUDENT_IN_TEACHER: ${{ inputs.verify_teacher && 'YES' || 'NO' }}
         run: node tests/live-pilot.browser.cjs
+
+      - name: Run live responsive viewport gates
+        env:
+          PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
+          BROWSER_CHANNEL: chrome
+          LIVE_TEST_CONFIRM: YES
+          LIVE_APP_URL: ${{ inputs.app_url }}
+          QA_STUDENT_EMAIL: ${{ secrets.QA_STUDENT_EMAIL }}
+          QA_STUDENT_PASSWORD: ${{ secrets.QA_STUDENT_PASSWORD }}
+        run: node tests/live-pilot-viewports.browser.cjs
