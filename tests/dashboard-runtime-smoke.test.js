@@ -76,7 +76,7 @@ function makeClient(scenario, ctx){
       getSession:async()=>({data:{session:currentUser?{user:currentUser}:null},error:null}),
       getUser:async()=>({data:{user:currentUser},error:null}),
       onAuthStateChange(fn){cb=fn; return {data:{subscription:{unsubscribe(){}}}};},
-      async signInWithPassword(){calls.signIn++; currentUser=teacher; const session={user:currentUser}; queueMicrotask(()=>cb?.('SIGNED_IN',session)); return {data:{session},error:null};},
+      async signInWithPassword({email}={}){calls.signIn++; currentUser=email==='student@example.com'?student:teacher; const session={user:currentUser}; queueMicrotask(()=>cb?.('SIGNED_IN',session)); return {data:{session},error:null};},
       async signUp(){return {data:{session:null,user:{id:'new'}},error:null};},
       async signOut(){calls.signOut++; currentUser=null; queueMicrotask(()=>cb?.('SIGNED_OUT',null)); return {error:null};},
       async resetPasswordForEmail(){calls.reset++; return {data:{},error:null};},
@@ -142,6 +142,7 @@ async function runScenario(scenario){
   }
   if(scenario==='student'){
     check('student dashboard visible',get('studentDashboard').hidden===false,get('studentDashboard').hidden);
+    check('refresh/session restore keeps the authenticated student',get('dashboardUserName').textContent.includes('Student Test'),get('dashboardUserName').textContent);
     check('student content visible',get('dashboardContent').hidden===false,get('dashboardMessage').textContent);
     check('student name',get('dashboardUserName').textContent.includes('Student Test'),get('dashboardUserName').textContent);
     check('path rendered',get('dashboardPathList').innerHTML.includes('MUSIC_THEORY_FOUNDATIONS'));
@@ -177,6 +178,26 @@ async function runScenario(scenario){
     check('teacher visible after login',get('teacherDashboard').hidden===false,get('teacherDashboard').hidden);
     check('teacher data after login',get('teacherStudentList').innerHTML.includes('test2'),get('teacherDashboardMessage').textContent);
   }
+  if(scenario==='switchUser'){
+    check('auth initially visible for switch-user flow',get('authScreen').hidden===false,get('authScreen').hidden);
+    get('loginEmail').value='student@example.com'; get('loginPassword').value='password'; get('loginButton').click();
+    await new Promise(r=>setTimeout(r,30));
+    check('student login visible before switch',get('studentDashboard').hidden===false && get('dashboardUserName').textContent.includes('Student Test'),get('dashboardUserName').textContent);
+    let launchCount=0,closeCount=0;
+    ctx.majorScaleTrainerStartForAuthenticatedUser=async()=>{launchCount++;};
+    ctx.majorScaleTrainerClosePracticeSession=async()=>{closeCount++;};
+    get('studentDashboard').dispatch('click',{target:{closest(){return {dataset:{exerciseCode:'MAJOR_SCALE_NOTATION',stageCode:'STAGE_2',sessionMode:'practice'}};}}});
+    await new Promise(r=>setTimeout(r,20));
+    check('student exercise host context belongs to student-1',launchCount===1 && ctx.MajorScaleApp.exerciseHost.getCurrentContext()?.userId==='student-1',ctx.MajorScaleApp.exerciseHost.getCurrentContext()?.userId);
+    get('logoutButton').click();
+    await new Promise(r=>setTimeout(r,25));
+    check('logout clears prior user exercise/session context',get('authScreen').hidden===false && ctx.MajorScaleApp.exerciseHost.getCurrentContext()===null && closeCount===1,ctx.MajorScaleApp.exerciseHost.getCurrentContext()?.userId||'cleared');
+    get('loginEmail').value='teacher@example.com'; get('loginPassword').value='password'; get('loginButton').click();
+    await new Promise(r=>setTimeout(r,35));
+    check('new teacher login replaces prior student',get('teacherDashboard').hidden===false && get('teacherDashboardUserName').textContent.includes('Teacher Test'),get('teacherDashboardUserName').textContent);
+    check('new login does not inherit prior exercise host context',ctx.MajorScaleApp.exerciseHost.getCurrentContext()===null,ctx.MajorScaleApp.exerciseHost.getCurrentContext()?.userId||'clear');
+    check('two distinct login operations completed',ctx.__mockCalls.signIn===2,ctx.__mockCalls.signIn);
+  }
   if(scenario==='forgot'){
     get('showForgotPasswordButton').click(); get('forgotEmail').value='student@example.com'; get('forgotPasswordButton').click(); await new Promise(r=>setTimeout(r,10));
     check('reset called',ctx.__mockCalls.reset===1,ctx.__mockCalls.reset);
@@ -195,7 +216,7 @@ async function runScenario(scenario){
 
 (async()=>{
   let any=false;
-  for(const s of ['teacher','student','loginTeacher','forgot','recovery']){
+  for(const s of ['teacher','student','loginTeacher','switchUser','forgot','recovery']){
     const r=await runScenario(s);
     console.log(JSON.stringify(r,null,2));
     if(r.loadError || r.failed?.length) any=true;
