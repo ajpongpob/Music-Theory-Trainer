@@ -41,6 +41,12 @@ jobs:
           let trainerFlow=fs.readFileSync(trainerFlowFile,'utf8');
           trainerFlow=trainerFlow.replaceAll('0.8.1-a','0.9.0');
           fs.writeFileSync(trainerFlowFile,trainerFlow);
+          const browserFile='tests/exercise-routing.browser.cjs';
+          let browser=fs.readFileSync(browserFile,'utf8');
+          const browserBefore="await page.evaluate(()=>{__qa.state.notes=__qa.buildExpected(__qa.state.key).map((n,i)=>({...n,id:'diag'+q+'-'+i}));__qa.render();});";
+          const browserAfter="await page.evaluate(questionIndex=>{__qa.state.notes=__qa.buildExpected(__qa.state.key).map((n,i)=>({...n,id:'diag'+questionIndex+'-'+i}));__qa.render();},q);";
+          if(!browser.includes(browserBefore)) throw new Error('diagnostic browser seed not found');
+          fs.writeFileSync(browserFile,browser.replace(browserBefore,browserAfter));
 
           const files=[
             'src/trainer.js','index.html','src/auth-dashboard.js','src/dashboard/student-dashboard.js',
