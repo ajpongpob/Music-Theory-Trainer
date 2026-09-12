@@ -23,7 +23,7 @@ If the real-iPhone Safari smoke checklist below passes without a P0/P1 defect, t
 | M1.2 Learning Flow UX | PASS | Existing M1.2 regression remains green; current learner Dashboard exposes current Stage, a single recommended next action, learner-facing Thai reasons, coverage/skill gaps, and completed-state behavior. |
 | M1.3 Diagnostic + Mastery Experience | PASS WITH EVIDENCE LIMITATION | M1.3 diagnostic-recovery regression is green and production RPC logic was inspected live. The current dedicated QA learner already has practice evidence, so a fresh zero-evidence browser diagnostic was not destructively forced during this closeout. |
 | M1.4 Student / Teacher Dashboard | PASS WITH OBSERVATION | Live student and teacher flows pass. Teacher Dashboard exposes not-started/current-stage/completed-stage/latest-Mastery information. An explicit configurable inactivity/stuck alert is not yet implemented and is deferred as a non-blocking teacher-analytics enhancement. |
-| M1.5 Chrome device/viewports | PASS | Live Chrome passed 1440×900, 1280×800, tablet landscape, tablet portrait, 390×844, and 360×800 with no dashboard/trainer overflow and correct routing. Compact score reachability and mobile touch targets passed at the compact/mobile sizes. |
+| M1.5 Chrome device/viewports | PASS | Live production Chrome passed 1440×900, 1280×800, tablet landscape, tablet portrait, 390×844, and 360×800. The closeout branch additionally adds an 844×390 mobile-landscape regression requiring the full three-measure score to render as one continuous system. |
 | Real iPhone Safari | PENDING | Required physical-device smoke test is not represented by CI or Chrome emulation. |
 
 ## Fresh live production verification
@@ -56,6 +56,21 @@ Responsive production evidence:
 - Chrome 768×1024 tablet portrait: PASS; all three compact notation systems reachable
 - Chrome 390×844 mobile: PASS; all three compact systems reachable; touch targets PASS
 - Chrome 360×800 mobile: PASS; all three compact systems reachable; touch targets PASS
+
+## Landscape notation refinement after physical-device observation
+
+Physical-device review found one non-blocking usability issue: on iPhone landscape the score could still select the narrow-screen three-system layout and retain the large portrait score height even though the horizontal viewport was sufficient for an overview.
+
+The closeout branch now applies an orientation-aware policy:
+
+- narrow **portrait** keeps the three-system compact score for readable note size;
+- **landscape** bypasses compact reflow and uses the full `0 0 1400 350` three-measure viewBox as one continuous system;
+- the Safari narrow-screen CSS that grows the score for three portrait systems is portrait-only;
+- landscape restores the native 4:1 score aspect ratio instead of carrying the tall portrait height;
+- an 844×390 browser regression verifies zero compact `data-system` groups, the full one-system viewBox, viewport fit, and the wide score aspect;
+- the live viewport suite now contains a mobile-landscape gate for the next production acceptance run.
+
+This refinement changes responsive presentation only. It does not alter note state, notation rules, scoring, Mastery, progression, or Supabase behavior.
 
 ## Learner-facing Dashboard Mastery gate
 
@@ -119,24 +134,27 @@ Use the deployed production URL and a dedicated QA learner only.
 2. Log in with the dedicated QA student and confirm the Student Dashboard renders normally.
 3. Confirm the current Mastery panel loads overall score/threshold and per-skill results; it must not show `โหลดผลการเรียนไม่สำเร็จ`.
 4. Tap the recommended/current-Stage action and confirm the Trainer opens the same Stage and the Level selector remains locked by Learning Path authority.
-5. Confirm all three compact notation systems can be reached by normal vertical scrolling; no system is permanently hidden behind the palette/browser chrome.
+5. In **portrait**, confirm all three compact notation systems can be reached by normal vertical scrolling; no system is permanently hidden behind the palette/browser chrome.
 6. Confirm the palette and controls do not cover the intended notation touch targets.
 7. Tap/select a note and exercise representative touch interactions: move/drag pitch, accidental, duration, stem, and beam controls.
 8. Submit at least one disposable QA response and confirm the result UI remains usable.
 9. Return to Dashboard and confirm persisted progress/Mastery is still visible.
 10. Reload the page; confirm authentication/Dashboard recovery and no blank, frozen, or permanently unclickable state.
-11. Rotate portrait ↔ landscape once and confirm the interface remains recoverable and scrollable.
+11. Rotate to **landscape** and confirm the three measures appear as **one continuous staff system**, scaled to the horizontal viewport rather than remaining as three large stacked systems; rotate back to portrait and confirm the three-system layout returns correctly.
 
 Record device model, iOS version, Safari result (`PASS`/`FAIL`), and any finding with a screenshot if available.
 
 ## Closeout change set
 
-This closeout branch intentionally does **not** modify production notation, scoring, Mastery rules, progression rules, or Supabase schema.
+This closeout branch does **not** modify scoring, Mastery rules, progression rules, or Supabase schema. The landscape refinement changes only responsive notation presentation and its regression coverage.
 
-Net code/repository changes are limited to:
+Current closeout changes include:
 
 - add `tests/live-dashboard-mastery.browser.cjs`;
 - add that learner-facing Dashboard Mastery gate to `.github/workflows/live-pilot.yml`;
+- make compact-score selection orientation-aware so mobile landscape renders a one-system overview;
+- scope tall three-system Safari styling to portrait and restore the 4:1 score aspect in landscape;
+- add mobile-landscape browser and live viewport regressions;
 - add this closeout evidence record.
 
-After the real-iPhone Safari gate passes, record the device evidence and change the M1 decision to the applicable official status before beginning M2 Adaptive Learning Foundation work.
+After the real-iPhone Safari gate passes on the updated production build, record the device evidence and change the M1 decision to the applicable official status before beginning M2 Adaptive Learning Foundation work.
