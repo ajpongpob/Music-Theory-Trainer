@@ -24,7 +24,8 @@ for (const m of html.matchAll(/<link[^>]+href="([^"]+)"/g)) {
 }
 assert(localAssets.length > 0, 'local assets should be discovered');
 for (const asset of localAssets) {
-  const target = path.join(ROOT, asset.replace(/^\.\//, ''));
+  const assetPath = asset.split(/[?#]/, 1)[0];
+  const target = path.join(ROOT, assetPath.replace(/^\.\//, ''));
   assert(fs.existsSync(target), `missing local asset: ${asset}`);
 }
 
