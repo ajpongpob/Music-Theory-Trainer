@@ -54,8 +54,55 @@ const state={
  attemptSaveChain:Promise.resolve(),
  masteryPriorityItemCodes:[],
  sessionMode:"practice",
- diagnosticItemCodes:[]
+ diagnosticItemCodes:[],
+ pathStageEnforced:false,
+ authoritativeStageCode:null,
+ authoritativeLevel:null
 };
+
+function stageContextFromCode(stageCode){
+  const match=/^STAGE_(\d+)$/.exec(String(stageCode || '').trim());
+  if(!match) return {stageCode:null,level:null};
+  const level=Number(match[1]);
+  if(!Number.isInteger(level) || !LEVEL_KEYS[level]) return {stageCode:null,level:null};
+  return {stageCode:`STAGE_${level}`,level};
+}
+
+function configurePathStageAuthority(stageCode){
+  const resolved=stageContextFromCode(stageCode);
+  state.pathStageEnforced=resolved.level!==null;
+  state.authoritativeStageCode=resolved.stageCode;
+  state.authoritativeLevel=resolved.level;
+  return resolved;
+}
+
+function effectiveSessionLevel(candidate=state.level){
+  if(state.pathStageEnforced && Number.isInteger(state.authoritativeLevel)) return state.authoritativeLevel;
+  const parsed=Number(candidate);
+  if(Number.isInteger(parsed) && LEVEL_KEYS[parsed]) return parsed;
+  return Number.isInteger(state.level) && LEVEL_KEYS[state.level] ? state.level : 1;
+}
+
+function enforceAuthoritativeLevelControl(){
+  const select=document.getElementById("levelSelect");
+  if(!select) return;
+  if(state.pathStageEnforced && Number.isInteger(state.authoritativeLevel)){
+    select.value=String(state.authoritativeLevel);
+    select.disabled=true;
+    select.setAttribute("aria-disabled","true");
+    select.title="ระดับนี้กำหนดโดย Learning Path";
+    return;
+  }
+  select.disabled=state.sessionMode==="pretest";
+  if(!select.disabled) select.removeAttribute("aria-disabled");
+}
+
+function acceptTrustedAdvancedLevel(nextLevel){
+  const parsed=Number(nextLevel);
+  if(!state.pathStageEnforced || !Number.isInteger(parsed) || !LEVEL_KEYS[parsed]) return;
+  state.authoritativeLevel=parsed;
+  state.authoritativeStageCode=`STAGE_${parsed}`;
+}
 
 function autoStem(letter,octave){
  const diatonic=octave*7+LETTERS.indexOf(letter),b4=4*7+LETTERS.indexOf("B");
@@ -1523,6 +1570,7 @@ async function resolveMajorScaleExerciseStage(level){
 
 async function createPracticeSessionRecord(generation, level){
 
+  const sessionLevel=effectiveSessionLevel(level);
   const app=window.MajorScaleApp || {};
   const authRepository=app.authRepository;
   const practiceRepository=app.practiceRepository;
@@ -1549,7 +1597,7 @@ async function createPracticeSessionRecord(generation, level){
     const {
       exerciseId,
       stageId
-    }=await resolveMajorScaleExerciseStage(level);
+    }=await resolveMajorScaleExerciseStage(sessionLevel);
 
     const {data,error}=
       await practiceRepository.createPracticeSession({
@@ -1559,7 +1607,7 @@ async function createPracticeSessionRecord(generation, level){
         mode:state.sessionMode,
         planned_questions:Number.isInteger(state.sessionLength) ? state.sessionLength : null,
         completed_questions:0,
-        app_version:"0.9.0"
+        app_version:"0.9.1"
       });
 
     if(error) throw error;
@@ -2357,11 +2405,12 @@ async function refreshMasteryProgress(level=state.level){
   }
 }
 
-async function startTrainerForAuthenticatedUser(levelOverride=null,sessionMode="practice"){
+async function startTrainerForAuthenticatedUser(levelOverride=null,sessionMode="practice",stageCode=null){
   await closeStalePracticeSessionsForCurrentUser();
   state.sessionMode=masteryLearningCore?.normalizeSessionMode(sessionMode) || "practice";
+  configurePathStageAuthority(stageCode);
 
-  const requestedLevel=Number(levelOverride);
+  const requestedLevel=state.pathStageEnforced ? state.authoritativeLevel : Number(levelOverride);
   const level=(Number.isInteger(requestedLevel) && LEVEL_KEYS[requestedLevel])
     ? requestedLevel
     : await loadCurrentLevelFromProgress();
@@ -2370,6 +2419,7 @@ async function startTrainerForAuthenticatedUser(levelOverride=null,sessionMode="
   if(select){
     select.value=String(level);
   }
+  enforceAuthoritativeLevelControl();
 
   console.log(
     "CURRENT LEARNING LEVEL:",
@@ -2395,8 +2445,7 @@ async function startTrainerForAuthenticatedUser(levelOverride=null,sessionMode="
     }
   }
 
-  const levelSelect=document.getElementById("levelSelect");
-  if(levelSelect) levelSelect.disabled=state.sessionMode==="pretest";
+  enforceAuthoritativeLevelControl();
   startSession();
 
   const mastery=state.sessionMode==="practice"
@@ -2422,10 +2471,10 @@ window.majorScaleTrainerStartForAuthenticatedUser=
 
 function startSession(){
 
-  state.level =
-    Number(
-      document.getElementById("levelSelect")?.value || 1
-    );
+  state.level=effectiveSessionLevel(
+    document.getElementById("levelSelect")?.value || 1
+  );
+  enforceAuthoritativeLevelControl();
 
   state.practiceSessionId = null;
   state.practiceSessionPromise = null;
@@ -2811,6 +2860,7 @@ async function saveAttemptRecord({
   completedQuestions,
   level
 }){
+  level=effectiveSessionLevel(level);
   const practiceRepository=
     window.MajorScaleApp?.practiceRepository;
 
@@ -3325,6 +3375,7 @@ document.getElementById("continueNextLevel").onclick=async()=>{
     Number.isInteger(nextLevel) &&
     LEVEL_KEYS[nextLevel]
   ){
+    acceptTrustedAdvancedLevel(nextLevel);
     const select=document.getElementById("levelSelect");
 
     if(select){
@@ -3431,6 +3482,10 @@ function hideFeedback(){
 document.getElementById("restartSession").onclick=startSession;
 document.getElementById("levelSelect").addEventListener("change",ev=>{
   const select=ev.currentTarget;
+  if(state.pathStageEnforced){
+    enforceAuthoritativeLevelControl();
+    return;
+  }
   const hasProgress=noteCount()>0 || state.sessionResults.length>0;
   if(!state.sessionComplete && hasProgress){
     const proceed=window.confirm("เปลี่ยนระดับจะเริ่มชุดใหม่และล้างคำตอบ/ผลของชุดปัจจุบัน ต้องการดำเนินการต่อหรือไม่?");

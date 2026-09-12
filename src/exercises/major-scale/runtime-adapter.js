@@ -8,13 +8,14 @@ app.majorScaleRuntimeAdapter = Object.freeze({
     const start = window.majorScaleTrainerStartForAuthenticatedUser;
     if (typeof start !== 'function') throw new Error('Major Scale runtime ยังไม่พร้อมใช้งาน');
     const match = /^STAGE_(\d+)$/.exec(context.stageCode || '');
+    if (context.stageCode && !match) throw new Error('Stage context ไม่ถูกต้องสำหรับ Major Scale');
     const level = match ? Number(match[1]) : null;
     if (match) $('levelSelect').value = String(level);
     $('studentDashboard').hidden = true; $('studentDashboard').inert = true;
     $('teacherDashboard').hidden = true; $('teacherDashboard').inert = true;
     $('trainerApp').hidden = false; $('trainerApp').inert = false;
     try {
-      await start(level, context.sessionMode || 'practice');
+      await start(level, context.sessionMode || 'practice', context.stageCode || null);
       requestAnimationFrame(() => {
         window.dispatchEvent(new Event('resize'));
         window.dispatchEvent(new Event('major-scale-trainer-visible'));

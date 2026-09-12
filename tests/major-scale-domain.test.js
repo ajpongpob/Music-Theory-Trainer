@@ -61,8 +61,9 @@ const restoreNarrow=require('./helpers/restore-narrow-notation-layout.cjs');
 const restoreLayout=require('./helpers/restore-renderer-score-layout.cjs');
 const restoreInteraction=require('./helpers/restore-notation-interaction.cjs');
 const restoreV090=require('./helpers/restore-v090-master-core.cjs');
+const restoreV091=require('./helpers/restore-v091-path-stage.cjs');
 const restoreBeaming=require('./helpers/restore-notation-beaming.cjs');
-let restored=require('./helpers/restore-notation-baseline.cjs')(restoreRenderer(restoreStatic(restoreNote(restoreFeedback(restoreNarrow(restoreLayout(restoreInteraction(restoreBeaming(restoreV090(trainer,'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js');
+let restored=require('./helpers/restore-notation-baseline.cjs')(restoreRenderer(restoreStatic(restoreNote(restoreFeedback(restoreNarrow(restoreLayout(restoreInteraction(restoreBeaming(restoreV090(restoreV091(trainer,'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js');
 for(const {before,after,offset} of [...boundary.substitutions].reverse()){
   assert.equal(restored.slice(offset,offset+after.length),after,'extraction wrapper changed unexpectedly');
   restored=restored.slice(0,offset)+before+restored.slice(offset+after.length);

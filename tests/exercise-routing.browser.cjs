@@ -38,6 +38,16 @@ const server=http.createServer((req,res)=>{
     await page.waitForFunction(()=>!document.getElementById('trainerApp').hidden && window.MajorScaleApp.exerciseHost.getCurrentContext());
     await page.waitForTimeout(150);
     assert.equal(await page.evaluate(()=>__qaStarts),1,'one runtime start on double click');
+    assert.equal(await page.locator('#levelSelect').isDisabled(),true,'Learning Path launch must visibly lock Level');
+    const enforcedLevel=await page.evaluate(()=>__qa.state.level);
+    const tamper=await page.evaluate(()=>{
+      const select=document.getElementById('levelSelect');
+      select.disabled=false; select.value='4'; select.dispatchEvent(new Event('change',{bubbles:true}));
+      return {value:select.value,disabled:select.disabled,level:__qa.state.level};
+    });
+    assert.equal(tamper.level,enforcedLevel,'manual DOM change cannot alter active path level');
+    assert.equal(Number(tamper.value),enforcedLevel,'Level select snaps back after tamper');
+    assert.equal(tamper.disabled,true,'Level select relocks after tamper');
     assert.equal(await page.evaluate(()=>__qaCalls.filter(c=>c[0]==='practice.createPracticeSession').length),0,'legacy session is created lazily on first answer');
     await page.locator('#scoreSvg').focus();
     await page.keyboard.type('cdefgab');
@@ -84,6 +94,7 @@ const server=http.createServer((req,res)=>{
     assert.equal(await page.locator('#questionResultContinue').evaluate(el=>!!el.closest('[inert]')),false,'feedback must not have an inert ancestor');
     assert.equal(await page.locator('.session-main').evaluate(el=>el.inert),true,'feedback background is inert');
     await page.waitForFunction(()=>__qaCalls.some(c=>c[0]==='practice.createAttempt'));
+    assert(!await page.evaluate(()=>__qaCalls.some(c=>c[0]==='practice.getRequiredActiveStageByCode' && c[2]==='STAGE_4')),'tampered higher Stage must never reach persistence');
     await page.locator('#questionResultContinue').click();
     await page.locator('#levelMasteryOverlay').waitFor({state:'visible'});
     await page.locator('#continueNextLevel').click();
@@ -96,6 +107,7 @@ const server=http.createServer((req,res)=>{
     await diagnostic.click();
     await page.waitForFunction(()=>!document.getElementById('trainerApp').hidden && __qa.state.sessionMode==='pretest');
     assert.equal(await page.evaluate(()=>MajorScaleApp.exerciseHost.getCurrentContext().sessionMode),'pretest','Host carries diagnostic mode');
+    assert.equal(await page.locator('#levelSelect').isDisabled(),true,'Diagnostic path Stage must also lock Level');
     assert.equal(await page.evaluate(()=>__qa.state.sessionLength),2,'diagnostic plan uses required Stage items');
     for(let q=0;q<2;q++){
       await page.evaluate(questionIndex=>{__qa.state.notes=__qa.buildExpected(__qa.state.key).map((n,i)=>({...n,id:'diag'+questionIndex+'-'+i}));__qa.render();},q);
