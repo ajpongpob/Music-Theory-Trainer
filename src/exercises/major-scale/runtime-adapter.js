@@ -4,6 +4,11 @@ const app = window.MajorScaleApp = window.MajorScaleApp || {};
 const $ = id => document.getElementById(id);
 
 function ensureMobileSafariFixStylesheet(){
+  if(
+    typeof document.querySelector!=='function' ||
+    typeof document.createElement!=='function' ||
+    !document.head
+  ) return;
   if(document.querySelector('link[data-major-scale-mobile-safari-fix]')) return;
   const link=document.createElement('link');
   link.rel='stylesheet';
