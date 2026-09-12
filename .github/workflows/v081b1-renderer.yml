@@ -20,7 +20,9 @@ jobs:
         with:
           node-version: '22'
       - name: Apply renderer foundation patch
-        run: node tools/apply-v081b1-renderer.cjs
+        run: |
+          node tools/apply-v081b1-renderer.cjs
+          node tools/fix-v081b1-tests.cjs
       - name: JavaScript syntax checks
         run: |
           find src tests -type f \( -name '*.js' -o -name '*.cjs' \) -print0 | xargs -0 -n1 node --check
@@ -34,10 +36,10 @@ jobs:
       - name: Verify scope diff
         run: |
           git diff --name-only
-          git diff -- src/trainer.js src/domain/notation/notation-renderer.js index.html tests/notation-boundary.test.js tests/notation-renderer-foundation.test.js tests/helpers/restore-renderer-foundation.cjs
+          git diff -- src/trainer.js src/domain/notation/notation-renderer.js index.html tests/notation-boundary.test.js tests/notation-renderer-foundation.test.js tests/major-scale-domain.test.js tests/helpers/restore-renderer-foundation.cjs
       - name: Remove temporary patch machinery
         run: |
-          rm -f tools/apply-v081b1-renderer.cjs .github/workflows/v081b1-renderer.yml
+          rm -f tools/apply-v081b1-renderer.cjs tools/fix-v081b1-tests.cjs .github/workflows/v081b1-renderer.yml
           rmdir tools 2>/dev/null || true
           rmdir .github/workflows 2>/dev/null || true
           rmdir .github 2>/dev/null || true
