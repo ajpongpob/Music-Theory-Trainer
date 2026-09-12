@@ -54,7 +54,8 @@ for(const sequence of golden.generations){
 const boundary=JSON.parse(read('tests/fixtures/trainer-extraction-boundary.json'));
 const restoreRenderer=require('./helpers/restore-renderer-foundation.cjs');
 const restoreStatic=require('./helpers/restore-renderer-static-signatures.cjs');
-let restored=require('./helpers/restore-notation-baseline.cjs')(restoreRenderer(restoreStatic(trainer,'src/trainer.js'),'src/trainer.js'),'src/trainer.js');
+const restoreNote=require('./helpers/restore-renderer-note-primitives.cjs');
+let restored=require('./helpers/restore-notation-baseline.cjs')(restoreRenderer(restoreStatic(restoreNote(trainer,'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js');
 for(const {before,after,offset} of [...boundary.substitutions].reverse()){
   assert.equal(restored.slice(offset,offset+after.length),after,'extraction wrapper changed unexpectedly');
   restored=restored.slice(0,offset)+before+restored.slice(offset+after.length);

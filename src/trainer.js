@@ -248,19 +248,11 @@ function clampStaffStep(step){
 
 
 function noteheadHalfWidthForRhythm(svg,rhythm,staffObj=staff){
-  const glyph=
-    rhythm==="whole" ? SMUFL.noteheadWhole :
-    rhythm==="half" ? SMUFL.noteheadHalf :
-    rhythm==="eighth" ? SMUFL.noteheadBlack :
-    null;
-
-  if(glyph){
-    const box=measureSvgTextGlyph(svg,glyph,musicEm(staffObj),SMUFL_FONT);
-    if(box && box.width>0) return box.width/2;
-  }
-
-  // Existing custom ellipse noteheads (quarter/sixteenth).
-  return 10.8;
+  return notationRenderer.noteheadHalfWidthForRhythm(svg,rhythm,{
+    smufl:SMUFL,
+    fontSize:musicEm(staffObj),
+    fontFamily:SMUFL_FONT
+  });
 }
 
 
@@ -613,37 +605,7 @@ function drawScore(){
  arrangeCompactScore();
 }
 
-function measureSvgTextGlyph(svg,glyph,fontSize,fontFamily){
-  // Measure the exact glyph geometry from the same SVG/font used for rendering.
-  // A temporary invisible probe avoids relying on font baseline assumptions.
-  const probe=el("text",{
-    x:0,y:0,
-    "font-size":fontSize,
-    "font-family":fontFamily,
-    visibility:"hidden",
-    "pointer-events":"none"
-  },glyph);
-
-  svg.appendChild(probe);
-
-  let box={x:0,y:-fontSize*.75,width:fontSize*.55,height:fontSize};
-  try{
-    const measured=probe.getBBox();
-    if(measured && measured.width>0 && measured.height>0){
-      box={
-        x:measured.x,
-        y:measured.y,
-        width:measured.width,
-        height:measured.height
-      };
-    }
-  }catch(err){
-    console.warn("SVG glyph measurement fallback:",err);
-  }
-
-  probe.remove();
-  return box;
-}
+function measureSvgTextGlyph(svg,glyph,fontSize,fontFamily){return notationRenderer.measureSvgTextGlyph(svg,glyph,fontSize,fontFamily);}
 
 function rightEdgeOfTimeSignature(svg){
   let right=-Infinity;
@@ -659,34 +621,17 @@ function rightEdgeOfTimeSignature(svg){
 }
 
 function drawAccidentalForNote(group,accToShow,noteX,noteY,fill,noteIndex){
-  const glyph=accidentalSmuflGlyph(accToShow);
-  if(!glyph) return;
-
-  const fontSize=musicEm(staff);
-  const box=measureSvgTextGlyph(scoreSvg,glyph,fontSize,SMUFL_FONT);
-
-  // SMuFL scoring-font registration places the accidental baseline directly
-  // on the staff position of the note. Only horizontal spacing is calculated.
   const note=state.notes[noteIndex];
-  const noteHalfWidth=noteheadHalfWidthForRhythm(
-    scoreSvg,
+  return notationRenderer.drawAccidentalForNote(
+    group,scoreSvg,accToShow,noteX,noteY,fill,
     note ? note.rhythm : "quarter",
-    staff
+    {
+      smufl:SMUFL,
+      fontSize:musicEm(staff),
+      fontFamily:SMUFL_FONT,
+      accidentalToNoteGap:sp(staff,0.30)
+    }
   );
-  const noteHeadLeft=noteX-noteHalfWidth;
-  const accidentalToNoteGap=sp(staff,0.30);
-  const targetRight=noteHeadLeft-accidentalToNoteGap;
-  const textX=targetRight-(box.x+box.width);
-
-  group.appendChild(el("text",{
-    x:textX,
-    y:noteY,
-    "font-size":fontSize,
-    "font-family":SMUFL_FONT,
-    fill,
-    class:"score-accidental",
-    "pointer-events":"none"
-  },glyph));
 }
 
 function drawNote(n,i){
@@ -709,68 +654,23 @@ function drawNote(n,i){
    "data-note-id":n.id
  }));
 
- const open=["whole","half"].includes(n.rhythm);
- const isWhole=n.rhythm==="whole";
- const useSmuflHead=["whole","half","eighth"].includes(n.rhythm);
-
- if(useSmuflHead){
-   const fontSize=musicEm(staff);
-   const glyph=
-     n.rhythm==="whole" ? SMUFL.noteheadWhole :
-     n.rhythm==="half" ? SMUFL.noteheadHalf :
-     SMUFL.noteheadBlack;
-
-   const box=measureSvgTextGlyph(svg,glyph,fontSize,SMUFL_FONT);
-   const textX=x-(box.x+box.width/2);
-
-   g.appendChild(el("text",{
-     x:textX,
-     y,
-     "font-size":fontSize,
-     "font-family":SMUFL_FONT,
-     fill,
-     class:`smufl-notehead smufl-notehead-${n.rhythm}`,
-     "pointer-events":"none"
-   },glyph));
- }else{
-   g.appendChild(el("ellipse",{
-     cx:x,cy:y,rx:10.8,ry:7.2,
-     fill:open?"none":fill,
-     stroke:fill,
-     "stroke-width":2,
-     transform:`rotate(-18 ${x} ${y})`
-   }));
- }
+ notationRenderer.drawNotehead(g,svg,x,y,n.rhythm,fill,{
+   smufl:SMUFL,
+   fontSize:musicEm(staff),
+   fontFamily:SMUFL_FONT
+ });
  const accToShow=state.signatureMode==="shown"?"":n.accidental;
  if(accToShow){
    drawAccidentalForNote(g,accToShow,x,y,fill,i);
  }
  if(n.rhythm!=="whole"){
    const groupItems=n.beamGroup ? state.notes.map((note,idx)=>note&&note.beamGroup===n.beamGroup?{n:note,i:idx}:null).filter(Boolean) : [];
-   const dir=groupItems.length>1 ? getBeamDirection(groupItems) : (n.stem==="auto"?autoStem(n.letter,n.octave):n.stem),
-   sx=dir==="up"?x+10:x-10,endY=dir==="up"?y-55:y+55;
-   if(!n.beamGroup || !["eighth","sixteenth"].includes(n.rhythm)){
-     g.appendChild(el("line",{x1:sx,y1:y,x2:sx,y2:endY,stroke:fill,"stroke-width":2.3}));
-   }
-   if(["eighth","sixteenth"].includes(n.rhythm)&&!n.beamGroup){
-     {
-       // SMuFL provides separate combining flags for up/down stems.
-       // Using the dedicated down glyph prevents the flag from being mirrored.
-       const flagGlyph=n.rhythm==="sixteenth"
-         ? (dir==="up" ? SMUFL.flag16thUp : SMUFL.flag16thDown)
-         : (dir==="up" ? SMUFL.flag8thUp : SMUFL.flag8thDown);
-
-       g.appendChild(el("text",{
-         x:sx,
-         y:endY,
-         "font-size":musicEm(staff),
-         "font-family":SMUFL_FONT,
-         fill,
-         class:`smufl-flag smufl-flag-${n.rhythm}-${dir}`,
-         "pointer-events":"none"
-       },flagGlyph));
-     }
-   }
+   const dir=groupItems.length>1 ? getBeamDirection(groupItems) : (n.stem==="auto"?autoStem(n.letter,n.octave):n.stem);
+   notationRenderer.drawStemAndFlag(g,x,y,n.rhythm,fill,dir,n.beamGroup,{
+     smufl:SMUFL,
+     fontSize:musicEm(staff),
+     fontFamily:SMUFL_FONT
+   });
  }
  svg.appendChild(g);
 }

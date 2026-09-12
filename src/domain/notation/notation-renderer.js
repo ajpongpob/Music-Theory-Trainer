@@ -85,8 +85,138 @@ function drawTimeSignature(svg,staff,x,options){
   });
 }
 
+function measureSvgTextGlyph(svg,glyph,fontSize,fontFamily){
+  // Measure the exact glyph geometry from the same SVG/font used for rendering.
+  // A temporary invisible probe avoids relying on font baseline assumptions.
+  const probe=createSvgElement("text",{
+    x:0,y:0,
+    "font-size":fontSize,
+    "font-family":fontFamily,
+    visibility:"hidden",
+    "pointer-events":"none"
+  },glyph);
+
+  svg.appendChild(probe);
+
+  let box={x:0,y:-fontSize*.75,width:fontSize*.55,height:fontSize};
+  try{
+    const measured=probe.getBBox();
+    if(measured && measured.width>0 && measured.height>0){
+      box={
+        x:measured.x,
+        y:measured.y,
+        width:measured.width,
+        height:measured.height
+      };
+    }
+  }catch(err){
+    console.warn("SVG glyph measurement fallback:",err);
+  }
+
+  probe.remove();
+  return box;
+}
+
+function noteheadHalfWidthForRhythm(svg,rhythm,options){
+  const glyph=
+    rhythm==="whole" ? options.smufl.noteheadWhole :
+    rhythm==="half" ? options.smufl.noteheadHalf :
+    rhythm==="eighth" ? options.smufl.noteheadBlack :
+    null;
+
+  if(glyph){
+    const box=measureSvgTextGlyph(svg,glyph,options.fontSize,options.fontFamily);
+    if(box && box.width>0) return box.width/2;
+  }
+
+  // Existing custom ellipse noteheads (quarter/sixteenth).
+  return 10.8;
+}
+
+function drawNotehead(group,svg,x,y,rhythm,fill,options){
+  const useSmuflHead=["whole","half","eighth"].includes(rhythm);
+
+  if(useSmuflHead){
+    const glyph=
+      rhythm==="whole" ? options.smufl.noteheadWhole :
+      rhythm==="half" ? options.smufl.noteheadHalf :
+      options.smufl.noteheadBlack;
+
+    const box=measureSvgTextGlyph(svg,glyph,options.fontSize,options.fontFamily);
+    const textX=x-(box.x+box.width/2);
+
+    group.appendChild(createSvgElement("text",{
+      x:textX,
+      y,
+      "font-size":options.fontSize,
+      "font-family":options.fontFamily,
+      fill,
+      class:`smufl-notehead smufl-notehead-${rhythm}`,
+      "pointer-events":"none"
+    },glyph));
+  }else{
+    group.appendChild(createSvgElement("ellipse",{
+      cx:x,cy:y,rx:10.8,ry:7.2,
+      fill,
+      stroke:fill,
+      "stroke-width":2,
+      transform:`rotate(-18 ${x} ${y})`
+    }));
+  }
+}
+
+function drawAccidentalForNote(group,svg,accidental,noteX,noteY,fill,rhythm,options){
+  const glyph=accidentalSmuflGlyph(accidental,options.smufl);
+  if(!glyph) return;
+
+  const box=measureSvgTextGlyph(svg,glyph,options.fontSize,options.fontFamily);
+  const noteHalfWidth=noteheadHalfWidthForRhythm(svg,rhythm,options);
+  const noteHeadLeft=noteX-noteHalfWidth;
+  const targetRight=noteHeadLeft-options.accidentalToNoteGap;
+  const textX=targetRight-(box.x+box.width);
+
+  group.appendChild(createSvgElement("text",{
+    x:textX,
+    y:noteY,
+    "font-size":options.fontSize,
+    "font-family":options.fontFamily,
+    fill,
+    class:"score-accidental",
+    "pointer-events":"none"
+  },glyph));
+}
+
+function drawStemAndFlag(group,x,y,rhythm,fill,dir,beamGroup,options){
+  const sx=dir==="up"?x+10:x-10;
+  const endY=dir==="up"?y-55:y+55;
+
+  if(!beamGroup || !["eighth","sixteenth"].includes(rhythm)){
+    group.appendChild(createSvgElement("line",{x1:sx,y1:y,x2:sx,y2:endY,stroke:fill,"stroke-width":2.3}));
+  }
+
+  if(["eighth","sixteenth"].includes(rhythm)&&!beamGroup){
+    // SMuFL provides separate combining flags for up/down stems.
+    // Using the dedicated down glyph prevents the flag from being mirrored.
+    const flagGlyph=rhythm==="sixteenth"
+      ? (dir==="up" ? options.smufl.flag16thUp : options.smufl.flag16thDown)
+      : (dir==="up" ? options.smufl.flag8thUp : options.smufl.flag8thDown);
+
+    group.appendChild(createSvgElement("text",{
+      x:sx,
+      y:endY,
+      "font-size":options.fontSize,
+      "font-family":options.fontFamily,
+      fill,
+      class:`smufl-flag smufl-flag-${rhythm}-${dir}`,
+      "pointer-events":"none"
+    },flagGlyph));
+  }
+}
+
 app.notationRenderer=Object.freeze({
   NS,createSvgElement,accidentalSmuflGlyph,drawLedger,
-  drawKeySignature,rightEdgeOfSvgClass,drawTimeSignature
+  drawKeySignature,rightEdgeOfSvgClass,drawTimeSignature,
+  measureSvgTextGlyph,noteheadHalfWidthForRhythm,drawNotehead,
+  drawAccidentalForNote,drawStemAndFlag
 });
 })();
