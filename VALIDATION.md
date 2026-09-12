@@ -1,4 +1,4 @@
-# Validation — v0.7.2
+# Validation — v0.7.2.1
 
 ## Automated structural checks passed
 
@@ -10,7 +10,7 @@
 - `src/keyboard.js` is byte-for-byte identical to tested v0.7.1.
 - `src/data/supabase-client.js` is byte-for-byte identical to tested v0.7.1.
 - `src/data/auth.repository.js` is byte-for-byte identical to tested v0.7.1.
-- `src/trainer.js` differs from v0.7.1 only in `app_version: "0.7.1"` -> `"0.7.2"`.
+- `src/trainer.js` differs from v0.7.1 only in `app_version: "0.7.1"` -> `"0.7.2.1"`.
 - No stale references to the moved dashboard-local state/functions remain in `src/auth-dashboard.js`.
 - No `service_role` string/key is present in runtime frontend files.
 - Dashboard RPC calls are now located in their respective dashboard modules.
@@ -26,4 +26,8 @@
 
 ## Not automatically verified here
 
-A complete browser end-to-end test against the live Supabase project was not performed in this build environment. Use `REGRESSION-CHECKLIST.md` on the deployed GitHub Pages site before declaring v0.7.2 the new baseline.
+A complete browser end-to-end test against the live Supabase project was not performed in this build environment. Use `REGRESSION-CHECKLIST.md` on the deployed GitHub Pages site before declaring v0.7.2.1 the new baseline.
+
+## Extended QA
+
+See `QA-REPORT.md` for the post-hotfix runtime harness, baseline differential checks, static-hosting smoke test, security scan, and limitations.

@@ -1,4 +1,4 @@
-# Regression Checklist — v0.7.2
+# Regression Checklist — v0.7.2.1
 
 ## Authentication
 - [ ] Existing student can log in.

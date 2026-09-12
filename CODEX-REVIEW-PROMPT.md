@@ -1,6 +1,6 @@
-# Codex read-only review prompt — v0.7.2
+# Codex read-only review prompt — v0.7.2.1
 
-Audit this repository without modifying files. Compare v0.7.2 with the previous tested v0.7.1 checkpoint.
+Audit this repository without modifying files. Compare v0.7.2.1 with the previous tested v0.7.1 checkpoint.
 
 Focus on:
 1. Confirm dashboard extraction did not change observable Student/Teacher Dashboard behavior.

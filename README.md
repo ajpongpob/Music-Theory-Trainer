@@ -1,4 +1,4 @@
-# Major Scale Notation Trainer v0.7.2
+# Major Scale Notation Trainer v0.7.2.1
 
 ## Checkpoint goal
 Dashboard modularization with no intended behavior change.

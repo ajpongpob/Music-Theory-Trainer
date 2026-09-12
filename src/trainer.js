@@ -2368,7 +2368,7 @@ async function createPracticeSessionRecord(generation, level){
         stage_id:stageId,
         mode:"practice",
         completed_questions:0,
-        app_version:"0.7.2"
+        app_version:"0.7.2.1"
       })
       .select("id")
       .single();

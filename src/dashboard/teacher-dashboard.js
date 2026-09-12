@@ -5,7 +5,7 @@ const $ = id => document.getElementById(id);
 const client = app.supabaseClient;
 const authRepository = app.authRepository;
 const utils = app.dashboardUtils || {};
-const {escapeDashboardHtml,dashboardStatusMeta,dashboardPercent,dashboardScore} = utils;
+const {escapeDashboardHtml,dashboardStatusMeta,dashboardPercent,dashboardScore,dashboardCompletionDate} = utils;
 let activeUser = null;
 let teacherDashboardLoadToken = 0;
 let teacherDashboardSummaryRows = [];
