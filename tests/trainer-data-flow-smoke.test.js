@@ -191,7 +191,7 @@ function loadTrainer(context) {
     `state,resolveMajorScaleExerciseStage,createPracticeSessionRecord,ensurePracticeSessionRecord,` +
     `closeStalePracticeSessionsForCurrentUser,closeCurrentPracticeSession,loadCurrentLevelFromProgress,` +
     `loadMissingStageItemCodes,refreshMasteryProgress,saveAttemptSkillResults,updatePracticeSessionProgress,` +
-    `completePracticeSessionRecord,advanceLevelIfMastered,saveAttemptRecord,startTrainerForAuthenticatedUser,startSession};\n})();`;
+    `completePracticeSessionRecord,advanceLevelIfMastered,saveAttemptRecord,startTrainerForAuthenticatedUser,startSession,configurePathStageAuthority,effectiveSessionLevel,enforceAuthoritativeLevelControl};\n})();`;
   assert(source.includes(oldTail), 'trainer initialization tail not found');
   source = source.replace(oldTail, newTail);
   vm.createContext(context);
@@ -205,6 +205,14 @@ function loadTrainer(context) {
   const context = makeContext();
   const hooks = loadTrainer(context);
   const calls = context.__calls;
+
+  hooks.configurePathStageAuthority('STAGE_2');
+  assert.strictEqual(hooks.effectiveSessionLevel(4),2,'path authority must override tampered candidate level');
+  context.__elements.get('levelSelect').value='4';
+  hooks.enforceAuthoritativeLevelControl();
+  assert.strictEqual(hooks.effectiveSessionLevel(Number(context.__elements.get('levelSelect').value)),2,'authoritative level remains effective after UI tamper');
+  assert.strictEqual(context.__elements.get('levelSelect').value,'2','level select must be restored to authoritative level');
+  assert.strictEqual(context.__elements.get('levelSelect').disabled,true,'path level control must be disabled');
 
   const resolved = await hooks.resolveMajorScaleExerciseStage(2);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(resolved)), {exerciseId:'exercise-1',stageId:'stage-2'});
@@ -224,9 +232,11 @@ function loadTrainer(context) {
   hooks.state.practiceSessionGeneration = 7;
   hooks.state.practiceSessionId = null;
   hooks.state.practiceSessionPromise = null;
-  const sessionId = await hooks.createPracticeSessionRecord(7, 2);
+  const sessionId = await hooks.createPracticeSessionRecord(7, 4);
   assert.strictEqual(sessionId, 'session-new');
   assert.strictEqual(hooks.state.practiceSessionId, 'session-new');
+  assert(calls.some(call=>call[0]==='practice.getRequiredActiveStageByCode' && call[2]==='STAGE_2'),'persistence must resolve authoritative STAGE_2');
+  assert(!calls.some(call=>call[0]==='practice.getRequiredActiveStageByCode' && call[2]==='STAGE_4'),'persistence must never resolve tampered STAGE_4');
 
   const staleClosed = await hooks.closeStalePracticeSessionsForCurrentUser();
   assert.strictEqual(staleClosed, 1);
@@ -278,7 +288,7 @@ function loadTrainer(context) {
   }
 
   const sessionCreates = calls.filter(call => call[0] === 'practice.createPracticeSession');
-  assert(sessionCreates.some(call => call[1]?.app_version === '0.9.0'), 'practice session should persist app_version 0.9.0');
+  assert(sessionCreates.some(call => call[1]?.app_version === '0.9.1'), 'practice session should persist app_version 0.9.1');
 
   console.log('PASS trainer practice/mastery data-flow smoke');
 })().catch(error => {

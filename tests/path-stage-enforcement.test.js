@@ -1,0 +1,13 @@
+'use strict';
+const fs=require('fs'),assert=require('assert');
+const trainer=fs.readFileSync('src/trainer.js','utf8');
+const adapter=fs.readFileSync('src/exercises/major-scale/runtime-adapter.js','utf8');
+const migration=fs.readFileSync('supabase/migrations/20260912_v091_path_stage_enforcement.sql','utf8');
+assert(trainer.includes('pathStageEnforced:false'));
+assert(trainer.includes('function effectiveSessionLevel'));
+assert(trainer.includes('if(state.pathStageEnforced){\n    enforceAuthoritativeLevelControl();\n    return;'));
+assert(trainer.includes('level=effectiveSessionLevel(level);'));
+assert(adapter.includes("await start(level, context.sessionMode || 'practice', context.stageCode || null);"));
+assert(/student_stage_progress[\s\S]*in_progress[\s\S]*mastered/.test(migration));
+assert(/Users can create own practice sessions/.test(migration));
+console.log('PASS path stage enforcement: UI/runtime/persistence authority + RLS contract');

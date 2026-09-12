@@ -11,10 +11,11 @@ const restoreNarrow=require('./helpers/restore-narrow-notation-layout.cjs');
 const restoreLayout=require('./helpers/restore-renderer-score-layout.cjs');
 const restoreInteraction=require('./helpers/restore-notation-interaction.cjs');
 const restoreV090=require('./helpers/restore-v090-master-core.cjs');
+const restoreV091=require('./helpers/restore-v091-path-stage.cjs');
 const restoreBeaming=require('./helpers/restore-notation-beaming.cjs');
-for(const file of Object.keys(boundary.files))restore(restoreRenderer(restoreStatic(restoreNote(restoreFeedback(restoreNarrow(restoreLayout(restoreInteraction(restoreBeaming(restoreV090(read(file),file),file),file),file),file),file),file),file),file),file);
+for(const file of Object.keys(boundary.files))restore(restoreRenderer(restoreStatic(restoreNote(restoreFeedback(restoreNarrow(restoreLayout(restoreInteraction(restoreBeaming(restoreV090(restoreV091(read(file),file),file),file),file),file),file),file),file),file),file),file);
 for(const [file,hash] of Object.entries(boundary.protectedProduction)){
-  const source=restoreFeedback(restoreNarrow(restoreLayout(restoreInteraction(restoreBeaming(restoreV090(read(file),file),file),file),file),file),file);
+  const source=restoreFeedback(restoreNarrow(restoreLayout(restoreInteraction(restoreBeaming(restoreV090(restoreV091(read(file),file),file),file),file),file),file),file);
   assert.equal(crypto.createHash('sha256').update(source).digest('hex'),hash,'protected production changed: '+file);
 }
 const core=read('src/domain/notation/notation-core.js');
