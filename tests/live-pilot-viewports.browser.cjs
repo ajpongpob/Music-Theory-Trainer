@@ -34,6 +34,13 @@ async function waitForDashboard(page){
   },{timeout:30000});
 }
 
+async function waitForLearningPathStageLock(page){
+  await page.waitForFunction(()=>{
+    const select=document.getElementById('levelSelect');
+    return !!select && select.disabled===true;
+  },{timeout:30000});
+}
+
 async function login(page){
   await page.goto(APP_URL,{waitUntil:'domcontentloaded',timeout:30000});
   await page.locator('#loginEmail').fill(EMAIL);
@@ -90,6 +97,7 @@ async function smokeViewport(page,viewport){
     const trainer=document.getElementById('trainerApp');
     return trainer && !trainer.hidden && window.MajorScaleApp?.exerciseHost?.getCurrentContext?.();
   },{timeout:30000});
+  await waitForLearningPathStageLock(page);
 
   const trainerMetrics=await layoutMetrics(page,'#trainerApp');
   assertNoPageOverflow(trainerMetrics,`${viewport.name} trainer`);
