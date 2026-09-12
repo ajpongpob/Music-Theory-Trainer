@@ -84,21 +84,36 @@ async function compactScoreMetrics(page){
   return page.evaluate(()=>{
     const svg=document.getElementById('scoreSvg');
     const systems=Array.from(svg?.querySelectorAll('g[data-system]') || []);
-    const svgRect=svg?.getBoundingClientRect?.() || null;
     const systemRects=systems.map(node=>node.getBoundingClientRect());
     const workspace=document.querySelector('.workspace-card');
     const palette=document.querySelector('.workspace-card .notation-palette');
     return {
       systemCount:systems.length,
       viewBox:svg?.getAttribute('viewBox') || null,
-      svgBottom:svgRect?.bottom ?? null,
       systemTops:systemRects.map(rect=>rect.top),
       systemBottoms:systemRects.map(rect=>rect.bottom),
+      systemHeights:systemRects.map(rect=>rect.height),
       workspaceOverflow:workspace ? getComputedStyle(workspace).overflow : null,
       palettePosition:palette ? getComputedStyle(palette).position : null,
       pageOverflowY:getComputedStyle(document.documentElement).overflowY
     };
   });
+}
+
+async function assertThirdCompactSystemReachable(page,label){
+  await page.evaluate(()=>{
+    const third=document.querySelector('#scoreSvg g[data-system="2"]');
+    if(!third) throw new Error('missing third compact notation system');
+    third.scrollIntoView({block:'center',inline:'nearest'});
+  });
+  await page.waitForTimeout(50);
+  const metrics=await page.evaluate(()=>{
+    const third=document.querySelector('#scoreSvg g[data-system="2"]');
+    const rect=third.getBoundingClientRect();
+    return {top:rect.top,bottom:rect.bottom,height:rect.height,innerHeight:window.innerHeight};
+  });
+  assert(metrics.height>0,`${label}: third notation system must render with positive height`);
+  assert(metrics.bottom>0 && metrics.top<metrics.innerHeight,`${label}: third notation system must be reachable in the viewport after vertical scrolling`);
 }
 
 async function assertMobileTouchCenters(page,label){
@@ -145,9 +160,10 @@ async function smokeViewport(page,viewport){
     assert.equal(compact.systemCount,3,`${viewport.name}: compact score must expose all three notation systems`);
     assert.equal(compact.viewBox,'0 0 700 660',`${viewport.name}: compact score must use the three-system viewBox`);
     assert(compact.systemTops[1]>compact.systemTops[0] && compact.systemTops[2]>compact.systemTops[1],`${viewport.name}: compact systems must remain vertically ordered`);
-    assert(compact.systemBottoms[2]<=compact.svgBottom+3,`${viewport.name}: third system must fit inside the visible score SVG`);
+    assert(compact.systemHeights.every(height=>height>0),`${viewport.name}: all compact systems must render with positive height`);
     assert.notEqual(compact.workspaceOverflow,'hidden',`${viewport.name}: workspace must not clip compact systems 2-3`);
     assert.notEqual(compact.pageOverflowY,'hidden',`${viewport.name}: narrow Trainer must allow vertical page scrolling`);
+    await assertThirdCompactSystemReachable(page,viewport.name);
     if(viewport.width<=699){
       assert.equal(compact.palettePosition,'static',`${viewport.name}: notation palette must not remain sticky over mobile navigation`);
       await assertMobileTouchCenters(page,viewport.name);
@@ -162,6 +178,7 @@ async function smokeViewport(page,viewport){
     dashboardOverflow:false,
     trainerOverflow:false,
     compactSystems:viewport.width<=815 ? 3 : null,
+    thirdSystemReachable:viewport.width<=815 ? true : null,
     touchTargets:viewport.width<=699 ? true : null,
     routing:true
   };
