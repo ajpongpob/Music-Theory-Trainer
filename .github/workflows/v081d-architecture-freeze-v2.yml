@@ -1,6 +1,7 @@
 name: v081d-architecture-freeze-v2
 on:
-  workflow_dispatch:
+  push:
+    branches: [dev/v0.8.1-d-architecture-freeze]
 jobs:
   patch-test-commit:
     runs-on: ubuntu-latest
