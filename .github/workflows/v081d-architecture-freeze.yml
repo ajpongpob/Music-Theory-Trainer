@@ -1,0 +1,59 @@
+name: v081d-architecture-freeze
+on:
+  push:
+    branches: [dev/v0.8.1-d-architecture-freeze]
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev/v0.8.1-d-architecture-freeze
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prepare extraction patch and boundary
+        run: |
+          node tools/fix-v081d-patcher.cjs
+          node tools/capture-v081d-boundary.cjs
+          node tools/apply-v081d-architecture-freeze.cjs
+          node tools/finalize-v081d-boundary.cjs
+      - name: JavaScript syntax checks
+        run: |
+          node --check src/domain/notation/notation-interaction.js
+          node --check src/domain/notation/notation-beaming.js
+          node --check src/trainer.js
+          node --check tests/notation-interaction.test.js
+          node --check tests/notation-beaming.test.js
+          node --check tests/notation-architecture-freeze.test.js
+          node --check tests/helpers/restore-notation-beaming.cjs
+      - name: Full Node regression suite
+        run: |
+          for f in tests/*.test.js; do node "$f"; done
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright >/dev/null 2>&1
+      - name: Real Chrome interaction and beaming E2E
+        env:
+          BROWSER_CHANNEL: chrome
+        run: node tests/exercise-routing.browser.cjs
+      - name: Remove browser dependencies
+        run: rm -rf node_modules package-lock.json package.json
+      - name: Remove temporary QA machinery
+        run: rm -f tools/apply-v081d-architecture-freeze.cjs tools/fix-v081d-patcher.cjs tools/capture-v081d-boundary.cjs tools/finalize-v081d-boundary.cjs .github/workflows/v081d-architecture-freeze.yml
+      - name: Verify approved scope
+        run: |
+          allowed='^(index\.html|src/trainer\.js|src/domain/notation/notation-interaction\.js|src/domain/notation/notation-beaming\.js|tests/helpers/restore-notation-beaming\.cjs|tests/fixtures/v081d-pre-extraction\.json|tests/major-scale-domain\.test\.js|tests/notation-boundary\.test\.js|tests/notation-interaction\.test\.js|tests/notation-beaming\.test\.js|tests/notation-architecture-freeze\.test\.js)$'
+          bad=$(git diff --name-only origin/main -- . | grep -Ev "$allowed" || true)
+          if [ -n "$bad" ]; then echo "Unexpected scope:"; echo "$bad"; exit 1; fi
+      - name: Commit tested architecture freeze
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "v0.8.1-d — Interaction + Beaming Architecture Freeze"
+          git push origin HEAD:dev/v0.8.1-d-architecture-freeze
