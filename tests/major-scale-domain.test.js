@@ -37,51 +37,45 @@ const makeEvidence=flags=>{
   const correct=applicable.filter(Boolean).length;
   return {flags,correct,total:applicable.length,score:applicable.length?Math.round(correct/applicable.length*100):null};
 };
-const applyV092PolicyDelta=(legacyResult,expected,notes)=>{
-  const result=plain(legacyResult);
-  // v0.9.2: pitch-name correctness is octave-independent; accidental remains MS03.
-  result.lo.BN01_TREBLE_PITCH=makeEvidence(expected.map((x,i)=>!!notes[i]&&notes[i].letter===x.letter));
-  // v0.9.2: independent stemmed notes on treble middle line B4 accept either direction.
-  const stemFlags=[...result.lo.BN06_STEM_DIRECTION.flags];
+const expectedV092Evidence=(legacyResult,expected,notes)=>{
+  const bn01=makeEvidence(expected.map((x,i)=>!!notes[i]&&notes[i].letter===x.letter));
+  const stemFlags=[...legacyResult.lo.BN06_STEM_DIRECTION.flags];
   [0,7].forEach((noteIndex,flagIndex)=>{
     const n=notes[noteIndex];
     if(n && n.rhythm!=='whole' && testPitchToStep(n.letter,n.octave)===4) stemFlags[flagIndex]=true;
   });
-  result.lo.BN06_STEM_DIRECTION=makeEvidence(stemFlags);
+  return {bn01,bn06:makeEvidence(stemFlags)};
+};
+const weightedScoreFromLo=lo=>{
   let weighted=0,active=0;
-  for(const [code,item] of Object.entries(result.lo)){
+  for(const [code,item] of Object.entries(lo)){
     const weight=config.LO_WEIGHTS[code]||0;
     if(weight>0&&Number.isFinite(item.score)){weighted+=item.score*weight;active+=weight;}
   }
-  result.score=active?Math.round(weighted/active):null;
-  return result;
-};
-const diffValues=(actual,expected,path='')=>{
-  if(Object.is(actual,expected)) return [];
-  const aObject=actual!==null&&typeof actual==='object';
-  const eObject=expected!==null&&typeof expected==='object';
-  if(!aObject||!eObject||Array.isArray(actual)!==Array.isArray(expected)) return [{path,actual,expected}];
-  const keys=new Set([...Object.keys(actual),...Object.keys(expected)]),out=[];
-  for(const key of keys){
-    out.push(...diffValues(actual[key],expected[key],path?`${path}.${key}`:String(key)));
-    if(out.length>=24) break;
-  }
-  return out;
+  return active?Math.round(weighted/active):null;
 };
 for(const fixture of golden.scales){
   assert.deepStrictEqual(plain(moduleApi.buildMajorScale(fixture.key)),fixture.scale,'spelling: '+fixture.key.tonic);
   assert.deepStrictEqual(plain(rules.buildExpected(fixture.key)),fixture.expected,'expected answer: '+fixture.key.tonic);
 }
 for(const fixture of golden.evaluations){
+  const label=fixture.tonic+' '+fixture.variant;
   const key=golden.scales.find(item=>item.key.tonic===fixture.tonic).key;
   const before=JSON.stringify(fixture.notes),expected=rules.buildExpected(key);
-  const policyExpected=applyV092PolicyDelta(fixture.result,expected,fixture.notes);
   const actual=plain(rules.evaluateAnswer(expected,fixture.notes));
-  const differences=diffValues(actual,policyExpected);
-  if(differences.length){
-    console.error('V092_GOLDEN_DIFF '+JSON.stringify({tonic:fixture.tonic,variant:fixture.variant,differences},null,2));
-  }
-  assert.deepStrictEqual(actual,policyExpected,fixture.tonic+' '+fixture.variant);
+  const policy=expectedV092Evidence(fixture.result,expected,fixture.notes);
+
+  // These three criteria are outside the approved v0.9.2 policy change and
+  // therefore must remain byte-for-byte equivalent to the historical golden evidence.
+  assert.deepStrictEqual(actual.lo.RH01_DURATION_VALUE,fixture.result.lo.RH01_DURATION_VALUE,label+' duration regression');
+  assert.deepStrictEqual(actual.lo.GR02_PRIMARY_BEAM,fixture.result.lo.GR02_PRIMARY_BEAM,label+' beam regression');
+  assert.deepStrictEqual(actual.lo.MS03_SCALE_ACCIDENTAL,fixture.result.lo.MS03_SCALE_ACCIDENTAL,label+' accidental regression');
+
+  // Only the two explicitly approved policy deltas are recalculated.
+  assert.deepStrictEqual(actual.lo.BN01_TREBLE_PITCH,policy.bn01,label+' octave-independent pitch-name policy');
+  assert.deepStrictEqual(actual.lo.BN06_STEM_DIRECTION,policy.bn06,label+' middle-line stem policy');
+  assert.equal(actual.score,weightedScoreFromLo(actual.lo),label+' weighted score');
+  assert.deepStrictEqual(actual.expected,plain(expected),label+' expected notation regression');
   assert.equal(JSON.stringify(fixture.notes),before,'evaluation must not mutate response');
 }
 for(const sequence of golden.generations){
@@ -113,4 +107,4 @@ for(const {before,after,offset} of [...boundary.substitutions].reverse()){
   restored=restored.slice(0,offset)+before+restored.slice(offset+after.length);
 }
 assert.equal(crypto.createHash('sha256').update(restored).digest('hex'),boundary.baselineSha256,'notation/controller outside extraction must be byte-identical to corrected b');
-console.log(`PASS Major Scale domain: ${golden.scales.length} spellings/expected answers, ${golden.evaluations.length} golden evaluations + explicit v0.9.2 pitch/stem policy deltas, ${golden.generations.length} deterministic sequences; stage config and exact legacy boundary`);
+console.log(`PASS Major Scale domain: ${golden.scales.length} spellings/expected answers, ${golden.evaluations.length} golden evaluations with only explicit v0.9.2 pitch/stem policy deltas, ${golden.generations.length} deterministic sequences; stage config and exact legacy boundary`);
