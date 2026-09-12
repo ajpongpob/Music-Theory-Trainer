@@ -8,6 +8,22 @@ if (!registry || typeof registry.register !== 'function') {
   throw new Error('Exercise Registry must load before Major Scale definition');
 }
 
+function ensureMobileSafariFixStylesheet(){
+  if(
+    typeof document==='undefined' ||
+    typeof document.querySelector!=='function' ||
+    typeof document.createElement!=='function' ||
+    !document.head
+  ) return;
+  if(document.querySelector('link[data-major-scale-mobile-safari-fix]')) return;
+  const link=document.createElement('link');
+  link.rel='stylesheet';
+  link.href='./styles/mobile-safari-fix.css';
+  link.setAttribute('data-major-scale-mobile-safari-fix','true');
+  document.head.appendChild(link);
+}
+ensureMobileSafariFixStylesheet();
+
 registry.register({
   contractVersion: '1.0',
   code: app.majorScaleConfig.exerciseCode,
