@@ -49,8 +49,8 @@ function normalizeRecommendation(data){
 function recommendationActionLabel(recommendation){
   switch(recommendation?.actionType){
     case 'diagnostic': return 'เริ่มแบบประเมินก่อนเรียน';
-    case 'target_item': return recommendation.targetItemCode ? `ฝึกโจทย์ ${recommendation.targetItemCode}` : 'ฝึกโจทย์ที่ยังขาด';
-    case 'target_skill': return 'ฝึกทักษะที่ยังอ่อน';
+    case 'target_item': return recommendation.targetItemCode ? `ฝึกบันไดเสียง ${recommendation.targetItemCode}` : 'ฝึกบันไดเสียงที่ยังขาด';
+    case 'target_skill': return 'ฝึกทักษะที่ควรพัฒนา';
     case 'advance': return 'ไปขั้นถัดไป';
     case 'completed': return 'สำเร็จแล้ว';
     default: return 'เรียนต่อ';

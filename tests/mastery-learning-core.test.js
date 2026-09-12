@@ -9,6 +9,6 @@ assert.equal(api.normalizeSessionMode('mastery_test',{allowMasteryTest:true}),'m
 assert.deepStrictEqual(JSON.parse(JSON.stringify(api.buildDiagnosticItemCodes([{item_code:'G',sequence_order:2},{item_code:'C',sequence_order:1},{item_code:'C',sequence_order:3}],[]))),['C','G']);
 assert.deepStrictEqual(JSON.parse(JSON.stringify(api.buildDiagnosticItemCodes([],['D','D','A']))),['D','A']);
 const r=api.normalizeRecommendation([{learning_path_code:'P',exercise_code:'E',stage_code:'S',action_type:'target_skill',target_skill_code:'BN01',reason_code:'WEAK',reason_th:'ฝึก',overall_score:'81',overall_threshold:'90',attempts_found:10,rolling_window:10}]);
-assert.equal(r.actionType,'target_skill');assert.equal(r.overallScore,81);assert.equal(api.recommendationActionLabel(r),'ฝึกทักษะที่ยังอ่อน');
+assert.equal(r.actionType,'target_skill');assert.equal(r.overallScore,81);assert.equal(api.recommendationActionLabel(r),'ฝึกทักษะที่ควรพัฒนา');
 assert(api.diagnosticComplete(5,5));assert(!api.diagnosticComplete(4,5));
-console.log('PASS mastery learning core: modes, diagnostic plan, normalized recommendation and completion');
+console.log('PASS mastery learning core: modes, diagnostic plan, normalized recommendation and learner-facing completion labels');
