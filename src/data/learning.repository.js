@@ -33,6 +33,12 @@ const learningRepository={
     });
   },
 
+  evaluatePretestProgress(sessionId){
+    return getClient().rpc('evaluate_my_pretest_progress',{
+      p_session_id:sessionId
+    });
+  },
+
   getStageEvidence({exerciseCode,stageCode,mode='practice',latestSessionOnly=false}){
     return getClient().rpc('get_my_stage_evidence',{
       p_exercise_code:exerciseCode,
