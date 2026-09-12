@@ -1,0 +1,86 @@
+name: v081c1-interaction-foundation
+
+on:
+  push:
+    branches:
+      - dev/v0.8.1-c1-interaction-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Apply interaction coordinate extraction
+        run: node tools/apply-v081c1.cjs
+
+      - name: JavaScript syntax checks
+        run: |
+          node --check src/domain/notation/notation-interaction.js
+          node --check src/trainer.js
+          node --check tests/notation-interaction.test.js
+          node --check tests/major-scale-domain.test.js
+          node --check tests/notation-boundary.test.js
+
+      - name: Automated regression suite
+        run: |
+          set -euo pipefail
+          for test_file in tests/*.test.js; do
+            echo "==> $test_file"
+            node "$test_file"
+          done
+
+      - name: Install Playwright for browser QA
+        run: npm install --no-save playwright
+
+      - name: Real-browser routing and interaction QA
+        env:
+          BROWSER_CHANNEL: chrome
+        run: node tests/exercise-routing.browser.cjs
+
+      - name: Remove browser QA dependencies
+        run: rm -rf node_modules package-lock.json
+
+      - name: Remove temporary QA machinery
+        run: |
+          rm -f tools/apply-v081c1-interaction-foundation.cjs
+          rm -f tools/apply-v081c1.cjs
+          rm -f .github/workflows/v081c1-interaction.yml
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
+          rmdir tools 2>/dev/null || true
+
+      - name: Verify approved scope
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          echo "Changed paths versus main:"
+          git diff --name-only origin/main -- .
+          bad=0
+          while IFS= read -r path; do
+            case "$path" in
+              index.html|src/trainer.js|src/domain/notation/notation-interaction.js|tests/helpers/restore-notation-interaction.cjs|tests/major-scale-domain.test.js|tests/notation-boundary.test.js|tests/notation-interaction.test.js)
+                ;;
+              "") ;;
+              *) echo "UNAPPROVED PATH: $path"; bad=1 ;;
+            esac
+          done < <(git diff --name-only origin/main -- .)
+          test "$bad" -eq 0
+          git diff --exit-code origin/main -- src/data src/dashboard src/auth-dashboard.js styles/app.css src/exercises src/domain/notation/notation-core.js src/domain/notation/notation-renderer.js
+
+      - name: Commit tested checkpoint
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "v0.8.1-c1 — Interaction Coordinate Foundation"
+          git push origin HEAD:dev/v0.8.1-c1-interaction-foundation
