@@ -1,33 +1,24 @@
 {
-  "version": "0.7.4",
-  "baseline": "0.7.3-QA-passed-deployed",
-  "migration_type": "practice-mastery-data-repository-extraction",
-  "runtime_changes": [
-    "add src/data/practice.repository.js",
-    "add src/data/mastery.repository.js",
-    "route Trainer practice/session/attempt writes through practiceRepository",
-    "route Trainer Stage progress/mastery reads and progression RPC through masteryRepository",
-    "reuse authRepository for authenticated-user reads inside Trainer persistence flow",
-    "load practice/mastery repositories before trainer.js",
-    "update app_version to 0.7.4"
+  "version": "0.8.0-a",
+  "baseline": "v0.7.5 user-verified deployed baseline",
+  "scope": "Exercise Contract + Exercise Registry only; no runtime routing change",
+  "application_changes": [
+    "add Exercise Definition Contract v1.0",
+    "add central Exercise Registry",
+    "register MAJOR_SCALE_NOTATION metadata as first exercise definition",
+    "load exercise platform scripts before dashboard/runtime consumers",
+    "update app_version to 0.8.0-a"
   ],
-  "protected_areas_not_refactored": [
-    "Major Scale question generation",
-    "notation rendering",
-    "note input and selection",
-    "accidentals",
-    "stem logic",
+  "explicitly_unchanged": [
+    "Student Dashboard runtime routing",
+    "Major Scale trainer runtime",
+    "notation algorithms",
+    "scoring algorithms",
     "primary and secondary beaming",
-    "scoring and answer checking",
-    "LO evidence computation",
-    "Stage-to-Level mapping",
-    "backend schema, RLS and RPC definitions"
+    "practice/mastery repositories",
+    "dashboard repositories",
+    "database schema and RPCs",
+    "mastery rules"
   ],
-  "automated_tests_added": [
-    "practice-mastery-repository-contract.test.js",
-    "trainer-data-flow-smoke.test.js",
-    "trainer-data-error-paths.test.js",
-    "architecture-boundary.test.js"
-  ],
-  "next_candidate_checkpoint": "v0.8.0 Generic Exercise Host + Exercise Registry, only after v0.7.4 passes deployed regression testing"
+  "next_candidate_checkpoint": "v0.8.0-b Exercise Host + Dashboard-to-Registry routing"
 }

@@ -1,45 +1,19 @@
-# v0.7.4 Regression Checklist
+# v0.8.0-a Regression Checklist
 
-Use the deployed GitHub Pages build.
+Because this checkpoint must not change runtime behavior, verify the same user flows as v0.7.5:
 
-## Auth / Dashboard regression
-- [ ] Student login succeeds.
-- [ ] Teacher login succeeds.
-- [ ] Logout succeeds.
-- [ ] Forgot / Reset Password still work.
-- [ ] Student Dashboard renders Path / Exercise / Stage / Mastery.
-- [ ] Teacher Dashboard renders Class / Path / Student progress.
-- [ ] Dashboard refresh and class switching work without console errors.
+- Student login → Student Dashboard.
+- Continue/Review `MAJOR_SCALE_NOTATION` opens the trainer.
+- Teacher login → Teacher Dashboard renders class/progress.
+- Natural shortcut `.` works and `N` does not trigger Natural.
+- Checked-answer feedback popup/transition still works.
+- 5-question session completes and summarizes normally.
+- Attempt/skill results persist normally.
+- Stage mastery/progression behaves normally.
+- Note input, dragging, selection, accidentals, stems, primary beam, secondary beam remain unchanged.
 
-## Practice persistence — priority for v0.7.4
-- [ ] Opening Trainer starts normally.
-- [ ] A checked answer creates/saves an Attempt.
-- [ ] No duplicate Attempt appears for one question.
-- [ ] Skill evidence saves successfully.
-- [ ] `completed_questions` advances after a successful saved Attempt.
-- [ ] Leaving/returning does not leave an incorrect open practice session.
-- [ ] Completing 5 questions records session completion/score normally.
+Architecture-specific:
 
-## Mastery / Stage progression — priority for v0.7.4
-- [ ] Current Stage opens correctly from Student progress.
-- [ ] Mastery Progress panel loads.
-- [ ] Missing-key/coverage guidance still appears when appropriate.
-- [ ] Mastery RPC result is reflected in UI.
-- [ ] Passing a Stage advances to the next Stage exactly as before.
-- [ ] Final Stage mastery completes the Exercise/Path as before.
-
-## Notation / scoring protected regression
-- [ ] Note click/tap works.
-- [ ] Mobile pitch drag works if tested on touch device.
-- [ ] Multi-note selection works.
-- [ ] Sharp / flat / double sharp / double flat work.
-- [ ] Stem direction works.
-- [ ] Primary beam grouping works.
-- [ ] Secondary beam/hook direction remains correct, especially terminal 8th + 16th cases.
-- [ ] Scoring behaves as before.
-- [ ] 5-question summary behaves as before.
-
-## Browser developer tools
-- [ ] No unexpected JavaScript error in Console.
-- [ ] No local asset 404 in Network tab.
-- [ ] `practice.repository.js` and `mastery.repository.js` both load successfully.
+- App loads without console errors from Exercise Contract/Registry scripts.
+- `MAJOR_SCALE_NOTATION` appears exactly once in the Exercise Registry.
+- Existing Dashboard runtime behavior is unchanged in this checkpoint.

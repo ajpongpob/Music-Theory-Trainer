@@ -269,7 +269,7 @@ function loadTrainer(context) {
   }
 
   const sessionCreates = calls.filter(call => call[0] === 'practice.createPracticeSession');
-  assert(sessionCreates.some(call => call[1]?.app_version === '0.7.4'), 'practice session should persist app_version 0.7.4');
+  assert(sessionCreates.some(call => call[1]?.app_version === '0.8.0-a'), 'practice session should persist app_version 0.8.0-a');
 
   console.log('PASS trainer practice/mastery data-flow smoke');
 })().catch(error => {

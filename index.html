@@ -1,7 +1,7 @@
 <html lang="th" class=""><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Major Scale Notation Trainer — v0.7.4</title>
+<title>Major Scale Notation Trainer — v0.8.0-a</title>
 <link rel="stylesheet" href="./styles/app.css">
 </head>
 <body>
@@ -394,7 +394,7 @@
       </label>
       <button type="button" id="dashboardButton" class="btn auth-logout">แดชบอร์ด</button>
       <button type="button" id="logoutButton" class="btn auth-logout">ออกจากระบบ</button>
-      <span class="pill">v0.7.4</span>
+      <span class="pill">v0.8.0-a</span>
   </header>
 
   <main class="session-main">
@@ -475,7 +475,7 @@
 
       <span class="palette-divider"></span>
 
-      <button type="button" class="btn icon-btn accidental" data-acc="" data-shortcut="N" title="Natural • Shortcut: N"><span class="music-glyph acc-glyph"></span></button>
+      <button type="button" class="btn icon-btn accidental" data-acc="" data-shortcut="." title="Natural • Shortcut: ."><span class="music-glyph acc-glyph"></span></button>
       <button type="button" class="btn icon-btn accidental" data-acc="#" data-shortcut="+" title="Sharp • Shortcut: +"><span class="music-glyph acc-glyph"></span></button>
       <button type="button" class="btn icon-btn accidental" data-acc="b" data-shortcut="−" title="Flat • Shortcut: -"><span class="music-glyph acc-glyph"></span></button>
       <button type="button" class="btn icon-btn accidental" data-acc="##" data-shortcut="*" title="Double Sharp • Shortcut: *"><span class="music-glyph acc-glyph"></span></button>
@@ -523,6 +523,27 @@
       <div class="feedback session-feedback" id="feedback"></div>
     </section>
   </main>
+
+<div class="question-result-overlay" id="questionResultOverlay" hidden aria-hidden="true">
+  <section class="question-result-panel" id="questionResultPanel" role="dialog" aria-modal="true" aria-labelledby="questionResultTitle" tabindex="-1">
+    <div class="question-result-head">
+      <div>
+        <div class="question-result-kicker">ผลการตรวจคำตอบ</div>
+        <h2 id="questionResultTitle">ตรวจคำตอบแล้ว</h2>
+        <p id="questionResultSubtitle">ดูคะแนนและ feedback ของข้อนี้</p>
+      </div>
+      <div class="question-result-score" id="questionResultScore">—</div>
+    </div>
+
+    <div class="question-result-feedback" id="questionResultFeedback"></div>
+
+    <div class="question-result-actions">
+      <button type="button" class="btn primary" id="questionResultContinue" disabled>
+        กำลังบันทึกและประเมิน...
+      </button>
+    </div>
+  </section>
+</div>
 
 <div class="summary-overlay" id="levelMasteryOverlay" hidden>
   <section class="summary-panel" role="dialog" aria-modal="true" aria-labelledby="levelMasteryTitle">
@@ -585,6 +606,9 @@
 <script src="./src/data/dashboard.repository.js"></script>
 <script src="./src/data/practice.repository.js"></script>
 <script src="./src/data/mastery.repository.js"></script>
+<script src="./src/exercises/exercise-contract.js"></script>
+<script src="./src/exercises/exercise-registry.js"></script>
+<script src="./src/exercises/major-scale/exercise.definition.js"></script>
 <script src="./src/dashboard/dashboard-utils.js"></script>
 <script src="./src/dashboard/student-dashboard.js"></script>
 <script src="./src/dashboard/teacher-dashboard.js"></script>

@@ -1,56 +1,82 @@
-# QA Report — v0.7.4
+# v0.8.0-a QA Report
+
+Baseline: user-verified deployed v0.7.5.
 
 ## Result
-**PASS for source/package QA. Live deployed regression testing is still required before adopting v0.7.4 as the new golden baseline.**
 
-## Why this checkpoint is intentionally narrow
-v0.7.3 was confirmed working by the user. v0.7.4 therefore moves only the Trainer's persistence/read boundary. It does not introduce the Generic Exercise Host yet and does not restructure notation, scoring, or the Major Scale domain.
+**PASS — Exercise Contract + Exercise Registry infrastructure added with no intended runtime routing change.**
 
-## New data boundaries
+## Automated tests
 
-### `practice.repository.js`
-Owns Supabase details for:
-1. Resolve required active Exercise.
-2. Resolve required active Stage.
-3. Create practice session.
-4. Read open practice sessions.
-5. Close practice session.
-6. Create Attempt.
-7. Create Attempt Skill Results.
-8. Update/complete practice session.
+All 10 Node tests pass:
 
-### `mastery.repository.js`
-Owns Supabase details for:
-1. Resolve active Exercise for progress lookup.
-2. Read active Stages.
-3. Read in-progress Stage progress.
-4. Read required Stage items.
-5. Read practice sessions scoped to Exercise/Stage.
-6. Read recent Attempt item coverage.
-7. Call `get_my_stage_mastery`.
-8. Call `advance_my_stage_if_mastered`.
+1. `answer-feedback-transition.test.js`
+2. `architecture-boundary.test.js`
+3. `dashboard-repository-contract.test.js`
+4. `dashboard-runtime-smoke.test.js`
+5. `exercise-registry-boundary.test.js`
+6. `exercise-registry-contract.test.js`
+7. `package-static-integrity.test.js`
+8. `practice-mastery-repository-contract.test.js`
+9. `trainer-data-error-paths.test.js`
+10. `trainer-data-flow-smoke.test.js`
 
-`trainer.js` still owns orchestration. This is intentional: data access was extracted without simultaneously rewriting business logic.
+All 14 JavaScript source files and all test files pass `node --check`.
 
-## Automated test result
-All passed:
-- `architecture-boundary.test.js`
-- `dashboard-repository-contract.test.js`
-- `dashboard-runtime-smoke.test.js`
-- `practice-mastery-repository-contract.test.js`
-- `trainer-data-flow-smoke.test.js`
-- `trainer-data-error-paths.test.js`
+## Registry-specific verification
 
-## Protected logic comparison
-18 high-risk notation/scoring/session functions were compared directly against v0.7.3 and are unchanged. In particular, secondary-beam algorithms, stem direction, answer checking, and score aggregation were not edited.
+PASS:
+- Exercise Contract v1.0 validates identity, localized names, capabilities, metadata, and contract version.
+- Invalid exercise codes are rejected.
+- Unsupported contract versions are rejected.
+- Duplicate registrations are rejected.
+- Registry lookup normalizes exercise code casing.
+- Registered definitions are immutable at the exposed contract level.
+- Exactly one exercise definition is registered: `MAJOR_SCALE_NOTATION`.
+- Exercise infrastructure has no DOM or Supabase dependency.
+- Dashboard does not consume the registry yet; legacy launch behavior remains intentional until v0.8.0-b.
 
-## Live GitHub Pages checks still required
-- Student login and Student Dashboard.
-- Teacher login and Teacher Dashboard.
-- Continue/Review -> Trainer.
-- Complete a 5-question session and verify no duplicate/error in Attempt saving.
-- Confirm Mastery Progress updates.
-- Confirm Stage progression after mastery.
-- Recheck note input, accidentals, stem direction, primary beam, and secondary beam/hook behavior.
-- Browser Console: no unexpected error.
-- Network: no local asset 404.
+## Regression/runtime verification
+
+PASS:
+- Student Dashboard mock runtime.
+- Teacher Dashboard mock runtime.
+- Login → Teacher routing.
+- Forgot Password.
+- Password Recovery.
+- Dashboard repository contract.
+- Practice/Mastery repository contract (17 operations).
+- Trainer Practice/Mastery success path.
+- Trainer data error-path safeguards.
+- Checked-answer feedback transition.
+- Natural `.` shortcut behavior.
+
+## Diff boundary against v0.7.5
+
+Byte-for-byte unchanged:
+- `src/auth-dashboard.js`
+- `src/dashboard/dashboard-utils.js`
+- `src/dashboard/student-dashboard.js`
+- `src/dashboard/teacher-dashboard.js`
+- all five existing `src/data/*.js` files
+- `src/keyboard.js`
+- `styles/app.css`
+
+`src/trainer.js` differs only by `app_version: "0.8.0-a"`.
+
+`index.html` differs only by:
+- visible/document version metadata;
+- three new script tags for Exercise Contract, Registry, and Major Scale definition.
+
+## Static/package verification
+
+PASS:
+- 104 unique DOM IDs; no duplicates.
+- All literal DOM references found in source resolve to existing elements.
+- 15 local runtime assets referenced by `index.html` exist.
+- Static HTTP smoke returned 200 for index, CSS, registry scripts, Dashboard, Trainer, and Keyboard assets.
+- No `service_role` string exists in frontend runtime files.
+
+## Limitation
+
+The exercise registry is deliberately not used for launching exercises in this checkpoint. Final deployed GitHub Pages smoke testing remains required before accepting v0.8.0-a as a new user-verified baseline.

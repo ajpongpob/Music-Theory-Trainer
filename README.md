@@ -1,62 +1,38 @@
-# Major Scale Notation Trainer v0.7.4
+# Major Scale Notation Trainer v0.8.0-a
 
-## Purpose of this checkpoint
+Baseline: deployed-and-user-verified v0.7.5.
 
-v0.7.4 introduces the **Practice / Mastery Data Repository Layer** while preserving the behavior of the deployed-and-tested v0.7.3 baseline.
+## Scope
 
-### Changed
-- Added `src/data/practice.repository.js`.
-- Added `src/data/mastery.repository.js`.
-- `trainer.js` no longer calls Supabase `.from()`, `.rpc()`, or `auth.getUser()` directly.
-- Practice-session, attempt, skill-evidence, Stage-progress, and Mastery data access now passes through repositories.
-- Existing Trainer control flow still decides when to create/close sessions, save evidence, refresh mastery, and advance stages.
-- Added repository contract tests, Trainer success-path smoke tests, error-path safeguard tests, and architecture-boundary tests.
-- Updated application/session version to `0.7.4`.
+v0.8.0-a introduces the first Generic Exercise Platform boundary without changing runtime behavior.
 
-### Intentionally NOT changed
-- Major Scale question generation
-- Notation engine / rendering
-- Note input / dragging / range selection
-- Accidentals
-- Stem-direction logic
-- Primary or secondary beaming
-- Scoring / answer checking
-- LO evidence computation
-- `STAGE_n` <-> Level mapping
-- Mastery decision rules on the backend
-- Database schema / RPC definitions / RLS
-- Student / Teacher Dashboard rendering logic
+### Added
 
-## Runtime architecture after v0.7.4
+- `src/exercises/exercise-contract.js`
+  - Defines Exercise Definition Contract v1.0.
+  - Validates exercise identity, localized names, capabilities, and metadata.
+  - Has no DOM, Supabase, notation, or scoring dependencies.
+- `src/exercises/exercise-registry.js`
+  - Registers and resolves exercise definitions by `exercise_code`.
+  - Rejects duplicate or invalid definitions.
+- `src/exercises/major-scale/exercise.definition.js`
+  - Registers `MAJOR_SCALE_NOTATION` as the first platform exercise definition.
+  - Metadata only at this checkpoint; it does not replace the existing trainer runtime.
 
-```text
-Auth UI ----------------> auth.repository.js ---------> Supabase Auth / profiles
-Student/Teacher UI -----> dashboard.repository.js ----> Dashboard RPCs / read models
+### Intentionally unchanged
 
-Major Scale Trainer
-      |
-      +--> practice.repository.js --------------------> sessions / attempts / skill evidence
-      |
-      +--> mastery.repository.js ---------------------> stage progress / mastery / progression RPC
-      |
-      +--> Trainer/domain logic remains responsible for control flow and notation behavior
-```
+- Student Dashboard still opens the legacy Major Scale runtime directly.
+- `trainer.js` retains all Major Scale generation, notation, scoring, session, and progression behavior.
+- Notation algorithms, beaming, note input, answer checking, mastery rules, database schema, RPCs, and repositories are unchanged.
+- No second exercise is added.
+- No Exercise Host lifecycle is active yet.
 
-The Trainer is still Major-Scale-specific at this checkpoint. The next architectural milestone can therefore focus on a **Generic Exercise Host / Exercise Registry** without first having to untangle Supabase persistence from the exercise logic.
+## Why this checkpoint exists
 
-## Local QA commands
+The registry becomes a stable source of exercise identity before routing/runtime behavior changes. v0.8.0-b can therefore connect Dashboard → Exercise Host → Registry as a separate, testable change.
 
-No npm install is required:
+## Tests
 
 ```bash
-node tests/architecture-boundary.test.js
-node tests/dashboard-repository-contract.test.js
-node tests/dashboard-runtime-smoke.test.js
-node tests/practice-mastery-repository-contract.test.js
-node tests/trainer-data-flow-smoke.test.js
-node tests/trainer-data-error-paths.test.js
+for t in tests/*.test.js; do node "$t" || exit 1; done
 ```
-
-## Deployment
-
-This remains a static GitHub Pages application. Upload the contents of this folder to the repository root, preserving `src/`, `styles/`, and `tests/`.

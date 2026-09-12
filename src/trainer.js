@@ -2365,7 +2365,7 @@ async function createPracticeSessionRecord(generation, level){
         stage_id:stageId,
         mode:"practice",
         completed_questions:0,
-        app_version:"0.7.4"
+        app_version:"0.8.0-a"
       });
 
     if(error) throw error;
@@ -3755,6 +3755,98 @@ function renderSessionSummary(){
   document.getElementById("sessionSummary").hidden=false;
 }
 
+let pendingLevelMasteryTransition=null;
+let questionResultHideTimer=0;
+const QUESTION_RESULT_TRANSITION_MS=180;
+
+function setQuestionResultAction({disabled,text}){
+  const button=document.getElementById("questionResultContinue");
+  if(!button) return;
+  button.disabled=!!disabled;
+  button.textContent=text || "ทำข้อต่อไป";
+}
+
+function setTrainerInertForQuestionResult(active){
+  const app=document.querySelector('.session-app');
+  if(!app) return;
+
+  app.inert=!!active;
+  if(active){
+    app.setAttribute('aria-hidden','true');
+  }else if(!state.sessionComplete){
+    app.removeAttribute('aria-hidden');
+  }
+}
+
+function showQuestionResultTransition(result){
+  const overlay=document.getElementById("questionResultOverlay");
+  const panel=document.getElementById("questionResultPanel");
+  const title=document.getElementById("questionResultTitle");
+  const subtitle=document.getElementById("questionResultSubtitle");
+  const score=document.getElementById("questionResultScore");
+  const feedback=document.getElementById("questionResultFeedback");
+
+  if(!overlay || !panel || !title || !subtitle || !score || !feedback) return;
+
+  if(questionResultHideTimer){
+    clearTimeout(questionResultHideTimer);
+    questionResultHideTimer=0;
+  }
+
+  const passed=result.score>=90;
+
+  panel.classList.toggle("passed",passed);
+  panel.classList.toggle("needs-work",!passed);
+  title.textContent=passed ? "ผ่านข้อนี้แล้ว ✓" : "ตรวจคำตอบแล้ว";
+  subtitle.textContent=passed
+    ? "เยี่ยมมาก ตรวจสอบรายละเอียดคะแนนและ feedback ก่อนทำข้อต่อไป"
+    : "ตรวจสอบ feedback เพื่อดูจุดที่ควรพัฒนาก่อนทำข้อต่อไป";
+  score.textContent=`${result.score}%`;
+  feedback.innerHTML=questionFeedback(result);
+
+  setQuestionResultAction({
+    disabled:true,
+    text:"กำลังบันทึกและประเมิน..."
+  });
+
+  overlay.hidden=false;
+  overlay.setAttribute("aria-hidden","false");
+  setTrainerInertForQuestionResult(true);
+
+  requestAnimationFrame(()=>{
+    overlay.classList.add("is-visible");
+    panel.focus({preventScroll:true});
+  });
+}
+
+function hideQuestionResultTransition({immediate=false}={}){
+  const overlay=document.getElementById("questionResultOverlay");
+  if(!overlay) return;
+
+  if(questionResultHideTimer){
+    clearTimeout(questionResultHideTimer);
+    questionResultHideTimer=0;
+  }
+
+  overlay.classList.remove("is-visible");
+  overlay.setAttribute("aria-hidden","true");
+
+  const finishHide=()=>{
+    overlay.hidden=true;
+    setTrainerInertForQuestionResult(false);
+    questionResultHideTimer=0;
+  };
+
+  if(immediate){
+    finishHide();
+  }else{
+    questionResultHideTimer=setTimeout(
+      finishHide,
+      QUESTION_RESULT_TRANSITION_MS
+    );
+  }
+}
+
 function finishSession(){
   state.sessionComplete=true;
   state.isTransitioning=false;
@@ -3783,6 +3875,7 @@ document.getElementById("checkAnswer").onclick=()=>{
 
     const result=check();
 
+    pendingLevelMasteryTransition=null;
     state.lastScore=result.score;
 
     const attemptGeneration=state.practiceSessionGeneration;
@@ -3825,6 +3918,8 @@ document.getElementById("checkAnswer").onclick=()=>{
         await refreshMasteryProgress(attemptLevel);
 
         if(mastery?.advanced){
+          pendingLevelMasteryTransition=mastery;
+
           const nextButton=
             document.getElementById("nextQuestion");
 
@@ -3833,7 +3928,10 @@ document.getElementById("checkAnswer").onclick=()=>{
             nextButton.hidden=true;
           }
 
-          showLevelMasteryTransition(mastery);
+          setQuestionResultAction({
+            disabled:false,
+            text:"ดูผล Mastery"
+          });
         }else{
           const nextButton=
             document.getElementById("nextQuestion");
@@ -3843,6 +3941,11 @@ document.getElementById("checkAnswer").onclick=()=>{
             nextButton.hidden=false;
             nextButton.textContent="ทำข้อต่อไป";
           }
+
+          setQuestionResultAction({
+            disabled:false,
+            text:"ทำข้อต่อไป"
+          });
         }
 
         return saveResult;
@@ -3851,8 +3954,10 @@ document.getElementById("checkAnswer").onclick=()=>{
     renderMeta();
 
     const box=document.getElementById("feedback");
-    box.className="feedback session-feedback show "+(result.score>=90?"good":"bad");
-    box.innerHTML=questionFeedback(result);
+    box.className="feedback session-feedback";
+    box.innerHTML="";
+
+    showQuestionResultTransition(result);
 
     state.isTransitioning=true;
     setQuestionReviewMode(true);
@@ -3879,6 +3984,22 @@ document.getElementById("checkAnswer").onclick=()=>{
       button.textContent="ตรวจคำตอบ";
     }
   }
+};
+
+document.getElementById("questionResultContinue").onclick=()=>{
+  const mastery=pendingLevelMasteryTransition;
+  pendingLevelMasteryTransition=null;
+
+  if(mastery?.advanced){
+    hideQuestionResultTransition();
+    setTimeout(
+      ()=>showLevelMasteryTransition(mastery),
+      QUESTION_RESULT_TRANSITION_MS
+    );
+    return;
+  }
+
+  document.getElementById("nextQuestion")?.click();
 };
 
 document.getElementById("continueNextLevel").onclick=async()=>{
@@ -3926,6 +4047,9 @@ document.getElementById("continueNextLevel").onclick=async()=>{
 
 document.getElementById("nextQuestion").onclick=()=>{
   if(state.sessionComplete) return;
+
+  pendingLevelMasteryTransition=null;
+  hideQuestionResultTransition({immediate:true});
 
   startQuestion(
     takeNextQuestionFromBag()
@@ -4096,7 +4220,7 @@ window.majorScaleTrainerKeyboard={
     setTool("rhythm",rhythm);
   },
   setAccidental(key){
-    const accidental={"+":"#","-":"b","*":"##","/":"bb"}[key];
+    const accidental={".":"","+":"#","-":"b","*":"##","/":"bb"}[key];
     if(accidental===undefined)return;
     setTool("accidental",accidental);
   }

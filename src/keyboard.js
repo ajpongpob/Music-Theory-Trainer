@@ -12,11 +12,6 @@
     const key=e.key.toLowerCase();
 
     // Global visible shortcuts
-    if(key==="n"){
-      e.preventDefault();
-      document.querySelector('.accidental[data-acc=""]')?.click();
-      return;
-    }
     if(e.key==="9"){
       e.preventDefault();
       document.getElementById("beamSelected")?.click();
@@ -64,7 +59,7 @@
     }
 
     // Accidental shortcuts
-    if(["+","-","*","/"].includes(e.key)){
+    if([".","+","-","*","/"].includes(e.key)){
       e.preventDefault();
       keyboard.setAccidental(e.key);
       return;
