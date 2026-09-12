@@ -39,15 +39,15 @@ jobs:
         run: node tests/exercise-routing.browser.cjs
       - name: Verify approved scope
         run: |
-          git diff --name-only | sort
           allowed='src/domain/notation/notation-renderer.js
           src/trainer.js
           tests/helpers/restore-renderer-static-signatures.cjs
           tests/major-scale-domain.test.js
           tests/notation-boundary.test.js
           tests/notation-renderer-static-signatures.test.js'
-          actual=$(git diff --name-only | grep -v '^tools/' | grep -v '^\.github/' | sort)
+          actual=$({ git diff --name-only; git ls-files --others --exclude-standard; } | grep -v '^tools/' | grep -v '^\.github/' | sort -u)
           expected=$(printf '%s\n' "$allowed" | sed 's/^ *//' | sed '/^$/d' | sort)
+          printf 'Actual scope:\n%s\n' "$actual"
           test "$actual" = "$expected"
       - name: Remove temporary QA machinery
         run: |
