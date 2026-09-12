@@ -4,7 +4,8 @@ const root=path.resolve(__dirname,'..'),read=rel=>fs.readFileSync(path.join(root
 const boundary=JSON.parse(read('tests/fixtures/notation-extraction-boundary.json'));
 const restore=require('./helpers/restore-notation-baseline.cjs');
 const restoreRenderer=require('./helpers/restore-renderer-foundation.cjs');
-for(const file of Object.keys(boundary.files))restore(restoreRenderer(read(file),file),file);
+const restoreStatic=require('./helpers/restore-renderer-static-signatures.cjs');
+for(const file of Object.keys(boundary.files))restore(restoreRenderer(restoreStatic(read(file),file),file),file);
 for(const [file,hash] of Object.entries(boundary.protectedProduction)){
   assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,'protected production changed: '+file);
 }

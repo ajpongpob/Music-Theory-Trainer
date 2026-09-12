@@ -135,65 +135,25 @@ function pitchToStep(letter,octave){return notationCore.pitchToStep(letter,octav
 function stepToPitch(step){return notationCore.stepToPitch(step);}
 
 function drawSignature(svg,key,signatureMode,staff){
- if(signatureMode!=="shown"||key.acc===0)return;
-
- const symbols=key.type==="sharp"?SHARP_ORDER.slice(0,key.acc):FLAT_ORDER.slice(0,key.acc);
- const sharpSteps={F:8,C:5,G:9,D:6,A:3,E:7,B:4};
- const flatSteps={B:4,E:7,A:3,D:6,G:2,C:5,F:1};
- const glyph=key.type==="sharp"?SMUFL.accidentalSharp:SMUFL.accidentalFlat;
- const fontSize=musicEm(staff);
- const advance=sp(staff,1.05);
-
- symbols.forEach((letter,i)=>{
-   const step=key.type==="sharp"?sharpSteps[letter]:flatSteps[letter];
-   const y=staff.top+staff.spacing*4-step*(staff.spacing/2);
-
-   svg.appendChild(el("text",{
-     x:staff.sigX+i*advance,
-     y,
-     "font-size":fontSize,
-     "font-family":SMUFL_FONT,
-     fill:"#111",
-     class:"key-signature-glyph",
-     "pointer-events":"none"
-   },glyph));
+ return notationRenderer.drawKeySignature(svg,key,signatureMode,staff,{
+   sharpOrder:SHARP_ORDER,
+   flatOrder:FLAT_ORDER,
+   sharpGlyph:SMUFL.accidentalSharp,
+   flatGlyph:SMUFL.accidentalFlat,
+   fontSize:musicEm(staff),
+   fontFamily:SMUFL_FONT,
+   advance:sp(staff,1.05)
  });
 }
 
-function rightEdgeOfSvgClass(svg,className){
- let right=-Infinity;
- svg.querySelectorAll("."+className).forEach(node=>{
-   try{
-     const box=node.getBBox();
-     right=Math.max(right,box.x+box.width);
-   }catch(err){}
- });
- return Number.isFinite(right)?right:null;
-}
+function rightEdgeOfSvgClass(svg,className){return notationRenderer.rightEdgeOfSvgClass(svg,className);}
 
 function drawTimeSignature(svg,staff,x){
- const glyph=SMUFL.timeSig4;
- const fontSize=musicEm(staff);
- const box=measureSvgTextGlyph(svg,glyph,fontSize,SMUFL_FONT);
-
- // Visible left edge starts exactly at x.
- const textX=x-box.x;
- const centers=[
-   staff.top+staff.spacing,
-   staff.top+staff.spacing*3
- ];
-
- centers.forEach(centerY=>{
-   const textY=centerY-(box.y+box.height/2);
-   svg.appendChild(el("text",{
-     x:textX,
-     y:textY,
-     "font-size":fontSize,
-     "font-family":SMUFL_FONT,
-     fill:"#111",
-     class:"time-signature-glyph",
-     "pointer-events":"none"
-   },glyph));
+ return notationRenderer.drawTimeSignature(svg,staff,x,{
+   glyph:SMUFL.timeSig4,
+   fontSize:musicEm(staff),
+   fontFamily:SMUFL_FONT,
+   measureText:measureSvgTextGlyph
  });
 }
 function drawLedger(svg,x,step,stepToY){return notationRenderer.drawLedger(svg,x,step,stepToY);}
