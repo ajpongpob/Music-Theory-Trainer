@@ -23,7 +23,7 @@ let boundary=read('tests/notation-boundary.test.js');
 boundary=replaceExact(
   boundary,
   "const restoreNote=require('./helpers/restore-renderer-note-primitives.cjs');\nfor(const file of Object.keys(boundary.files))restore(restoreRenderer(restoreStatic(restoreNote(read(file),file),file),file),file);\n",
-  "const restoreNote=require('./helpers/restore-renderer-note-primitives.cjs');\nconst restoreFeedback=require('./helpers/restore-feedback-answer-snapshot.cjs');\nfor(const file of Object.keys(boundary.files))restore(restoreRenderer(restoreStatic(restoreNote(restoreFeedback(read(file),file),file),file),file);\n",
+  "const restoreNote=require('./helpers/restore-renderer-note-primitives.cjs');\nconst restoreFeedback=require('./helpers/restore-feedback-answer-snapshot.cjs');\nfor(const file of Object.keys(boundary.files))restore(restoreRenderer(restoreStatic(restoreNote(restoreFeedback(read(file),file),file),file),file),file);\n",
   'notation exact restoration chain'
 );
 write('tests/notation-boundary.test.js',boundary);
