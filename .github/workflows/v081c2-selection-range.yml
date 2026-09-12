@@ -39,7 +39,7 @@ jobs:
         run: rm -f tools/apply-v081c2-selection-range.cjs .github/workflows/v081c2-selection-range.yml
       - name: Verify approved scope
         run: |
-          allowed='^(src/domain/notation/notation-interaction\.js|src/trainer\.js|tests/helpers/restore-notation-interaction\.cjs|tests/notation-interaction\.test\.js)$'
+          allowed='^(src/domain/notation/notation-interaction\.js|src/trainer\.js|tests/helpers/restore-notation-interaction\.cjs|tests/notation-interaction\.test\.js|tools/apply-v081c2-selection-range\.cjs|\.github/workflows/v081c2-selection-range\.yml)$'
           bad=$(git diff --name-only HEAD | grep -Ev "$allowed" || true)
           if [ -n "$bad" ]; then echo "Unexpected scope:"; echo "$bad"; exit 1; fi
       - name: Commit tested checkpoint
