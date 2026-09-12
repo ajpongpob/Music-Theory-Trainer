@@ -37,6 +37,10 @@ jobs:
           let packageTest=fs.readFileSync(packageFile,'utf8');
           packageTest=packageTest.replaceAll('v0.8.1-a','v0.9.0');
           fs.writeFileSync(packageFile,packageTest);
+          const trainerFlowFile='tests/trainer-data-flow-smoke.test.js';
+          let trainerFlow=fs.readFileSync(trainerFlowFile,'utf8');
+          trainerFlow=trainerFlow.replaceAll('0.8.1-a','0.9.0');
+          fs.writeFileSync(trainerFlowFile,trainerFlow);
 
           const files=[
             'src/trainer.js','index.html','src/auth-dashboard.js','src/dashboard/student-dashboard.js',
