@@ -15,10 +15,12 @@ for(const token of [
 
 assert(script.includes('documentWidth<=metrics.innerWidth+2'),'live viewport suite must reject document horizontal overflow');
 assert(script.includes('bodyWidth<=metrics.innerWidth+2'),'live viewport suite must reject body horizontal overflow');
+assert(script.includes('waitForLearningPathStageLock'),'responsive gate must wait for asynchronous Learning Path Stage authority');
+assert(script.includes('select.disabled===true'),'responsive gate must wait for the actual disabled Stage/Level state');
 assert(script.includes("page.locator('#levelSelect').isDisabled()"),'responsive gate must preserve Learning Path Stage authority');
 assert(script.includes("page.locator('#checkAnswer').isVisible()"),'responsive gate must verify primary exercise action');
 assert(script.includes("page.locator('#dashboardButton').isVisible()"),'responsive gate must verify return navigation');
 assert(workflow.includes('node tests/live-pilot-viewports.browser.cjs'),'manual live workflow must execute viewport gates');
 assert(workflow.includes('environment: pilot-qa'),'live device gates must remain protected by pilot QA environment');
 assert(!/SUPABASE_SERVICE_ROLE_KEY\s*:/.test(workflow),'live viewport workflow must not expose service-role credentials');
-console.log('PASS M1.5 pilot device gates: desktop, tablet and mobile live Chrome coverage is manually gated and secret-safe');
+console.log('PASS M1.5 pilot device gates: desktop, tablet and mobile live Chrome coverage is manually gated, async-safe and secret-safe');
