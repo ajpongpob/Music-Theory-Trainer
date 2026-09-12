@@ -8,6 +8,7 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const ui=read('src/m15-learning-feedback.js');
 const repo=read('src/data/dashboard.repository.js');
 const migration=read('supabase/migrations/20260912164000_m15_learning_feedback.sql');
+const teacherFold=read('supabase/migrations/20260912164500_m15_teacher_feedback_fold_in.sql');
 
 assert(ui.includes('const SET_SIZE=5'),'practice UX must use five-question sets');
 assert(ui.includes("b.dataset.m15='set'"),'fifth checked answer must route to the set summary');
@@ -24,13 +25,16 @@ for(const method of ['getStageEvidence','finalizePracticeSet','getLatestDiagnost
   assert(repo.includes(method),`dashboard repository must expose ${method}`);
 }
 assert(repo.includes('m15-learning-feedback.js'),'M1.5 layer must be loaded after the legacy runtime');
+assert(repo.includes("get_my_teacher_class_dashboard"),'teacher feedback must reuse the existing authorized dashboard RPC');
+assert(!repo.includes("rpc('get_my_teacher_class_learning_feedback'"),'browser must not depend on an additional SECURITY DEFINER teacher RPC');
 
 assert(migration.includes('finalize_my_practice_set'),'migration must provide authoritative five-question summary');
 assert(migration.includes('get_my_latest_diagnostic_feedback'),'migration must provide diagnostic feedback');
-assert(migration.includes('get_my_teacher_class_learning_feedback'),'migration must provide teacher learning feedback');
 assert(/finalize_my_practice_set[\s\S]*security invoker/i.test(migration),'learner set finalization must remain SECURITY INVOKER');
 assert(/get_my_latest_diagnostic_feedback[\s\S]*security invoker/i.test(migration),'learner diagnostic feedback must remain SECURITY INVOKER');
-assert(migration.includes("if not public.is_class_teacher(p_class_id)"),'teacher feedback must authorize the selected class');
-assert(migration.includes('revoke all on function public.get_my_teacher_class_learning_feedback(uuid) from public, anon'),'teacher feedback must not be callable by public/anon');
+assert(teacherFold.includes('drop function if exists public.get_my_teacher_class_learning_feedback(uuid)'),'temporary teacher feedback RPC must be removed');
+assert(teacherFold.includes('learning_feedback jsonb'),'existing teacher dashboard RPC must carry the added feedback payload');
+assert(teacherFold.includes("if not public.is_class_teacher(p_class_id)"),'teacher dashboard must preserve class-level authorization');
+assert(teacherFold.includes('revoke all on function public.get_my_teacher_class_dashboard(uuid) from public, anon'),'teacher dashboard must remain unavailable to public/anon');
 
 console.log('PASS M1.5 learning feedback contracts');
