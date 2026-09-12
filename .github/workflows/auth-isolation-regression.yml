@@ -1,0 +1,64 @@
+name: Auth Session Isolation Regression
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/auth-isolation-regression.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Add auth isolation scenario
+        run: python scripts/add-auth-isolation-regression.py
+
+      - name: Run Node regression suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test_file in tests/*.test.js; do
+            node "$test_file"
+          done
+
+      - name: Install Playwright
+        run: npm install --no-save --ignore-scripts playwright@1.63.0
+
+      - name: Run all Chrome gates
+        shell: bash
+        env:
+          PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
+          BROWSER_CHANNEL: chrome
+        run: |
+          set -euo pipefail
+          node tests/exercise-routing.browser.cjs
+          node tests/student-dashboard-v2.browser.cjs
+          node tests/diagnostic-feedback.browser.cjs
+          node tests/editor-progress-note-value.browser.cjs
+          node tests/feedback-notation-errors.browser.cjs
+          node tests/mobile-safari.browser.cjs
+
+      - name: Commit verified auth regression and clean temporary files
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/auth-isolation-regression.yml scripts/add-auth-isolation-regression.py
+          git add tests/dashboard-runtime-smoke.test.js
+          git commit -m "Add cross-user auth session isolation regression"
+          git push
