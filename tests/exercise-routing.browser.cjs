@@ -26,7 +26,32 @@ const server=http.createServer((req,res)=>{
     page.on('console',m=>{if(m.type()==='error') console.error('BROWSER',m.text());});
     page.on('response',r=>{if(r.url().includes('/checkpoint/')&&r.status()!==200)badAssets.push(r.url());});
     page.on('dialog',d=>d.accept());
-    await page.route('**/*supabase-js*',r=>r.fulfill({contentType:'application/javascript',body:`${sdk}\nwindow.supabase={createClient:()=>makeClient('student',window)};`}));
+    await page.route('**/*supabase-js*',r=>r.fulfill({contentType:'application/javascript',body:`${sdk}
+window.supabase={createClient:()=>{
+  const client=makeClient('student',window);
+  const baseRpc=client.rpc.bind(client);
+  client.rpc=async(name,args)=>{
+    if(name==='get_my_latest_diagnostic_feedback'){
+      return {data:[{
+        session_id:'diag-session-1',evaluated_stage_code:'STAGE_2',evaluated_stage_name:'ขั้นที่ 2',session_questions:2,
+        session_overall_score:100,diagnostic_passed:true,overall_threshold:90,
+        skill_results:[
+          {skill_code:'BN01_TREBLE_PITCH',score:100,threshold:90,passed:true},
+          {skill_code:'BN06_STEM_DIRECTION',score:100,threshold:85,passed:true},
+          {skill_code:'RH01_DURATION_VALUE',score:100,threshold:85,passed:true},
+          {skill_code:'GR02_PRIMARY_BEAM',score:100,threshold:85,passed:true},
+          {skill_code:'MS03_SCALE_ACCIDENTAL',score:100,threshold:90,passed:true}
+        ],
+        question_scores:[{question_number:1,item_code:'C',score:100},{question_number:2,item_code:'G',score:100}],
+        placement_stage_code:'STAGE_2',placement_stage_name:'ขั้นที่ 2',mastered_stage_codes:['STAGE_1'],
+        recommendation_action_type:'continue',recommendation_reason_code:'DIAGNOSTIC_NEEDS_PRACTICE',
+        recommendation_reason_th:'ผลประเมินใช้กำหนดจุดเริ่มต้นที่เหมาะสม'
+      }],error:null};
+    }
+    return baseRpc(name,args);
+  };
+  return client;
+}};`}));
     await page.route('**/src/trainer.js',r=>{
       const source=read('src/trainer.js').replace('initializeTrainerAfterMusicFont();\n})();','window.__qa={state,buildExpected,render,check,selectNoteRange,drawBeams};\ninitializeTrainerAfterMusicFont();\n})();');
       return r.fulfill({contentType:'application/javascript',body:injection+source});
@@ -75,14 +100,12 @@ const server=http.createServer((req,res)=>{
     const stem=await page.evaluate(()=>__qa.state.notes[0].stem);await page.keyboard.press('8');
     assert.notEqual(await page.evaluate(()=>__qa.state.notes[0].stem),stem);await page.keyboard.press('8');
     assert.equal(await page.evaluate(()=>__qa.state.notes[0].stem),stem);
-    // Seed an expected answer through test-only hooks; production source stays unchanged.
     await page.evaluate(()=>{__qa.state.notes=__qa.buildExpected(__qa.state.key).map((n,i)=>({...n,id:'qa'+i}));__qa.render();});
     await page.locator('#scoreSvg g[data-note-id]').nth(1).click();
     await page.locator('#scoreSvg g[data-note-id]').nth(2).click({modifiers:['Shift']});
     await page.locator('#beamSelected').click();
     assert(await page.evaluate(()=>__qa.state.notes[1].beamGroup && __qa.state.notes[1].beamGroup===__qa.state.notes[2].beamGroup));
     await page.locator('#unbeamSelected').click();assert.equal(await page.evaluate(()=>__qa.state.notes[1].beamGroup),null);
-    // The unchanged expected-answer and scoring path, 2+4 beaming and feedback UI.
     await page.evaluate(()=>{__qa.state.notes=__qa.buildExpected(__qa.state.key).map((n,i)=>({...n,id:'qa'+i}));__qa.render();});
     await page.locator('#checkAnswer').click();
     await page.waitForFunction(()=>document.getElementById('questionResultScore').textContent==='100%');
@@ -102,7 +125,6 @@ const server=http.createServer((req,res)=>{
     await page.locator('#dashboardButton').click();
     await page.waitForFunction(()=>!document.getElementById('studentDashboard').hidden);
     assert.equal(await page.evaluate(()=>MajorScaleApp.exerciseHost.getCurrentContext()),null);
-    // Diagnostic recommendation uses the same exercise runtime with an explicit pretest mode.
     const diagnostic=page.locator('#dashboardRecommendation .dashboard-continue');
     await diagnostic.click();
     await page.waitForFunction(()=>!document.getElementById('trainerApp').hidden && __qa.state.sessionMode==='pretest');
@@ -114,8 +136,18 @@ const server=http.createServer((req,res)=>{
       await page.locator('#checkAnswer').click();
       await page.locator('#questionResultOverlay').waitFor({state:'visible'});
       await page.waitForFunction(()=>!document.getElementById('questionResultContinue').disabled);
-      await page.locator('#questionResultContinue').click();
-      if(q===0) await page.waitForFunction(()=>document.getElementById('questionResultOverlay').hidden && __qa.state.questionIndex===1);
+      if(q===0){
+        await page.locator('#questionResultContinue').click();
+        await page.waitForFunction(()=>document.getElementById('questionResultOverlay').hidden && __qa.state.questionIndex===1);
+      }else{
+        await page.waitForFunction(()=>document.getElementById('questionResultContinue').dataset.m15==='diagnostic');
+        assert.equal(await page.locator('#questionResultContinue').textContent(),'ดูผลประเมินก่อนเรียน');
+        await page.locator('#questionResultContinue').click();
+        await page.locator('#sessionSummary').waitFor({state:'visible'});
+        assert.equal(await page.locator('#summaryTitle').textContent(),'ผลประเมินก่อนเรียน');
+        assert(await page.locator('#summaryMasteryStatus').evaluate(el=>el.textContent.includes('จุดเริ่มต้น') || el.textContent.includes('กำหนดจุดเริ่มต้น')),'diagnostic feedback must explain placement purpose');
+        await page.locator('#m15Dashboard').click();
+      }
     }
     await page.waitForFunction(()=>!document.getElementById('studentDashboard').hidden);
     assert(await page.evaluate(()=>__qaCalls.some(c=>c[0]==='learning.applyDiagnosticPlacement')),'diagnostic placement persisted after final pretest item');
@@ -139,6 +171,6 @@ const server=http.createServer((req,res)=>{
     const reviewBox=await page.locator('#questionResultNotation svg').boundingBox();
     assert(reviewBox && reviewBox.width>320,'narrow review notation should use the available popup width');
     assert.deepEqual(errors,[]);assert.deepEqual(badAssets,[]);
-    console.log('PASS browser: HTTP subpath, Dashboard recommendation → diagnostic persistence/placement, double click → Host → legacy runtime, A-G, click, drag, Shift/mobile selection, accidentals, durations, stems, beams/remove, 100% answer, popup, narrow score sizing + compact review, attempt save, return/reopen');
+    console.log('PASS browser: HTTP subpath, Dashboard recommendation → diagnostic feedback/placement → Dashboard, double click → Host → legacy runtime, A-G, click, drag, Shift/mobile selection, accidentals, durations, stems, beams/remove, 100% answer, popup, narrow score sizing + compact review, attempt save, return/reopen');
   }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(()=>server.close());
