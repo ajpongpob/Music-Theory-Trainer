@@ -4,6 +4,7 @@
 
 const notationCore=window.MajorScaleApp.notationCore;
 const notationRenderer=window.MajorScaleApp.notationRenderer;
+const notationInteraction=window.MajorScaleApp.notationInteraction;
 const majorScaleModule=window.MajorScaleApp.majorScaleDomain;
 const majorScaleConfig=window.MajorScaleApp.majorScaleConfig;
 const {KEYS,LEVEL_KEYS,LO_META}=majorScaleConfig;
@@ -389,8 +390,8 @@ function resetNoteLayout(){
 }
 
 
-function stepToY(step){return staff.top+staff.spacing*4-step*(staff.spacing/2)}
-function yToStep(y){return Math.round((staff.top+staff.spacing*4-y)/(staff.spacing/2))}
+function stepToY(step){return notationInteraction.staffStepToY(step,staff);}
+function yToStep(y){return notationInteraction.staffYToStep(y,staff);}
 let compactScore=false;
 const COMPACT_X_OFFSETS=[75,550,1085];
 const COMPACT_ROW_HEIGHT=220;
@@ -619,35 +620,11 @@ function setMobileRangeSelectMode(enabled){
 }
 
 function nearestSlotIndexToX(x){
-  let nearest=0;
-  let best=Infinity;
-
-  noteXs.forEach((slotX,i)=>{
-    const distance=Math.abs(slotX-x);
-    if(distance<best){
-      best=distance;
-      nearest=i;
-    }
-  });
-
-  return nearest;
+  return notationInteraction.nearestSlotIndexToX(x,noteXs);
 }
 
 function nearestOccupiedIndexToX(x){
-  let nearest=-1;
-  let best=Infinity;
-
-  state.notes.forEach((note,i)=>{
-    if(!note) return;
-
-    const distance=Math.abs(noteXs[i]-x);
-    if(distance<best){
-      best=distance;
-      nearest=i;
-    }
-  });
-
-  return nearest;
+  return notationInteraction.nearestOccupiedIndexToX(x,noteXs,state.notes);
 }
 
 function selectNoteRange(anchorIndex,currentIndex){
@@ -678,38 +655,23 @@ function selectNoteRange(anchorIndex,currentIndex){
 }
 
 function noteTargetFromEvent(ev){
-  const target=ev.target && ev.target.closest
-    ? ev.target.closest("[data-note-id]")
-    : null;
-
-  if(!target) return null;
-
-  const id=target.getAttribute("data-note-id");
-  const index=state.notes.findIndex(n=>n && n.id===id);
-
-  return index>=0
-    ? {element:target,id,index,note:state.notes[index]}
-    : null;
+  return notationInteraction.noteTargetFromEvent(ev,state.notes);
 }
 
 function eventPointInScore(ev){
-  const ctm=scoreSvg.getScreenCTM();
-  if(!ctm) return null;
-
-  const pt=scoreSvg.createSVGPoint();
-  pt.x=ev.clientX;
-  pt.y=ev.clientY;
-  const point=pt.matrixTransform(ctm.inverse());
-  if(!compactScore)return point;
-  const pinned=noteInteraction.active && noteInteraction.mode==="note" && noteInteraction.noteIndex>=0;
-  const row=pinned
-    ? (noteInteraction.noteIndex<7?0:noteInteraction.noteIndex<14?1:2)
-    : Math.max(0,Math.min(2,Math.floor(point.y/COMPACT_ROW_HEIGHT)));
-  const first=[0,7,14][row],last=[6,13,14][row];
-  return {
-    x:Math.max(noteXs[first],Math.min(noteXs[last],point.x+COMPACT_X_OFFSETS[row])),
-    y:point.y-row*COMPACT_ROW_HEIGHT+40
-  };
+  const point=notationInteraction.eventPointInSvg(scoreSvg,ev);
+  if(!point) return null;
+  return notationInteraction.mapCompactScorePoint(point,{
+    compact:compactScore,
+    positions:noteXs,
+    rowOffsets:COMPACT_X_OFFSETS,
+    rowHeight:COMPACT_ROW_HEIGHT,
+    rows:[[0,6],[7,13],[14,14]],
+    yAdjustment:40,
+    pinnedIndex:noteInteraction.active && noteInteraction.mode==="note" && noteInteraction.noteIndex>=0
+      ? noteInteraction.noteIndex
+      : null
+  });
 }
 
 scoreSvg.addEventListener("pointerdown",ev=>{
