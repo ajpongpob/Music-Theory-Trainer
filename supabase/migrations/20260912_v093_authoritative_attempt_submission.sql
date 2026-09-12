@@ -152,24 +152,24 @@ begin
   )
   select
     count(*)::integer,
-    count(distinct skill_code)::integer,
+    count(distinct sr.skill_code)::integer,
     coalesce(bool_and(
-      skill_code in (
+      sr.skill_code in (
         'BN01_TREBLE_PITCH',
         'BN06_STEM_DIRECTION',
         'RH01_DURATION_VALUE',
         'GR02_PRIMARY_BEAM',
         'MS03_SCALE_ACCIDENTAL'
       )
-      and correct_count >= 0
-      and total_count > 0
-      and correct_count <= total_count
-      and score between 0 and 100
-      and jsonb_typeof(evidence_flags)='array'
-      and jsonb_array_length(evidence_flags)=total_count
+      and sr.correct_count >= 0
+      and sr.total_count > 0
+      and sr.correct_count <= sr.total_count
+      and sr.score between 0 and 100
+      and jsonb_typeof(sr.evidence_flags)='array'
+      and jsonb_array_length(sr.evidence_flags)=sr.total_count
     ),false)
   into v_skill_count,v_distinct_skill_count,v_skill_rows_valid
-  from skill_rows;
+  from skill_rows sr;
 
   if v_skill_count <> 5 or v_distinct_skill_count <> 5 or v_skill_rows_valid is not true then
     raise exception 'Server skill evidence is incomplete or invalid' using errcode='22023';
