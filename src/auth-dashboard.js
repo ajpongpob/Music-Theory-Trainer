@@ -1,6 +1,23 @@
 
 (() => {
 'use strict';
+
+function ensureMobileSafariFixStylesheet(){
+  if(
+    typeof document==='undefined' ||
+    typeof document.querySelector!=='function' ||
+    typeof document.createElement!=='function' ||
+    !document.head
+  ) return;
+  if(document.querySelector('link[data-mobile-safari-fix]')) return;
+  const link=document.createElement('link');
+  link.rel='stylesheet';
+  link.href='./styles/mobile-safari-fix.css';
+  link.setAttribute('data-mobile-safari-fix','true');
+  document.head.appendChild(link);
+}
+ensureMobileSafariFixStylesheet();
+
 const $ = id => document.getElementById(id);
 const screen = $('authScreen'), dashboard = $('studentDashboard'), teacherDashboard = $('teacherDashboard'), trainer = $('trainerApp');
 const app = window.MajorScaleApp || {};
