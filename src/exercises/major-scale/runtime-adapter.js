@@ -2,6 +2,18 @@
 'use strict';
 const app = window.MajorScaleApp = window.MajorScaleApp || {};
 const $ = id => document.getElementById(id);
+
+function ensureMobileSafariFixStylesheet(){
+  if(document.querySelector('link[data-major-scale-mobile-safari-fix]')) return;
+  const link=document.createElement('link');
+  link.rel='stylesheet';
+  link.href='./styles/mobile-safari-fix.css';
+  link.dataset.majorScaleMobileSafariFix='true';
+  document.head.appendChild(link);
+}
+
+ensureMobileSafariFixStylesheet();
+
 app.majorScaleRuntimeAdapter = Object.freeze({
   async launch(context) {
     if (!app.majorScaleDomain) throw new Error('Major Scale module ยังไม่พร้อมใช้งาน');
