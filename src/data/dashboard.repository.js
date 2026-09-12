@@ -177,7 +177,11 @@ function loadOptionalScript(src, dataAttribute) {
 // scripts so notation, scoring and the authenticated exercise host stay frozen.
 if (typeof window.addEventListener === 'function' && typeof document !== 'undefined') {
   window.addEventListener('load', () => {
-    loadOptionalScript('./src/dashboard/student-dashboard-v2.js', 'data-student-dashboard-v2');
+    const dashboardV2 = loadOptionalScript('./src/dashboard/student-dashboard-v2.js', 'data-student-dashboard-v2');
+    const loadDashboardCompat = () => loadOptionalScript('./src/dashboard/student-dashboard-v2-compat.js', 'data-student-dashboard-v2-compat');
+    if (dashboardV2) dashboardV2.addEventListener('load', loadDashboardCompat, {once:true});
+    else loadDashboardCompat();
+
     loadOptionalScript('./src/feedback-notation-errors.js', 'data-feedback-notation-errors');
 
     if (document.querySelector('script[data-m15-learning-feedback]')) return;
