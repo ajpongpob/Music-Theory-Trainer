@@ -2,7 +2,7 @@
 'use strict';
 
 const app = window.MajorScaleApp = window.MajorScaleApp || {};
-const CURRENT_APP_VERSION = '0.9.3';
+const CURRENT_APP_VERSION = app.appVersion || '0.9.3';
 
 function getClient() {
   if (!app.supabaseClient) {
@@ -32,8 +32,6 @@ const practiceRepository = {
   },
 
   createPracticeSession(payload) {
-    // Keep analytics provenance authoritative even while the legacy Trainer
-    // still carries an older literal version marker internally.
     return getClient()
       .from('practice_sessions')
       .insert({...payload, app_version: CURRENT_APP_VERSION})
@@ -65,10 +63,7 @@ const practiceRepository = {
       .update({completed_at: completedAt})
       .eq('id', sessionId);
 
-    if (onlyIfOpen) {
-      query = query.is('completed_at', null);
-    }
-
+    if (onlyIfOpen) query = query.is('completed_at', null);
     return query;
   },
 
@@ -78,22 +73,17 @@ const practiceRepository = {
       return {data:null,error:new Error('Server scoring service is not available')};
     }
 
-    const {data,error} = await client.functions.invoke(
-      'submit-major-scale-attempt',
-      {
-        body: {
-          practice_session_id: payload.practice_session_id,
-          question_number: payload.question_number,
-          item_code: payload.item_code,
-          response_json: payload.response_json
-        }
+    const {data,error} = await client.functions.invoke('submit-major-scale-attempt', {
+      body: {
+        practice_session_id: payload.practice_session_id,
+        question_number: payload.question_number,
+        item_code: payload.item_code,
+        response_json: payload.response_json
       }
-    );
+    });
 
     if (error) return {data:null,error};
-    if (!data?.attempt_id) {
-      return {data:null,error:new Error('Server scoring returned no attempt id')};
-    }
+    if (!data?.attempt_id) return {data:null,error:new Error('Server scoring returned no attempt id')};
 
     return {
       data: {
@@ -107,9 +97,9 @@ const practiceRepository = {
   },
 
   createAttemptSkillResults(rows) {
-    // Skill evidence is already scored and persisted atomically by the Edge
-    // Function. Keep this compatibility method until Trainer orchestration is
-    // refactored, but never trust or persist browser-computed evidence here.
+    // Server scoring already persisted the trusted skill evidence atomically.
+    // This compatibility method prevents the legacy Trainer from writing
+    // browser-computed evidence while its orchestration is being modularized.
     return Promise.resolve({data: rows || [], error: null});
   },
 
