@@ -80,6 +80,39 @@ async function visibleAction(page){
   return continuation;
 }
 
+async function compactScoreMetrics(page){
+  return page.evaluate(()=>{
+    const svg=document.getElementById('scoreSvg');
+    const systems=Array.from(svg?.querySelectorAll('g[data-system]') || []);
+    const svgRect=svg?.getBoundingClientRect?.() || null;
+    const systemRects=systems.map(node=>node.getBoundingClientRect());
+    const workspace=document.querySelector('.workspace-card');
+    const palette=document.querySelector('.workspace-card .notation-palette');
+    return {
+      systemCount:systems.length,
+      viewBox:svg?.getAttribute('viewBox') || null,
+      svgBottom:svgRect?.bottom ?? null,
+      systemTops:systemRects.map(rect=>rect.top),
+      systemBottoms:systemRects.map(rect=>rect.bottom),
+      workspaceOverflow:workspace ? getComputedStyle(workspace).overflow : null,
+      palettePosition:palette ? getComputedStyle(palette).position : null,
+      pageOverflowY:getComputedStyle(document.documentElement).overflowY
+    };
+  });
+}
+
+async function assertMobileTouchCenters(page,label){
+  for(const id of ['navPrev','pitchUp','pitchDown','navNext','insertNote','rangeSelectToggle']){
+    const locator=page.locator(`#${id}`);
+    await locator.scrollIntoViewIfNeeded();
+    const box=await locator.boundingBox();
+    assert(box,`${label}: ${id} must have a touch box`);
+    const point={x:box.x+box.width/2,y:box.y+box.height/2};
+    const hitId=await page.evaluate(({x,y})=>document.elementFromPoint(x,y)?.closest('button')?.id || null,point);
+    assert.equal(hitId,id,`${label}: touch center for ${id} must hit ${id}, not an overlapping control`);
+  }
+}
+
 async function smokeViewport(page,viewport){
   await page.setViewportSize({width:viewport.width,height:viewport.height});
   await page.waitForTimeout(100);
@@ -105,6 +138,22 @@ async function smokeViewport(page,viewport){
   assert(await page.locator('#checkAnswer').isVisible(),`${viewport.name}: Check Answer must remain visible`);
   assert(await page.locator('#dashboardButton').isVisible(),`${viewport.name}: Dashboard return must remain visible`);
 
+  if(viewport.width<=815){
+    await page.waitForFunction(()=>Array.from(document.styleSheets).some(sheet=>String(sheet.href||'').includes('mobile-safari-fix.css')),{timeout:30000});
+    await page.waitForTimeout(100);
+    const compact=await compactScoreMetrics(page);
+    assert.equal(compact.systemCount,3,`${viewport.name}: compact score must expose all three notation systems`);
+    assert.equal(compact.viewBox,'0 0 700 660',`${viewport.name}: compact score must use the three-system viewBox`);
+    assert(compact.systemTops[1]>compact.systemTops[0] && compact.systemTops[2]>compact.systemTops[1],`${viewport.name}: compact systems must remain vertically ordered`);
+    assert(compact.systemBottoms[2]<=compact.svgBottom+3,`${viewport.name}: third system must fit inside the visible score SVG`);
+    assert.notEqual(compact.workspaceOverflow,'hidden',`${viewport.name}: workspace must not clip compact systems 2-3`);
+    assert.notEqual(compact.pageOverflowY,'hidden',`${viewport.name}: narrow Trainer must allow vertical page scrolling`);
+    if(viewport.width<=699){
+      assert.equal(compact.palettePosition,'static',`${viewport.name}: notation palette must not remain sticky over mobile navigation`);
+      await assertMobileTouchCenters(page,viewport.name);
+    }
+  }
+
   await page.locator('#dashboardButton').click();
   await waitForDashboard(page);
   return {
@@ -112,6 +161,8 @@ async function smokeViewport(page,viewport){
     size:`${viewport.width}x${viewport.height}`,
     dashboardOverflow:false,
     trainerOverflow:false,
+    compactSystems:viewport.width<=815 ? 3 : null,
+    touchTargets:viewport.width<=699 ? true : null,
     routing:true
   };
 }
