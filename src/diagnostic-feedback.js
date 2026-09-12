@@ -27,7 +27,7 @@ const finite=value=>Number.isFinite(Number(value));
 const numberOrNull=value=>finite(value)?Number(value):null;
 const clamp=value=>Math.max(0,Math.min(100,Number(value)||0));
 const pct=value=>finite(value)?`${Number(value).toFixed(1).replace(/\.0$/,'')}%`:'—';
-const skillLabel=code=>config.LO_META?.[code]?.short||FALLBACK_LABELS[code]||code||'Skill';
+const skillLabel=code=>FALLBACK_LABELS[code]||config.LO_META?.[code]?.short||code||'Skill';
 const priorityOf=code=>{const index=SKILL_ORDER.indexOf(code);return index<0?999:index;};
 const stageLabel=code=>{const match=/^STAGE_(\d+)$/.exec(String(code||''));return match?`Stage ${match[1]}`:(code||'Current Stage');};
 
@@ -69,7 +69,7 @@ function resetSession(detail={}){
   app.diagnosticQuestionResults=[];
   const panel=typeof document!=='undefined'?document.querySelector('#sessionSummary .summary-panel'):null;
   panel?.classList.remove('diagnostic-session-result-active');
-  document?.getElementById?.('diagnosticSessionResult')?.remove?.();
+  if(typeof document!=='undefined') document.getElementById('diagnosticSessionResult')?.remove();
 }
 
 function captureQuestionResult(question){

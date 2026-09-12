@@ -1410,49 +1410,183 @@ function feedbackUnitLabels(){
   };
 }
 
-function questionFeedback(result){
-  const labels=feedbackUnitLabels();
-  const feedbackScoreLabels={
-    BN01_TREBLE_PITCH:"ตำแหน่งระดับเสียงบนกุญแจซอล (Treble Pitch)",
-    BN06_STEM_DIRECTION:"ทิศทางก้านโน้ต (Stem Direction)",
-    RH01_DURATION_VALUE:"ค่าความยาวของตัวโน้ต (Duration Value)",
-    GR02_PRIMARY_BEAM:"การรวบเขบ็ต (Primary Beam)",
-    MS03_SCALE_ACCIDENTAL:"เครื่องหมายแปลงเสียงในบันไดเสียง (Scale Accidental)"
+const QUESTION_RESULT_SKILL_ORDER=[
+  "BN01_TREBLE_PITCH",
+  "BN06_STEM_DIRECTION",
+  "RH01_DURATION_VALUE",
+  "GR02_PRIMARY_BEAM",
+  "MS03_SCALE_ACCIDENTAL"
+];
+const QUESTION_ERROR_PRIORITY=[
+  "BN01_TREBLE_PITCH",
+  "MS03_SCALE_ACCIDENTAL",
+  "RH01_DURATION_VALUE",
+  "GR02_PRIMARY_BEAM",
+  "BN06_STEM_DIRECTION"
+];
+
+function feedbackEscapeHtml(value){
+  return String(value??"").replace(/[&<>"']/g,char=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[char]));
+}
+function feedbackSkillName(code){
+  const display={
+    BN01_TREBLE_PITCH:"Treble Pitch",
+    BN06_STEM_DIRECTION:"Stem Direction",
+    RH01_DURATION_VALUE:"Duration Value",
+    GR02_PRIMARY_BEAM:"Primary Beam",
+    MS03_SCALE_ACCIDENTAL:"Scale Accidental"
   };
-  const issues=[];
-
-  Object.entries(result.lo).forEach(([id,evidence])=>{
-    const wrong=evidence.flags
-      .map((flag,i)=>flag===false ? (labels[id]?.[i] || `หน่วย ${i+1}`) : null)
-      .filter(Boolean);
-
-    if(wrong.length){
-      issues.push(
-        `<li><b>${LO_META[id].th}</b>: ${wrong.join(", ")}</li>`
-      );
-    }
+  return display[code] || LO_META[code]?.short || code;
+}
+function feedbackKeyLabel(name){
+  return String(name||state.key?.tonic||"Major Scale")
+    .replace(/##/g,"𝄪").replace(/bb/g,"𝄫").replace(/#/g,"♯").replace(/b/g,"♭")
+    .replace(/major/ig,"Major");
+}
+function feedbackAccidental(value){
+  return ({"#":"♯","b":"♭","##":"𝄪","bb":"𝄫","":""})[value||""] ?? String(value||"");
+}
+function feedbackRhythm(value){
+  return ({whole:"whole note",half:"half note",quarter:"quarter note",eighth:"eighth note",sixteenth:"sixteenth note"})[value] || String(value||"ไม่พบค่า");
+}
+function buildQuestionDiagnosticErrors(result){
+  const labels=feedbackUnitLabels();
+  const expected=Array.isArray(result?.expected)?result.expected:[];
+  const actual=state.notes;
+  const errors=[];
+  const add=(skillCode,index,message,positions=[])=>errors.push({
+    skillCode,
+    unitIndex:index,
+    unitLabel:labels[skillCode]?.[index]||`หน่วย ${index+1}`,
+    message,
+    positions
   });
 
-  const detail=issues.length
-    ? `<div class="feedback-detail"><b>สิ่งที่ตรวจพบว่าผิด</b><ul>${issues.join("")}</ul></div>`
-    : `<div class="feedback-detail feedback-all-correct"><b>ไม่พบข้อผิดพลาดในเกณฑ์ที่ประเมิน</b></div>`;
+  const pitch=result?.lo?.BN01_TREBLE_PITCH;
+  pitch?.flags?.forEach((flag,index)=>{
+    if(flag!==false)return;
+    const want=expected[index]?.letter||"—",got=actual[index]?.letter||"ไม่พบโน้ต";
+    add("BN01_TREBLE_PITCH",index,`โน้ตตำแหน่ง ${index+1}: ควรเป็น ${want} แต่เขียน ${got}`,[index+1]);
+  });
 
-  const loScores=Object.entries(result.lo).map(([id,evidence])=>{
-    const score=evidence.score===null ? "N/A" : `${evidence.score}%`;
-    const cls=evidence.score===null ? "na" : evidence.score>=90 ? "strong" : evidence.score<75 ? "weak" : "developing";
-    return `<span class="feedback-lo ${cls}"><small>${feedbackScoreLabels[id] || LO_META[id].short}</small><b>${score}</b></span>`;
+  const stem=result?.lo?.BN06_STEM_DIRECTION;
+  stem?.flags?.forEach((flag,index)=>{
+    if(flag!==false)return;
+    const unit=labels.BN06_STEM_DIRECTION[index]||`หน่วย ${index+1}`;
+    add("BN06_STEM_DIRECTION",index,`${unit}: ทิศทางก้านไม่ตรงตามเกณฑ์ของตำแหน่งโน้ตที่เขียน`,[]);
+  });
+
+  const rhythm=result?.lo?.RH01_DURATION_VALUE;
+  rhythm?.flags?.forEach((flag,index)=>{
+    if(flag!==false)return;
+    const want=feedbackRhythm(expected[index]?.rhythm),got=feedbackRhythm(actual[index]?.rhythm);
+    add("RH01_DURATION_VALUE",index,`โน้ตตำแหน่ง ${index+1}: ควรเป็น ${want} แต่เป็น ${got}`,[index+1]);
+  });
+
+  const beam=result?.lo?.GR02_PRIMARY_BEAM;
+  beam?.flags?.forEach((flag,index)=>{
+    if(flag!==false)return;
+    const unit=labels.GR02_PRIMARY_BEAM[index]||`Beam หน่วย ${index+1}`;
+    const message=index<4
+      ? `${unit}: ควรรวบ Beam เป็นกลุ่มเดียวกันตาม rhythmic pattern`
+      : `${unit}: มี Beam เกินหรือจัดกลุ่มไม่ตรงกับ rhythmic pattern ที่กำหนด`;
+    add("GR02_PRIMARY_BEAM",index,message,[]);
+  });
+
+  const accidental=result?.lo?.MS03_SCALE_ACCIDENTAL;
+  accidental?.flags?.forEach((flag,index)=>{
+    if(flag!==false)return;
+    const note=expected[index],written=actual[index];
+    const expectedAcc=note?.accidental||"",actualAcc=written?.accidental||"";
+    const expectedText=expectedAcc
+      ? `${note?.letter||""}${feedbackAccidental(expectedAcc)}`
+      : `${note?.letter||""} โดยไม่มีเครื่องหมายแปลงเสียง`;
+    const actualText=actualAcc?`${written?.letter||note?.letter||""}${feedbackAccidental(actualAcc)}`:"ไม่มีเครื่องหมายแปลงเสียง";
+    add("MS03_SCALE_ACCIDENTAL",index,`โน้ตตำแหน่ง ${index+1}: ควรเป็น ${expectedText}; พบ ${actualText}`,[index+1]);
+  });
+
+  return errors.sort((a,b)=>
+    QUESTION_ERROR_PRIORITY.indexOf(a.skillCode)-QUESTION_ERROR_PRIORITY.indexOf(b.skillCode) ||
+    a.unitIndex-b.unitIndex
+  );
+}
+
+function buildQuestionResult(result){
+  const skills=QUESTION_RESULT_SKILL_ORDER.map(skillCode=>{
+    const evidence=result?.lo?.[skillCode]||{};
+    const total=Number(evidence.total||0),correct=Number(evidence.correct||0);
+    const score=evidence.score===null||evidence.score===undefined?null:Number(evidence.score);
+    return{
+      skillCode,
+      label:feedbackSkillName(skillCode),
+      score,
+      correct,
+      total,
+      threshold:MASTERY_CRITERIA.perLO[skillCode]??null,
+      status:score===null?"not-assessed":(total>0&&correct===total?"correct":"incorrect")
+    };
+  });
+  return{
+    questionNumber:state.questionIndex+1,
+    itemCode:state.key?.tonic||"",
+    keyLabel:feedbackKeyLabel(state.key?.name||state.key?.tonic),
+    score:Number(result?.score),
+    skills,
+    errors:buildQuestionDiagnosticErrors(result),
+    checkedAt:new Date().toISOString()
+  };
+}
+
+function renderQuestionFeedback(questionResult){
+  const skillRows=questionResult.skills.map(skill=>{
+    const correct=skill.status==="correct";
+    const notAssessed=skill.status==="not-assessed";
+    const icon=notAssessed?"—":correct?"✓":"✕";
+    const text=notAssessed?"Not assessed":correct?"Correct":"Needs review";
+    return `<div class="df-question-skill ${correct?'is-correct':'is-review'}" role="listitem"><span class="df-icon" aria-hidden="true">${icon}</span><div><strong>${feedbackEscapeHtml(skill.label)}</strong><small>${feedbackEscapeHtml(skill.skillCode)}${skill.score===null?'':` · ${skill.score}%`}</small></div><span class="df-result-text">${text}</span></div>`;
   }).join("");
+
+  const bySkill=new Map();
+  questionResult.errors.forEach(error=>{
+    if(!bySkill.has(error.skillCode))bySkill.set(error.skillCode,[]);
+    bySkill.get(error.skillCode).push(error);
+  });
+  const important=[...bySkill.entries()]
+    .sort((a,b)=>QUESTION_ERROR_PRIORITY.indexOf(a[0])-QUESTION_ERROR_PRIORITY.indexOf(b[0]))
+    .slice(0,3);
+  const diagnostic=important.length
+    ? `<div class="df-question-diagnostic"><h3>จุดที่ควรแก้ก่อน</h3>${important.map(([skillCode,errors])=>`<div class="df-diagnostic-item"><strong>${feedbackEscapeHtml(feedbackSkillName(skillCode))}</strong><span>${feedbackEscapeHtml(errors[0].message)}${errors.length>1?` · และอีก ${errors.length-1} จุด`:''}</span></div>`).join("")}</div>`
+    : `<div class="df-question-good"><span aria-hidden="true">✓</span> ไม่พบข้อผิดพลาดในเกณฑ์ที่ประเมิน</div>`;
 
   const questionScores=state.sessionResults.map((item,i)=>
     `<span class="feedback-qscore ${i===state.questionIndex?'current':''}"><small>ข้อ ${i+1}</small><b>${item.score}%</b></span>`
   ).join("");
 
-  return `
-    <div class="feedback-scoreline"><span>ผลคะแนนข้อ ${state.questionIndex+1}</span><b>${result.score}%</b></div>
-    <div class="feedback-lo-grid" aria-label="คะแนนแยกตามผลลัพธ์การเรียนรู้">${loScores}</div>
-    ${detail}
-    <div class="feedback-history"><b>คะแนนรายข้อ</b><div class="feedback-question-strip">${questionScores}</div></div>
-  `;
+  return `<div class="df-question-skills" role="list" aria-label="ผลรายทักษะของข้อนี้">${skillRows}</div>${diagnostic}<div class="feedback-history"><b>คะแนนรายข้อ</b><div class="feedback-question-strip">${questionScores}</div></div>`;
+}
+
+function questionFeedback(result){
+  return renderQuestionFeedback(buildQuestionResult(result));
+}
+
+function publishQuestionResult(questionResult){
+  const app=window.MajorScaleApp=window.MajorScaleApp||{};
+  app.lastQuestionResult=questionResult;
+  app.diagnosticQuestionResults=state.sessionResults.map(item=>item.diagnostic).filter(Boolean);
+  if(typeof window.dispatchEvent==="function"&&typeof window.CustomEvent==="function"){
+    window.dispatchEvent(new CustomEvent("major-scale-question-result",{detail:questionResult}));
+  }
+}
+
+function publishDiagnosticSessionStart(detail){
+  const app=window.MajorScaleApp=window.MajorScaleApp||{};
+  app.lastDiagnosticSessionStart={...(detail||{})};
+  app.diagnosticQuestionResults=[];
+  if(typeof window.dispatchEvent==="function"&&typeof window.CustomEvent==="function"){
+    window.dispatchEvent(new CustomEvent("major-scale-session-start",{detail:app.lastDiagnosticSessionStart}));
+  }
 }
 
 function resetQuestionWorkspace(){
@@ -2500,6 +2634,15 @@ function startSession(){
   state.lastScore=null;
   state.isTransitioning=false;
 
+  publishDiagnosticSessionStart({
+    generation,
+    sessionMode:state.sessionMode,
+    level:state.level,
+    stageCode:state.authoritativeStageCode || `STAGE_${state.level}`,
+    exerciseCode:majorScaleConfig.exerciseCode,
+    plannedQuestions:state.sessionMode==="pretest" ? state.sessionLength : 5
+  });
+
   const overlay=document.getElementById("sessionSummary");
   if(overlay) overlay.hidden=true;
 
@@ -3131,7 +3274,7 @@ function renderQuestionResultNotationSnapshot(){
   container.appendChild(snapshot);
 }
 
-function showQuestionResultTransition(result){
+function showQuestionResultTransition(result,questionResult=buildQuestionResult(result)){
   const overlay=document.getElementById("questionResultOverlay");
   const panel=document.getElementById("questionResultPanel");
   const title=document.getElementById("questionResultTitle");
@@ -3150,12 +3293,12 @@ function showQuestionResultTransition(result){
 
   panel.classList.toggle("passed",passed);
   panel.classList.toggle("needs-work",!passed);
-  title.textContent=passed ? "ผ่านข้อนี้แล้ว ✓" : "ตรวจคำตอบแล้ว";
+  title.textContent=`ข้อ ${questionResult.questionNumber} — ${questionResult.keyLabel}`;
   subtitle.textContent=passed
-    ? "เยี่ยมมาก ตรวจสอบรายละเอียดคะแนนและ feedback ก่อนทำข้อต่อไป"
-    : "ตรวจสอบ feedback เพื่อดูจุดที่ควรพัฒนาก่อนทำข้อต่อไป";
+    ? "✓ ทำได้ดี ตรวจผลรายทักษะก่อนทำข้อต่อไป"
+    : "Diagnostic Feedback แสดงทักษะที่ถูกต้องและจุดที่ควรแก้ก่อน";
   score.textContent=`${result.score}%`;
-  feedback.innerHTML=questionFeedback(result);
+  feedback.innerHTML=renderQuestionFeedback(questionResult);
   renderQuestionResultNotationSnapshot();
 
   setQuestionResultAction({
@@ -3171,6 +3314,7 @@ function showQuestionResultTransition(result){
     overlay.classList.add("is-visible");
     panel.focus({preventScroll:true});
   });
+  return questionResult;
 }
 
 function hideQuestionResultTransition({immediate=false}={}){
@@ -3237,11 +3381,13 @@ document.getElementById("checkAnswer").onclick=()=>{
     const attemptQuestionNumber=state.questionIndex+1;
     const attemptItemCode=state.key.tonic;
     const attemptResponseJson=snapshotAttemptResponse();
+    const questionResult=buildQuestionResult(result);
 
     state.sessionResults.push({
       key:state.key.name,
       score:result.score,
-      lo:result.lo
+      lo:result.lo,
+      diagnostic:questionResult
     });
 
     const completedQuestions=state.sessionResults.length;
@@ -3317,7 +3463,8 @@ document.getElementById("checkAnswer").onclick=()=>{
     box.className="feedback session-feedback";
     box.innerHTML="";
 
-    showQuestionResultTransition(result);
+    showQuestionResultTransition(result,questionResult);
+    publishQuestionResult(questionResult);
 
     state.isTransitioning=true;
     setQuestionReviewMode(true);

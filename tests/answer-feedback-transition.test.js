@@ -148,7 +148,9 @@ function buildTrainerHarness(){
   assert.strictEqual(overlay.hidden,false,'overlay should be shown');
   assert(panel.classList.contains('passed'),'passed result should receive passed class');
   assert(!panel.classList.contains('needs-work'),'passed result should not receive needs-work class');
-  assert.strictEqual(get('questionResultTitle').textContent,'ผ่านข้อนี้แล้ว ✓');
+  assert.strictEqual(get('questionResultTitle').textContent,'ข้อ 1 — C Major');
+  assert(get('questionResultFeedback').innerHTML.includes('Treble Pitch'), 'feedback should expose skill-first diagnostic rows');
+  assert(get('questionResultFeedback').innerHTML.includes('Correct'), 'all-correct skill status must be textual, not color-only');
   assert.strictEqual(get('questionResultScore').textContent,'100%');
   assert(get('questionResultFeedback').innerHTML.includes('ไม่พบข้อผิดพลาด'), 'feedback should show all-correct summary');
   assert(!get('questionResultFeedback').innerHTML.includes('คะแนนรวมแบบถ่วงน้ำหนัก'), 'question feedback must not show weighted-score wording');
