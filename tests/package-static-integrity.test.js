@@ -39,6 +39,14 @@ function walk(dir) {
 walk(path.join(ROOT, 'src'));
 
 const idSet = new Set(ids);
+// Additive UI layers may construct nodes at runtime. Count an id as valid only
+// when source explicitly assigns it to a created element; this preserves typo
+// detection for ordinary getElementById/$ references while supporting dynamic UI.
+const dynamicIds = new Set();
+for (const file of sourceFiles) {
+  const source = fs.readFileSync(file, 'utf8');
+  for (const m of source.matchAll(/\.id\s*=\s*['"]([^'"]+)['"]/g)) dynamicIds.add(m[1]);
+}
 const missingRefs = new Set();
 for (const file of sourceFiles) {
   const source = fs.readFileSync(file, 'utf8');
@@ -47,13 +55,13 @@ for (const file of sourceFiles) {
     /\$\(\s*['"]([^'"]+)['"]\s*\)/g
   ]) {
     for (const m of source.matchAll(re)) {
-      if (!idSet.has(m[1])) missingRefs.add(m[1]);
+      if (!idSet.has(m[1]) && !dynamicIds.has(m[1])) missingRefs.add(m[1]);
     }
   }
 }
-assert.deepStrictEqual([...missingRefs], [], `literal DOM references missing from HTML: ${[...missingRefs].join(', ')}`);
+assert.deepStrictEqual([...missingRefs], [], `literal DOM references missing from HTML or explicit dynamic construction: ${[...missingRefs].join(', ')}`);
 
 const runtimeText = [html, read('styles/app.css'), ...sourceFiles.map(f => fs.readFileSync(f,'utf8'))].join('\n');
 assert(!/service_role/i.test(runtimeText), 'frontend runtime must not contain service_role');
 
-console.log(`PASS package static integrity (${ids.length} DOM ids, ${localAssets.length} local assets)`);
+console.log(`PASS package static integrity (${ids.length} static DOM ids, ${dynamicIds.size} dynamic ids, ${localAssets.length} local assets)`);
