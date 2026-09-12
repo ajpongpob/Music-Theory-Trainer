@@ -30,6 +30,32 @@ const helpers=slice('function autoStem(','/* Fixed 3-measure pattern:')+
 vm.runInContext('const notationCore=window.MajorScaleApp.notationCore;\nconst notationBeaming=window.MajorScaleApp.notationBeaming;\nconst LETTERS=["C","D","E","F","G","A","B"];\n'+helpers+
   '\nwindow.rules=window.MajorScaleApp.majorScaleDomain.createRules({autoStem,beamStemDirectionFromNotes,pitchToStep,effectiveStem,beamGroupSignatures});',ctx);
 const rules=ctx.window.rules;
+const TEST_LETTERS=['C','D','E','F','G','A','B'];
+const testPitchToStep=(letter,octave)=>octave*7+TEST_LETTERS.indexOf(letter)-(4*7+TEST_LETTERS.indexOf('E'));
+const makeEvidence=flags=>{
+  const applicable=flags.filter(flag=>flag!==null);
+  const correct=applicable.filter(Boolean).length;
+  return {flags,correct,total:applicable.length,score:applicable.length?Math.round(correct/applicable.length*100):null};
+};
+const applyV092PolicyDelta=(legacyResult,expected,notes)=>{
+  const result=plain(legacyResult);
+  // v0.9.2: pitch-name correctness is octave-independent; accidental remains MS03.
+  result.lo.BN01_TREBLE_PITCH=makeEvidence(expected.map((x,i)=>!!notes[i]&&notes[i].letter===x.letter));
+  // v0.9.2: independent stemmed notes on treble middle line B4 accept either direction.
+  const stemFlags=[...result.lo.BN06_STEM_DIRECTION.flags];
+  [0,7].forEach((noteIndex,flagIndex)=>{
+    const n=notes[noteIndex];
+    if(n && n.rhythm!=='whole' && testPitchToStep(n.letter,n.octave)===4) stemFlags[flagIndex]=true;
+  });
+  result.lo.BN06_STEM_DIRECTION=makeEvidence(stemFlags);
+  let weighted=0,active=0;
+  for(const [code,item] of Object.entries(result.lo)){
+    const weight=config.LO_WEIGHTS[code]||0;
+    if(weight>0&&Number.isFinite(item.score)){weighted+=item.score*weight;active+=weight;}
+  }
+  result.score=active?Math.round(weighted/active):null;
+  return result;
+};
 for(const fixture of golden.scales){
   assert.deepStrictEqual(plain(moduleApi.buildMajorScale(fixture.key)),fixture.scale,'spelling: '+fixture.key.tonic);
   assert.deepStrictEqual(plain(rules.buildExpected(fixture.key)),fixture.expected,'expected answer: '+fixture.key.tonic);
@@ -37,7 +63,8 @@ for(const fixture of golden.scales){
 for(const fixture of golden.evaluations){
   const key=golden.scales.find(item=>item.key.tonic===fixture.tonic).key;
   const before=JSON.stringify(fixture.notes),expected=rules.buildExpected(key);
-  assert.deepStrictEqual(plain(rules.evaluateAnswer(expected,fixture.notes)),fixture.result,fixture.tonic+' '+fixture.variant);
+  const policyExpected=applyV092PolicyDelta(fixture.result,expected,fixture.notes);
+  assert.deepStrictEqual(plain(rules.evaluateAnswer(expected,fixture.notes)),policyExpected,fixture.tonic+' '+fixture.variant);
   assert.equal(JSON.stringify(fixture.notes),before,'evaluation must not mutate response');
 }
 for(const sequence of golden.generations){
@@ -69,4 +96,4 @@ for(const {before,after,offset} of [...boundary.substitutions].reverse()){
   restored=restored.slice(0,offset)+before+restored.slice(offset+after.length);
 }
 assert.equal(crypto.createHash('sha256').update(restored).digest('hex'),boundary.baselineSha256,'notation/controller outside extraction must be byte-identical to corrected b');
-console.log(`PASS Major Scale domain: ${golden.scales.length} spellings/expected answers, ${golden.evaluations.length} golden evaluations, ${golden.generations.length} deterministic sequences; stage config and exact legacy boundary`);
+console.log(`PASS Major Scale domain: ${golden.scales.length} spellings/expected answers, ${golden.evaluations.length} golden evaluations + explicit v0.9.2 pitch/stem policy deltas, ${golden.generations.length} deterministic sequences; stage config and exact legacy boundary`);
