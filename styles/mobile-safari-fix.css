@@ -93,29 +93,65 @@
 
 
 /* Landscape uses the full three-measure overview on one system.
-   Keep the SVG at its native 4:1 score aspect instead of the portrait
-   three-system height. */
+   The base stylesheet normally compresses the Trainer into one viewport.
+   That compression can shrink the score row below the 4:1 SVG height and
+   make the control row appear on top of the staff. In landscape, keep the
+   controls, score and actions in normal document flow and allow vertical
+   scrolling instead of squeezing the notation. */
 @media (orientation:landscape) and (max-height:540px){
   html,
   body{
+    height:auto !important;
+    min-height:100% !important;
     overflow-x:hidden !important;
     overflow-y:auto !important;
+  }
+
+  body{
+    min-height:100dvh !important;
   }
 
   .session-app{
     width:100% !important;
     max-width:none !important;
+    height:auto !important;
+    min-height:100dvh !important;
+    overflow:visible !important;
+  }
+
+  .session-main{
+    min-height:0 !important;
+    grid-template-rows:auto auto !important;
+    overflow:visible !important;
+  }
+
+  .workspace-card{
+    height:auto !important;
+    min-height:0 !important;
+    overflow:visible !important;
+    grid-template-rows:auto auto auto auto !important;
+  }
+
+  .workspace-card .editor-control-row,
+  .workspace-card .session-actions{
+    position:relative;
+    z-index:1;
   }
 
   .workspace-card .score-stage{
+    position:relative;
+    z-index:0;
     width:100% !important;
     height:auto !important;
     min-height:0 !important;
+    aspect-ratio:4 / 1 !important;
     overflow:hidden !important;
-    align-items:center !important;
+    align-items:stretch !important;
+    margin-top:0 !important;
   }
 
   .workspace-card #scoreSvg{
+    display:block !important;
     width:100% !important;
     height:auto !important;
     min-height:0 !important;

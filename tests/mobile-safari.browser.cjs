@@ -120,12 +120,29 @@ async function assertThirdSystemReachable(page){
     await page.waitForTimeout(100);
     const landscape=await page.evaluate(()=>{
       const svg=document.getElementById('scoreSvg');
+      const scoreStage=document.querySelector('.workspace-card .score-stage');
+      const controls=document.querySelector('.workspace-card .editor-control-row');
+      const actions=document.querySelector('.workspace-card .session-actions');
+      const workspace=document.querySelector('.workspace-card');
       const rect=svg.getBoundingClientRect();
+      const stageRect=scoreStage.getBoundingClientRect();
+      const controlsRect=controls.getBoundingClientRect();
+      const actionsRect=actions.getBoundingClientRect();
+      const scroller=document.scrollingElement || document.documentElement || document.body;
       return {
         systemCount:svg.querySelectorAll('g[data-system]').length,
         viewBox:svg.getAttribute('viewBox'),
         width:rect.width,
         height:rect.height,
+        top:rect.top,
+        bottom:rect.bottom,
+        stageTop:stageRect.top,
+        stageBottom:stageRect.bottom,
+        controlsBottom:controlsRect.bottom,
+        actionsTop:actionsRect.top,
+        workspaceOverflow:getComputedStyle(workspace).overflow,
+        pageOverflowY:getComputedStyle(document.documentElement).overflowY,
+        scrollHeight:scroller?.scrollHeight ?? 0,
         innerWidth:window.innerWidth,
         innerHeight:window.innerHeight
       };
@@ -134,10 +151,16 @@ async function assertThirdSystemReachable(page){
     assert.equal(landscape.viewBox,'0 0 1400 350','iPhone landscape must render the full three-measure one-system viewBox');
     assert(landscape.width<=landscape.innerWidth+2,'iPhone landscape score must fit the viewport width');
     assert(landscape.width>landscape.height*3.5,'iPhone landscape score must retain a wide single-row overview');
+    assert(landscape.controlsBottom<=landscape.stageTop+2,'iPhone landscape controls must end before the score stage begins');
+    assert(landscape.top>=landscape.stageTop-2 && landscape.bottom<=landscape.stageBottom+2,'iPhone landscape SVG must remain fully contained inside its score stage');
+    assert(landscape.actionsTop>=landscape.stageBottom-2,'iPhone landscape action row must begin after the score stage ends');
+    assert.notEqual(landscape.workspaceOverflow,'hidden','iPhone landscape workspace must not clip the score');
+    assert.notEqual(landscape.pageOverflowY,'hidden','iPhone landscape page must allow vertical scrolling instead of squeezing the score');
+    assert(landscape.scrollHeight>=landscape.innerHeight,'iPhone landscape document must remain scrollable when controls plus score exceed one viewport');
 
     assert.deepEqual(errors,[],'mobile Safari regression fixture must not raise page errors');
     assert.deepEqual(badAssets,[],'mobile Safari regression fixture must load every local asset');
-    console.log('PASS mobile touch browser: three compact systems are vertically reachable and arrow touch centers dispatch to the intended controls');
+    console.log('PASS mobile touch browser: portrait compact systems remain reachable; landscape one-row score stays fully separated from controls and actions');
   }finally{
     await context.close();
     await browser.close();
