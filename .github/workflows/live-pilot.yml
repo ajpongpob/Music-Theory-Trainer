@@ -73,3 +73,13 @@ jobs:
           QA_STUDENT_EMAIL: ${{ secrets.QA_STUDENT_EMAIL }}
           QA_STUDENT_PASSWORD: ${{ secrets.QA_STUDENT_PASSWORD }}
         run: node tests/live-pilot-viewports.browser.cjs
+
+      - name: Run learner-facing Dashboard Mastery gate
+        env:
+          PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
+          BROWSER_CHANNEL: chrome
+          LIVE_TEST_CONFIRM: YES
+          LIVE_APP_URL: ${{ inputs.app_url }}
+          QA_STUDENT_EMAIL: ${{ secrets.QA_STUDENT_EMAIL }}
+          QA_STUDENT_PASSWORD: ${{ secrets.QA_STUDENT_PASSWORD }}
+        run: node tests/live-dashboard-mastery.browser.cjs

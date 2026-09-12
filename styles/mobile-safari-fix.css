@@ -2,7 +2,7 @@
    Scope: narrow Trainer layout and touch hit-testing only.
    Do not change notation/scoring/mastery semantics. */
 
-@media (max-width:815px){
+@media (max-width:815px) and (orientation:portrait){
   html,
   body{
     height:auto !important;
@@ -88,5 +88,40 @@
 
   .workspace-card button[data-shortcut]::after{
     pointer-events:none !important;
+  }
+}
+
+
+/* Landscape uses the full three-measure overview on one system.
+   Keep the SVG at its native 4:1 score aspect instead of the portrait
+   three-system height. */
+@media (orientation:landscape) and (max-height:540px){
+  html,
+  body{
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+  }
+
+  .session-app{
+    width:100% !important;
+    max-width:none !important;
+  }
+
+  .workspace-card .score-stage{
+    width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+    align-items:center !important;
+  }
+
+  .workspace-card #scoreSvg{
+    width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    aspect-ratio:4 / 1 !important;
+    overflow:visible !important;
+    flex-shrink:0;
   }
 }

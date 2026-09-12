@@ -448,7 +448,11 @@ let compactScore=false;
 const COMPACT_X_OFFSETS=[75,550,1085];
 const COMPACT_ROW_HEIGHT=220;
 function arrangeCompactScore(){
- compactScore=scoreSvg.parentElement.clientWidth<800;
+ const stageWidth=scoreSvg.parentElement.clientWidth;
+ const viewportWidth=window.visualViewport?.width || window.innerWidth || stageWidth;
+ const viewportHeight=window.visualViewport?.height || window.innerHeight || Number.POSITIVE_INFINITY;
+ const landscape=viewportWidth>viewportHeight;
+ compactScore=stageWidth<800 && !landscape;
  scoreSvg.setAttribute("viewBox",compactScore?"0 0 700 660":"0 0 1400 350");
  if(!compactScore)return;
  // Reflow existing engraving into one measure per system, retaining the

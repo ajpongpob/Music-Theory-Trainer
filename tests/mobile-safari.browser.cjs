@@ -113,6 +113,28 @@ async function assertThirdSystemReachable(page){
     await page.touchscreen.tap(upPoint.x,upPoint.y);
     assert.equal(await page.evaluate(()=>__qa.state.cursorStaffStep),beforePitch+1,'touching up arrow must execute pitchUp');
 
+    // Rotate to iPhone landscape. The same three measures should now render
+    // as one continuous system instead of the portrait three-system stack.
+    await page.setViewportSize({width:844,height:390});
+    await page.evaluate(()=>window.__qa.render());
+    await page.waitForTimeout(100);
+    const landscape=await page.evaluate(()=>{
+      const svg=document.getElementById('scoreSvg');
+      const rect=svg.getBoundingClientRect();
+      return {
+        systemCount:svg.querySelectorAll('g[data-system]').length,
+        viewBox:svg.getAttribute('viewBox'),
+        width:rect.width,
+        height:rect.height,
+        innerWidth:window.innerWidth,
+        innerHeight:window.innerHeight
+      };
+    });
+    assert.equal(landscape.systemCount,0,'iPhone landscape must not use the portrait three-system compact score');
+    assert.equal(landscape.viewBox,'0 0 1400 350','iPhone landscape must render the full three-measure one-system viewBox');
+    assert(landscape.width<=landscape.innerWidth+2,'iPhone landscape score must fit the viewport width');
+    assert(landscape.width>landscape.height*3.5,'iPhone landscape score must retain a wide single-row overview');
+
     assert.deepEqual(errors,[],'mobile Safari regression fixture must not raise page errors');
     assert.deepEqual(badAssets,[],'mobile Safari regression fixture must load every local asset');
     console.log('PASS mobile touch browser: three compact systems are vertically reachable and arrow touch centers dispatch to the intended controls');
