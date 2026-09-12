@@ -42,6 +42,12 @@ jobs:
           BROWSER_CHANNEL: chrome
         run: node tests/exercise-routing.browser.cjs
 
+      - name: Run Student Dashboard V2 responsive E2E
+        env:
+          PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
+          BROWSER_CHANNEL: chrome
+        run: node tests/student-dashboard-v2.browser.cjs
+
       - name: Run editor progress and note-value regression E2E
         env:
           PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
