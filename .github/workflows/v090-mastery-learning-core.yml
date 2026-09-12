@@ -1,0 +1,48 @@
+name: v090-mastery-learning-core
+on:
+  push:
+    branches: [dev/v0.9.0-mastery-learning-core]
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev/v0.9.0-mastery-learning-core
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply v0.9.0 frontend and tests
+        run: |
+          node tools/apply-v090-frontend.cjs
+          node tools/patch-v090-tests.cjs
+      - name: JavaScript syntax checks
+        run: |
+          find src tests -type f \( -name '*.js' -o -name '*.cjs' \) -print0 | xargs -0 -n1 node --check
+      - name: Full Node regression suite
+        run: |
+          for f in tests/*.test.js; do node "$f"; done
+      - name: Real Chrome E2E
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright >/dev/null 2>&1
+          BROWSER_CHANNEL=chrome node tests/exercise-routing.browser.cjs
+          rm -rf node_modules package-lock.json package.json
+      - name: Remove temporary QA machinery
+        run: |
+          rm -f tools/apply-v090-frontend.cjs tools/patch-v090-tests.cjs .github/workflows/v090-mastery-learning-core.yml
+      - name: Verify approved scope
+        run: |
+          allowed='^(index\.html|styles/app\.css|src/data/practice\.repository\.js|src/data/learning\.repository\.js|src/domain/mastery/mastery-learning-core\.js|src/dashboard/student-dashboard\.js|src/auth-dashboard\.js|src/exercises/exercise-host\.js|src/exercises/major-scale/runtime-adapter\.js|src/trainer\.js|supabase/migrations/20260912_v090_mastery_learning_core\.sql|tests/architecture-boundary\.test\.js|tests/exercise-host\.test\.js|tests/dashboard-runtime-smoke\.test\.js|tests/trainer-data-flow-smoke\.test\.js|tests/exercise-routing\.browser\.cjs|tests/mastery-learning-core\.test\.js|tests/mastery-learning-sql-contract\.test\.js)$'
+          bad=$(git diff --name-only origin/main -- . | grep -Ev "$allowed" || true)
+          if [ -n "$bad" ]; then echo "Unexpected scope:"; echo "$bad"; exit 1; fi
+      - name: Commit tested checkpoint
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "v0.9.0 — Mastery Learning Core"
+          git push origin HEAD:dev/v0.9.0-mastery-learning-core
