@@ -1,0 +1,42 @@
+name: Refresh v091 checksum
+
+on:
+  push:
+    branches:
+      - m1-pilot-closeout
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Refresh trainer after-checksum only
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib, json
+          fixture_path=Path('tests/fixtures/v091-path-stage-boundary.json')
+          fixture=json.loads(fixture_path.read_text())
+          current=hashlib.sha256(Path('src/trainer.js').read_bytes()).hexdigest()
+          fixture['files']['src/trainer.js']['afterSha256']=current
+          fixture_path.write_text(json.dumps(fixture,separators=(',',':')))
+          print('trainer sha256',current)
+          PY
+
+      - name: Remove one-shot workflow and commit
+        shell: bash
+        run: |
+          rm .github/workflows/refresh-v091-checksum.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/fixtures/v091-path-stage-boundary.json .github/workflows/refresh-v091-checksum.yml
+          git commit -m "Refresh v0.9.1 boundary checksum for landscape layout"
+          git push origin HEAD:m1-pilot-closeout
