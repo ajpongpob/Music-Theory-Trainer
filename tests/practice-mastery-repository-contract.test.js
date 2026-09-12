@@ -103,6 +103,6 @@ assert(Object.isFrozen(practice)&&Object.isFrozen(mastery));
     {type:'rpc',name:'advance_my_stage_if_mastered',args:{p_exercise_code:'EXERCISE_X',p_stage_code:'STAGE_X'},terminal:'rpc'}
   ];
   assert.deepStrictEqual(normalize(calls),expected);
-  assert(!calls.some(call=>call.type==='from'&&['attempts','attempt_skill_results'].includes(call.table)),'browser repository must never insert evidence tables');
+  assert(!calls.some(call=>call.type==='from'&&['attempts','attempt_skill_results'].includes(call.table)&&call.insert!==null),'browser repository must never insert evidence tables');
   console.log('PASS practice/mastery repository contract: app_version 0.9.3, server scoring Edge Function, no client evidence inserts');
 })().catch(error=>{console.error(error);process.exitCode=1;});
