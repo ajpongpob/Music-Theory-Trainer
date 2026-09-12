@@ -34,12 +34,18 @@ for (const [name, source] of [['practice.repository.js',practiceRepo],['mastery.
   assert(!source.includes('getElementById'), `${name} must not access UI elements`);
 }
 
+// v0.9.3 deliberately removes browser write access to attempts and skill
+// evidence. The practice repository owns session lifecycle and forwards raw
+// notation responses to the authenticated server-scoring Edge Function.
 const expectedTables = {
-  practice: ['exercises','exercise_stages','practice_sessions','attempts','attempt_skill_results'],
+  practice: ['exercises','exercise_stages','practice_sessions'],
   mastery: ['exercises','exercise_stages','student_stage_progress','stage_required_items','practice_sessions','attempts']
 };
 for (const table of expectedTables.practice) assert(practiceRepo.includes(`'${table}'`), `practice repository missing ${table}`);
 for (const table of expectedTables.mastery) assert(masteryRepo.includes(`'${table}'`), `mastery repository missing ${table}`);
+assert(/functions\.invoke\(['"]submit-major-scale-attempt['"]/.test(practiceRepo),'practice repository must route raw attempts through server scoring');
+assert(!/\.from\(['"]attempts['"]\)[\s\S]{0,180}\.insert\(/.test(practiceRepo),'practice repository must not insert attempts directly');
+assert(!/\.from\(['"]attempt_skill_results['"]\)[\s\S]{0,180}\.insert\(/.test(practiceRepo),'practice repository must not insert skill evidence directly');
 assert(masteryRepo.includes("'get_my_stage_mastery'"), 'mastery repository missing get_my_stage_mastery RPC');
 assert(masteryRepo.includes("'advance_my_stage_if_mastered'"), 'mastery repository missing progression RPC');
 for(const rpc of ['get_my_exercise_diagnostic','apply_my_diagnostic_placement','get_my_recommended_next_action','ensure_my_learning_path_progression','get_my_stage_evidence']) assert(learningRepo.includes(`'${rpc}'`),`learning repository missing ${rpc}`);
@@ -80,4 +86,4 @@ for (const file of allJs) {
 }
 assert.strictEqual(publishableOccurrences, 1, 'publishable key should exist exactly once in src');
 
-console.log('PASS architecture boundaries and script load order');
+console.log('PASS architecture boundaries, server-scoring boundary and script load order');

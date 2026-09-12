@@ -2,6 +2,7 @@
 'use strict';
 
 const app = window.MajorScaleApp = window.MajorScaleApp || {};
+const CURRENT_APP_VERSION = app.appVersion || '0.9.3';
 
 function getClient() {
   if (!app.supabaseClient) {
@@ -33,7 +34,7 @@ const practiceRepository = {
   createPracticeSession(payload) {
     return getClient()
       .from('practice_sessions')
-      .insert(payload)
+      .insert({...payload, app_version: CURRENT_APP_VERSION})
       .select('id')
       .single();
   },
@@ -62,25 +63,44 @@ const practiceRepository = {
       .update({completed_at: completedAt})
       .eq('id', sessionId);
 
-    if (onlyIfOpen) {
-      query = query.is('completed_at', null);
-    }
-
+    if (onlyIfOpen) query = query.is('completed_at', null);
     return query;
   },
 
-  createAttempt(payload) {
-    return getClient()
-      .from('attempts')
-      .insert(payload)
-      .select('id')
-      .single();
+  async createAttempt(payload) {
+    const client = getClient();
+    if (!client.functions || typeof client.functions.invoke !== 'function') {
+      return {data:null,error:new Error('Server scoring service is not available')};
+    }
+
+    const {data,error} = await client.functions.invoke('submit-major-scale-attempt', {
+      body: {
+        practice_session_id: payload.practice_session_id,
+        question_number: payload.question_number,
+        item_code: payload.item_code,
+        response_json: payload.response_json
+      }
+    });
+
+    if (error) return {data:null,error};
+    if (!data?.attempt_id) return {data:null,error:new Error('Server scoring returned no attempt id')};
+
+    return {
+      data: {
+        id: data.attempt_id,
+        score: data.score,
+        skill_results: data.skill_results,
+        scoring_authority: data.scoring_authority
+      },
+      error: null
+    };
   },
 
   createAttemptSkillResults(rows) {
-    return getClient()
-      .from('attempt_skill_results')
-      .insert(rows);
+    // Server scoring already persisted the trusted skill evidence atomically.
+    // This compatibility method prevents the legacy Trainer from writing
+    // browser-computed evidence while its orchestration is being modularized.
+    return Promise.resolve({data: rows || [], error: null});
   },
 
   updatePracticeSession(sessionId, updates) {
