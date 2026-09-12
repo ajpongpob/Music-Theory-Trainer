@@ -16,6 +16,7 @@ const VIEWPORTS=Object.freeze([
   {name:'desktop-1280',width:1280,height:800},
   {name:'tablet-landscape',width:1024,height:768},
   {name:'tablet-portrait',width:768,height:1024},
+  {name:'mobile-landscape',width:844,height:390},
   {name:'mobile-390',width:390,height:844},
   {name:'mobile-360',width:360,height:800}
 ]);
@@ -153,7 +154,14 @@ async function smokeViewport(page,viewport){
   assert(await page.locator('#checkAnswer').isVisible(),`${viewport.name}: Check Answer must remain visible`);
   assert(await page.locator('#dashboardButton').isVisible(),`${viewport.name}: Dashboard return must remain visible`);
 
-  if(viewport.width<=815){
+  const isLandscape=viewport.width>viewport.height;
+  if(isLandscape){
+    const landscapeScore=await compactScoreMetrics(page);
+    assert.equal(landscapeScore.systemCount,0,`${viewport.name}: landscape score must use one continuous system`);
+    assert.equal(landscapeScore.viewBox,'0 0 1400 350',`${viewport.name}: landscape score must use the full three-measure viewBox`);
+  }
+
+  if(viewport.width<=815 && !isLandscape){
     await page.waitForFunction(()=>Array.from(document.styleSheets).some(sheet=>String(sheet.href||'').includes('mobile-safari-fix.css')),{timeout:30000});
     await page.waitForTimeout(100);
     const compact=await compactScoreMetrics(page);
@@ -177,9 +185,9 @@ async function smokeViewport(page,viewport){
     size:`${viewport.width}x${viewport.height}`,
     dashboardOverflow:false,
     trainerOverflow:false,
-    compactSystems:viewport.width<=815 ? 3 : null,
-    thirdSystemReachable:viewport.width<=815 ? true : null,
-    touchTargets:viewport.width<=699 ? true : null,
+    compactSystems:isLandscape ? 0 : (viewport.width<=815 ? 3 : null),
+    thirdSystemReachable:!isLandscape && viewport.width<=815 ? true : null,
+    touchTargets:!isLandscape && viewport.width<=699 ? true : null,
     routing:true
   };
 }

@@ -1,15 +1,20 @@
-'use strict';
+\'use strict\';
 const fs=require('fs'),path=require('path'),assert=require('assert');
 const root=path.resolve(__dirname,'..');
 const css=fs.readFileSync(path.join(root,'styles/mobile-safari-fix.css'),'utf8');
 const shell=fs.readFileSync(path.join(root,'src/auth-dashboard.js'),'utf8');
+const trainer=fs.readFileSync(path.join(root,'src/trainer.js'),'utf8');
 
 assert(shell.includes("./styles/mobile-safari-fix.css"),'UI shell must load the narrow-screen Safari fix stylesheet');
-assert(css.includes('@media (max-width:815px)'),'Safari score fix must be scoped to narrow screens');
+assert(css.includes('@media (max-width:815px) and (orientation:portrait)'),'three-system Safari score growth must be portrait-only');
+assert(css.includes('@media (orientation:landscape) and (max-height:540px)'),'landscape must have an explicit single-row score layout');
+assert(css.includes('aspect-ratio:4 / 1 !important'),'landscape score must preserve the native three-measure 4:1 aspect');
 assert(css.includes('overflow-y:auto !important'),'narrow Trainer must allow vertical page scrolling');
-assert(css.includes('.workspace-card')&&css.includes('overflow:visible !important'),'workspace must not clip compact systems 2-3');
-assert(css.includes('grid-template-rows:auto auto auto !important'),'narrow session grid must allow the workspace to grow');
+assert(css.includes('.workspace-card')&&css.includes('overflow:visible !important'),'portrait workspace must not clip compact systems 2-3');
+assert(css.includes('grid-template-rows:auto auto auto !important'),'portrait session grid must allow the workspace to grow');
 assert(css.includes('.workspace-card .notation-palette')&&css.includes('position:static !important'),'mobile palette must not remain sticky over the navigation row');
 assert(css.includes('min-height:44px !important'),'mobile navigation controls must preserve touch-sized hit targets');
 assert(css.includes('pointer-events:none !important'),'shortcut labels must never intercept touch events');
-console.log('PASS mobile Safari layout contract: UI shell loads fix; 3-system score can grow/scroll and palette cannot overlay mobile navigation hit targets');
+assert(trainer.includes('const landscape=viewportWidth>viewportHeight;'),'score renderer must detect landscape orientation');
+assert(trainer.includes('compactScore=stageWidth<800 && !landscape;'),'landscape must bypass the portrait three-system compact renderer');
+console.log('PASS mobile Safari layout contract: portrait keeps reachable 3-system score; landscape uses one 4:1 overview system; touch fixes remain intact');
