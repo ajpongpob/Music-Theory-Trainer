@@ -30,14 +30,55 @@ const helpers=slice('function autoStem(','/* Fixed 3-measure pattern:')+
 vm.runInContext('const notationCore=window.MajorScaleApp.notationCore;\nconst notationBeaming=window.MajorScaleApp.notationBeaming;\nconst LETTERS=["C","D","E","F","G","A","B"];\n'+helpers+
   '\nwindow.rules=window.MajorScaleApp.majorScaleDomain.createRules({autoStem,beamStemDirectionFromNotes,pitchToStep,effectiveStem,beamGroupSignatures});',ctx);
 const rules=ctx.window.rules;
+const TEST_LETTERS=['C','D','E','F','G','A','B'];
+const testPitchToStep=(letter,octave)=>octave*7+TEST_LETTERS.indexOf(letter)-(4*7+TEST_LETTERS.indexOf('E'));
+const makeEvidence=flags=>{
+  // `expected` originates in the VM realm. Normalize flags into this test's
+  // realm so deepStrictEqual tests values rather than cross-realm prototypes.
+  const normalized=[...flags];
+  const applicable=normalized.filter(flag=>flag!==null);
+  const correct=applicable.filter(Boolean).length;
+  return {flags:normalized,correct,total:applicable.length,score:applicable.length?Math.round(correct/applicable.length*100):null};
+};
+const expectedV092Evidence=(legacyResult,expected,notes)=>{
+  const bn01=makeEvidence(expected.map((x,i)=>!!notes[i]&&notes[i].letter===x.letter));
+  const stemFlags=[...legacyResult.lo.BN06_STEM_DIRECTION.flags];
+  [0,7].forEach((noteIndex,flagIndex)=>{
+    const n=notes[noteIndex];
+    if(n && n.rhythm!=='whole' && testPitchToStep(n.letter,n.octave)===4) stemFlags[flagIndex]=true;
+  });
+  return {bn01,bn06:makeEvidence(stemFlags)};
+};
+const weightedScoreFromLo=lo=>{
+  let weighted=0,active=0;
+  for(const [code,item] of Object.entries(lo)){
+    const weight=config.LO_WEIGHTS[code]||0;
+    if(weight>0&&Number.isFinite(item.score)){weighted+=item.score*weight;active+=weight;}
+  }
+  return active?Math.round(weighted/active):null;
+};
 for(const fixture of golden.scales){
   assert.deepStrictEqual(plain(moduleApi.buildMajorScale(fixture.key)),fixture.scale,'spelling: '+fixture.key.tonic);
   assert.deepStrictEqual(plain(rules.buildExpected(fixture.key)),fixture.expected,'expected answer: '+fixture.key.tonic);
 }
 for(const fixture of golden.evaluations){
+  const label=fixture.tonic+' '+fixture.variant;
   const key=golden.scales.find(item=>item.key.tonic===fixture.tonic).key;
   const before=JSON.stringify(fixture.notes),expected=rules.buildExpected(key);
-  assert.deepStrictEqual(plain(rules.evaluateAnswer(expected,fixture.notes)),fixture.result,fixture.tonic+' '+fixture.variant);
+  const actual=plain(rules.evaluateAnswer(expected,fixture.notes));
+  const policy=expectedV092Evidence(fixture.result,expected,fixture.notes);
+
+  // These three criteria are outside the approved v0.9.2 policy change and
+  // therefore must remain byte-for-byte equivalent to the historical golden evidence.
+  assert.deepStrictEqual(actual.lo.RH01_DURATION_VALUE,fixture.result.lo.RH01_DURATION_VALUE,label+' duration regression');
+  assert.deepStrictEqual(actual.lo.GR02_PRIMARY_BEAM,fixture.result.lo.GR02_PRIMARY_BEAM,label+' beam regression');
+  assert.deepStrictEqual(actual.lo.MS03_SCALE_ACCIDENTAL,fixture.result.lo.MS03_SCALE_ACCIDENTAL,label+' accidental regression');
+
+  // Only the two explicitly approved policy deltas are recalculated.
+  assert.deepStrictEqual(actual.lo.BN01_TREBLE_PITCH,policy.bn01,label+' octave-independent pitch-name policy');
+  assert.deepStrictEqual(actual.lo.BN06_STEM_DIRECTION,policy.bn06,label+' middle-line stem policy');
+  assert.equal(actual.score,weightedScoreFromLo(actual.lo),label+' weighted score');
+  assert.deepStrictEqual(actual.expected,plain(expected),label+' expected notation regression');
   assert.equal(JSON.stringify(fixture.notes),before,'evaluation must not mutate response');
 }
 for(const sequence of golden.generations){
@@ -69,4 +110,4 @@ for(const {before,after,offset} of [...boundary.substitutions].reverse()){
   restored=restored.slice(0,offset)+before+restored.slice(offset+after.length);
 }
 assert.equal(crypto.createHash('sha256').update(restored).digest('hex'),boundary.baselineSha256,'notation/controller outside extraction must be byte-identical to corrected b');
-console.log(`PASS Major Scale domain: ${golden.scales.length} spellings/expected answers, ${golden.evaluations.length} golden evaluations, ${golden.generations.length} deterministic sequences; stage config and exact legacy boundary`);
+console.log(`PASS Major Scale domain: ${golden.scales.length} spellings/expected answers, ${golden.evaluations.length} golden evaluations with only explicit v0.9.2 pitch/stem policy deltas, ${golden.generations.length} deterministic sequences; stage config and exact legacy boundary`);

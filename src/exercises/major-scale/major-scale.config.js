@@ -23,8 +23,8 @@ const LEVEL_KEYS={
 const LO_META={
   BN01_TREBLE_PITCH:{
     code:"BN01_TREBLE_PITCH",
-    short:"Treble Pitch",
-    th:"ตำแหน่งระดับเสียงบนกุญแจซอล"
+    short:"Pitch Name",
+    th:"ชื่อระดับเสียงบนกุญแจซอล (ไม่จำกัด Octave)"
   },
   BN06_STEM_DIRECTION:{
     code:"BN06_STEM_DIRECTION",

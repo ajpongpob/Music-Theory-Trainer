@@ -12,10 +12,29 @@ const restoreLayout=require('./helpers/restore-renderer-score-layout.cjs');
 const restoreInteraction=require('./helpers/restore-notation-interaction.cjs');
 const restoreV090=require('./helpers/restore-v090-master-core.cjs');
 const restoreV091=require('./helpers/restore-v091-path-stage.cjs');
+const restoreV092=require('./helpers/restore-v092-scoring-policy.cjs');
 const restoreBeaming=require('./helpers/restore-notation-beaming.cjs');
-for(const file of Object.keys(boundary.files))restore(restoreRenderer(restoreStatic(restoreNote(restoreFeedback(restoreNarrow(restoreLayout(restoreInteraction(restoreBeaming(restoreV090(restoreV091(read(file),file),file),file),file),file),file),file),file),file),file),file);
+
+function restoreApprovedDeltas(source,file){
+  source=restoreV092(source,file);
+  source=restoreV091(source,file);
+  source=restoreV090(source,file);
+  source=restoreBeaming(source,file);
+  source=restoreInteraction(source,file);
+  source=restoreLayout(source,file);
+  source=restoreNarrow(source,file);
+  source=restoreFeedback(source,file);
+  source=restoreNote(source,file);
+  source=restoreStatic(source,file);
+  source=restoreRenderer(source,file);
+  return source;
+}
+
+for(const file of Object.keys(boundary.files)){
+  restore(restoreApprovedDeltas(read(file),file),file);
+}
 for(const [file,hash] of Object.entries(boundary.protectedProduction)){
-  const source=restoreFeedback(restoreNarrow(restoreLayout(restoreInteraction(restoreBeaming(restoreV090(restoreV091(read(file),file),file),file),file),file),file),file);
+  const source=restoreApprovedDeltas(read(file),file);
   assert.equal(crypto.createHash('sha256').update(source).digest('hex'),hash,'protected production changed: '+file);
 }
 const core=read('src/domain/notation/notation-core.js');
@@ -30,4 +49,4 @@ assert(at('src/domain/notation/notation-interaction.js')<at('src/domain/notation
 assert(at('src/domain/notation/notation-beaming.js')<at('src/exercises/major-scale/major-scale.domain.js'));
 assert(at('src/domain/notation/notation-beaming.js')<at('src/trainer.js'));
 assert(at('src/trainer.js')<at('src/keyboard.js'));
-console.log('PASS notation boundary: exact v0.8.0-c reconstruction, moved bodies, protected production hashes and script order');
+console.log('PASS notation boundary: exact v0.8.0-c reconstruction, moved bodies, approved v0.9.2 scoring delta, protected production hashes and script order');
