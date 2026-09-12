@@ -115,7 +115,7 @@ async function runScenario(scenario){
   ctx.window.location=ctx.location;
   ctx.window.supabase={createClient(){const c=makeClient(scenario,ctx); ctx.__client=c; return c;}};
   vm.createContext(ctx);
-  const scripts=[...html.matchAll(/<script\s+src="\.\/(src\/[^"]+\.js)"/g)].map(m=>m[1]).filter(f=>!['src/trainer.js','src/keyboard.js'].includes(f));
+  const scripts=[...html.matchAll(/<script\s+src="\.\/(src\/[^"?#]+\.js)(?:[?#][^"]*)?"/g)].map(m=>m[1]).filter(f=>!['src/trainer.js','src/keyboard.js','src/dashboard/student-dashboard-v2.js','src/dashboard/student-dashboard-v2-compat.js'].includes(f));
   for(const f of scripts){
     try{vm.runInContext(fs.readFileSync(path.join(ROOT,f),'utf8'),ctx,{filename:f});}
     catch(e){return {scenario,loadError:String(e.stack||e),logs,elements,ctx};}
