@@ -13,11 +13,13 @@ function launch(input = {}) {
   const definition = registry.get(code);
   if (!definition?.runtime) return Promise.resolve(unavailable());
   if (current) return Promise.resolve({ok:false, reason:'active', context:current.context});
-  // Identity only: no client, token, arbitrary properties, or runtime state crosses this boundary.
+  const normalizeMode=app.masteryLearningCore?.normalizeSessionMode || (()=>'practice');
+  // Identity + learning mode only: no client, token, arbitrary properties, or runtime state crosses this boundary.
   const context = Object.freeze({
     exerciseCode:definition.code,
     stageCode:typeof input.stageCode === 'string' ? input.stageCode.trim() : null,
-    userId:typeof input.userId === 'string' ? input.userId : null
+    userId:typeof input.userId === 'string' ? input.userId : null,
+    sessionMode:normalizeMode(input.sessionMode)
   });
   current = {definition, context};
   opening = Promise.resolve().then(async () => {
