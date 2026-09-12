@@ -1,0 +1,70 @@
+name: click-preview-local-sdk
+on:
+  push:
+    branches:
+      - preview/v0.8.1-feedback-mobile
+permissions:
+  contents: write
+jobs:
+  prepare-and-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Vendor Supabase SDK for preview only
+        run: |
+          mkdir -p vendor
+          curl -fL --retry 3 --retry-delay 2 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js' -o vendor/supabase.min.js
+          test -s vendor/supabase.min.js
+          node - <<'NODE'
+          const fs=require('fs');
+          const p='index.html';
+          let s=fs.readFileSync(p,'utf8');
+          const old=`<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>\n<script>\nif(!window.supabase?.createClient){\n  document.write('<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"><\\/script>');\n}\n</script>`;
+          const replacement='<script src="./vendor/supabase.min.js"></script>';
+          if(!s.includes(old)) throw new Error('Preview fallback block not found');
+          s=s.replace(old,replacement);
+          fs.writeFileSync(p,s);
+          NODE
+          rm -f .github/workflows/click-preview-local-sdk.yml
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
+      - name: Commit local-SDK preview
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "preview: vendor Supabase SDK for one-click test"
+          git push origin HEAD:preview/v0.8.1-feedback-mobile
+          echo "PREVIEW_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - name: Install browser QA
+        run: npm install --no-save playwright
+      - name: Validate public click preview
+        run: |
+          node - <<'NODE'
+          const assert=require('assert');
+          const {chromium}=require('playwright');
+          (async()=>{
+            const sha=process.env.PREVIEW_SHA;
+            const url=`https://raw.githack.com/ajpongpob/Music-Theory-Trainer/${sha}/index.html?qa=${Date.now()}`;
+            const browser=await chromium.launch({headless:true,channel:'chrome'});
+            try{
+              const page=await browser.newPage({viewport:{width:390,height:844}});
+              const errors=[];
+              page.on('pageerror',e=>errors.push(e.message));
+              await page.goto(url,{waitUntil:'networkidle',timeout:60000});
+              await page.waitForTimeout(1500);
+              assert.equal(await page.evaluate(()=>typeof window.supabase?.createClient),'function','Supabase SDK must load locally');
+              assert.equal(await page.evaluate(()=>!!window.MajorScaleApp?.supabaseClient),true,'Supabase client must initialize');
+              assert.equal(await page.locator('#loginButton').isDisabled(),false,'Login button must be enabled');
+              const msg=(await page.locator('#loginMessage').textContent()) || '';
+              assert(!msg.includes('โหลดระบบเข้าสู่ระบบไม่ได้'),'Auth bootstrap must not fail');
+              assert.deepEqual(errors,[],'No page errors');
+              console.log('PASS public one-click preview:',url);
+            } finally { await browser.close(); }
+          })().catch(e=>{console.error(e);process.exit(1);});
+          NODE
