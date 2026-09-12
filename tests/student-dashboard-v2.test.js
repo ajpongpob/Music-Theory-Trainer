@@ -47,6 +47,8 @@ assert(indexHtml.includes('styles/student-dashboard-v2.css?v='), 'Production HTM
 assert(indexHtml.includes('src/data/dashboard.repository.js?v='), 'Production HTML must cache-bust the dashboard repository bootstrap');
 assert(indexHtml.includes('src/dashboard/student-dashboard-v2.js?v='), 'Production HTML must load Dashboard V2 JS directly');
 assert(indexHtml.includes('src/dashboard/student-dashboard-v2-compat.js?v='), 'Production HTML must load Dashboard V2 compatibility layer directly');
+assert.strictEqual((indexHtml.match(/src\/dashboard\/student-dashboard-v2\.js\?v=/g)||[]).length,1,'Production HTML must load Dashboard V2 JS exactly once');
+assert.strictEqual((indexHtml.match(/styles\/student-dashboard-v2\.css\?v=/g)||[]).length,1,'Production HTML must load Dashboard V2 CSS exactly once');
 
 assert(css.includes('.sd2-bottom-nav'), 'Mobile bottom navigation styles must exist');
 assert(css.includes('@media(min-width:760px)'), 'Dashboard must define a desktop enhancement breakpoint');
