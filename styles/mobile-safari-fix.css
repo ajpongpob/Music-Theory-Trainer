@@ -1,0 +1,92 @@
+/* M1 iPhone Safari acceptance fixes.
+   Scope: narrow Trainer layout and touch hit-testing only.
+   Do not change notation/scoring/mastery semantics. */
+
+@media (max-width:815px){
+  html,
+  body{
+    height:auto !important;
+    min-height:100%;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+  }
+
+  body{
+    min-height:100dvh;
+  }
+
+  .session-app{
+    height:auto !important;
+    min-height:100dvh !important;
+    overflow:visible !important;
+  }
+
+  .session-main{
+    min-height:0;
+    grid-template-rows:auto auto auto !important;
+  }
+
+  .workspace-card{
+    min-height:0;
+    overflow:visible !important;
+    grid-template-rows:auto auto auto auto !important;
+  }
+
+  /* Compact notation is three systems on narrow screens. Allow the editor
+     to grow vertically so systems 2-3 cannot be clipped by the old
+     one-viewport workspace constraint. */
+  .workspace-card .score-stage{
+    height:auto !important;
+    min-height:min(94vw,660px) !important;
+    overflow:visible !important;
+    align-items:stretch !important;
+  }
+
+  .workspace-card #scoreSvg{
+    width:100% !important;
+    height:min(94vw,660px) !important;
+    min-height:min(94vw,660px) !important;
+    max-height:none !important;
+    aspect-ratio:auto !important;
+    overflow:visible !important;
+    flex-shrink:0;
+  }
+}
+
+@media (max-width:699px){
+  /* app.css still contains an early sticky palette rule. In Safari that
+     sticky layer can retain a hit box over the navigation row, so taps on
+     arrows may be dispatched to controls in the palette above. */
+  .workspace-card .editor-control-row{
+    position:relative;
+    isolation:isolate;
+    overflow:visible !important;
+    row-gap:10px !important;
+  }
+
+  .workspace-card .notation-palette{
+    position:static !important;
+    top:auto !important;
+    right:auto !important;
+    bottom:auto !important;
+    left:auto !important;
+    z-index:auto !important;
+  }
+
+  .workspace-card .editor-control-row .mobile-note-controls{
+    position:relative;
+    z-index:1;
+    isolation:isolate;
+  }
+
+  .workspace-card .editor-control-row .mobile-note-controls .navbtn{
+    height:44px !important;
+    min-height:44px !important;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  .workspace-card button[data-shortcut]::after{
+    pointer-events:none !important;
+  }
+}
