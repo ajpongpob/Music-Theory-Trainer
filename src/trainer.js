@@ -5,6 +5,7 @@
 const notationCore=window.MajorScaleApp.notationCore;
 const notationRenderer=window.MajorScaleApp.notationRenderer;
 const notationInteraction=window.MajorScaleApp.notationInteraction;
+const notationBeaming=window.MajorScaleApp.notationBeaming;
 const majorScaleModule=window.MajorScaleApp.majorScaleDomain;
 const majorScaleConfig=window.MajorScaleApp.majorScaleConfig;
 const {KEYS,LEVEL_KEYS,LO_META}=majorScaleConfig;
@@ -779,8 +780,10 @@ scoreSvg.addEventListener("pointermove",ev=>{
     return;
   }
 
-  const deltaSteps=Math.round(
-    (noteInteraction.startY-local.y)/(staff.spacing/2)
+  const deltaSteps=notationInteraction.dragDeltaSteps(
+    noteInteraction.startY,
+    local.y,
+    staff.spacing
   );
 
   if(deltaSteps===0 && !noteInteraction.moved) return;
@@ -827,10 +830,10 @@ scoreSvg.addEventListener("pointerup",ev=>{
   ev.preventDefault();
 
   if(noteInteraction.mode==="range"){
-    const completedByDrag=noteInteraction.moved;
-    const completedBySecondTap=
-      state.mobileRangeAnchorIndex>=0 &&
-      noteInteraction.rangeLastIndex!==state.mobileRangeAnchorIndex;
+    const {completedByDrag,completedBySecondTap}=notationInteraction.rangeGestureCompletion(
+      noteInteraction,
+      state.mobileRangeAnchorIndex
+    );
 
     // First tap leaves the mode armed for the final note. A drag or a
     // second tap completes the contiguous range and exits range mode.
@@ -844,15 +847,7 @@ scoreSvg.addEventListener("pointerup",ev=>{
       scoreSvg.releasePointerCapture?.(ev.pointerId);
     }catch(err){}
 
-    noteInteraction.active=false;
-    noteInteraction.pointerId=null;
-    noteInteraction.noteId=null;
-    noteInteraction.noteIndex=-1;
-    noteInteraction.moved=false;
-    noteInteraction.dragSelectionPrepared=false;
-    noteInteraction.mode="note";
-    noteInteraction.rangeAnchorIndex=-1;
-    noteInteraction.rangeLastIndex=-1;
+    notationInteraction.resetPointerInteraction(noteInteraction);
 
     if(!state.sessionComplete) scoreSvg.focus({preventScroll:true});
     return;
@@ -892,15 +887,7 @@ scoreSvg.addEventListener("pointerup",ev=>{
     scoreSvg.releasePointerCapture?.(ev.pointerId);
   }catch(err){}
 
-  noteInteraction.active=false;
-  noteInteraction.pointerId=null;
-  noteInteraction.noteId=null;
-  noteInteraction.noteIndex=-1;
-  noteInteraction.moved=false;
-  noteInteraction.dragSelectionPrepared=false;
-  noteInteraction.mode="note";
-  noteInteraction.rangeAnchorIndex=-1;
-  noteInteraction.rangeLastIndex=-1;
+  notationInteraction.resetPointerInteraction(noteInteraction);
 
   scoreSvg.focus({preventScroll:true});
 });
@@ -915,162 +902,28 @@ scoreSvg.addEventListener("pointercancel",ev=>{
     setMobileRangeSelectMode(false);
   }
 
-  noteInteraction.active=false;
-  noteInteraction.pointerId=null;
-  noteInteraction.noteId=null;
-  noteInteraction.noteIndex=-1;
-  noteInteraction.moved=false;
-  noteInteraction.dragSelectionPrepared=false;
-  noteInteraction.mode="note";
-  noteInteraction.rangeAnchorIndex=-1;
-  noteInteraction.rangeLastIndex=-1;
+  notationInteraction.resetPointerInteraction(noteInteraction);
 });
 
 
 function getBeamDirection(items){
-  // In a beamed group, the beam direction belongs to the whole group.
-  // If any note in the group has a manually selected direction,
-  // use that direction for the complete group.
-  // Otherwise calculate from the first note.
-  const manual=items.find(({n})=>n.stem==="up" || n.stem==="down");
-  if(manual) return manual.n.stem;
-  const first=items[0].n;
-  return first.stem || "up";
+  return notationBeaming.getBeamDirection(items);
 }
 
-
-// Engraving model:
-// Rhythm belongs to each note. Beam only connects notes.
-// Beam level 1 = eighth/sixteenth primary beam.
-// Beam level 2 = sixteenth secondary beam.
 function getBeamLevel(note){
-  if(!note) return 0;
-  if(note.rhythm==="sixteenth") return 2;
-  if(note.rhythm==="eighth") return 1;
-  return 0;
+  return notationBeaming.getBeamLevel(note);
 }
 
 function buildBeamSegments(items){
-  const segments=[];
-  let current=[];
-  items.forEach(item=>{
-    if(getBeamLevel(item.n)>0){
-      current.push(item);
-    }else{
-      if(current.length) segments.push(current);
-      current=[];
-    }
-  });
-  if(current.length) segments.push(current);
-  return segments;
+  return notationBeaming.buildBeamSegments(items);
 }
 
 function drawBeams(){
- // Engraving model:
- // Rhythm belongs to each note.
- // Beam is only a visual connection between notes.
- //
- // Level 1 = primary beam (eighth connection)
- // Level 2 = secondary beam (sixteenth connection)
- //
- // Secondary beam logic:
- // A sixteenth note does not decide hook direction by itself.
- // It depends on neighbouring beamable notes.
- // This prevents the terminal 16th after an 8th group from
- // producing an outward hook.
-
- const groups={};
- state.notes.forEach((n,i)=>{
-   if(n && n.beamGroup){
-     (groups[n.beamGroup] ||= []).push({n,i});
-   }
- });
-
- Object.values(groups).forEach(items=>{
-   items.sort((a,b)=>a.i-b.i);
-   items=items.filter(({n})=>["eighth","sixteenth"].includes(n.rhythm));
-   if(items.length<2)return;
-
-   const dir=getBeamDirection(items);
-
-   const notes=items.map(({n,i})=>{
-     const y=stepToY(pitchToStep(n.letter,n.octave));
-     return {
-       n,
-       i,
-       x:noteXs[i]+(dir==="up"?10:-10),
-       y,
-       level:getBeamLevel(n)
-     };
-   });
-
-   const beamY=dir==="up"
-     ? Math.min(...notes.map(p=>p.y-55))
-     : Math.max(...notes.map(p=>p.y+55));
-
-   // stems to primary beam
-   notes.forEach(p=>{
-     scoreSvg.appendChild(el("line",{
-       x1:p.x,y1:p.y,x2:p.x,y2:beamY,
-       stroke:"#111","stroke-width":2.3
-     }));
-   });
-
-   // Primary beam
-   const first=notes[0], last=notes[notes.length-1];
-   scoreSvg.appendChild(el("polygon",{
-     points:`${first.x},${beamY} ${last.x},${beamY} ${last.x},${beamY+(dir==="up"?8:-8)} ${first.x},${beamY+(dir==="up"?8:-8)}`,
-     fill:"#111"
-   }));
-
-   const secondaryY=beamY+(dir==="up"?10:-10);
-   const thickness=8;
-
-   function drawSecondaryBeam(x1,x2){
-     scoreSvg.appendChild(el("polygon",{
-       points:`${x1},${secondaryY} ${x2},${secondaryY} ${x2},${secondaryY+(dir==="up"?thickness:-thickness)} ${x1},${secondaryY+(dir==="up"?thickness:-thickness)}`,
-       fill:"#111"
-     }));
-   }
-
-   // Secondary beam rendering
-   notes.forEach((p,index)=>{
-     if(p.level!==2)return;
-
-     const prev=notes[index-1];
-     const next=notes[index+1];
-
-     const prevSixteenth=prev && prev.level===2;
-     const nextSixteenth=next && next.level===2;
-
-     // Full secondary beam between consecutive sixteenth notes
-     if(nextSixteenth){
-       drawSecondaryBeam(p.x,next.x);
-       return;
-     }
-
-     // Do not draw again if previous sixteenth already connected us
-     if(prevSixteenth)return;
-
-     // Sixteenth after an eighth:
-     // create inward hook toward the previous note.
-     if(prev && prev.level>=1){
-       // Hook direction follows the neighbouring note, not the stem.
-       // A terminal sixteenth always points inward to its predecessor.
-       const hookStart=p.x-12;
-       drawSecondaryBeam(hookStart,p.x);
-       return;
-     }
-
-     // Sixteenth before an eighth:
-     // create outward-starting hook toward the following note.
-     if(next && next.level>=1){
-       // An initial isolated sixteenth points inward to its successor.
-       const hookEnd=p.x+12;
-       drawSecondaryBeam(p.x,hookEnd);
-     }
-   });
- });
+  return notationBeaming.drawBeams(scoreSvg,state.notes,noteXs,{
+    stepToY,
+    pitchToStep,
+    createSvgElement:el
+  });
 }
 
 function staffStepToPitch(step){
@@ -1332,48 +1185,9 @@ document.getElementById("rangeSelectToggle").addEventListener("click",()=>{
 });
 
 function normalizeBeamGroups(){
-  const groups=new Map();
-  state.notes.forEach((n,i)=>{
-    if(n && n.beamGroup!=null){
-      if(!groups.has(n.beamGroup)) groups.set(n.beamGroup,[]);
-      groups.get(n.beamGroup).push(i);
-    }
-  });
-
-  groups.forEach(indices=>{
-    indices.sort((a,b)=>a-b);
-    const runs=[];
-    let run=[];
-
-    const flush=()=>{
-      if(run.length) runs.push(run);
-      run=[];
-    };
-
-    indices.forEach(i=>{
-      const n=state.notes[i];
-      const beamable=!!n && ["eighth","sixteenth"].includes(n.rhythm);
-      const sameMeasure=run.length===0 || Math.floor(i/7)===Math.floor(run[0]/7);
-      const contiguous=run.length===0 || i===run[run.length-1]+1;
-
-      if(!beamable){
-        if(n) n.beamGroup=null;
-        flush();
-        return;
-      }
-      if(!sameMeasure || !contiguous) flush();
-      run.push(i);
-    });
-    flush();
-
-    runs.forEach((indicesInRun,runIndex)=>{
-      if(indicesInRun.length<2){
-        indicesInRun.forEach(i=>{ if(state.notes[i]) state.notes[i].beamGroup=null; });
-        return;
-      }
-      const gid=runIndex===0 ? state.notes[indicesInRun[0]].beamGroup : newBeamGroupId();
-      indicesInRun.forEach(i=>{ state.notes[i].beamGroup=gid; });
-    });
+  return notationBeaming.normalizeBeamGroups(state.notes,{
+    newGroupId:newBeamGroupId,
+    measureOfIndex:i=>Math.floor(i/7)
   });
 }
 
@@ -1462,18 +1276,20 @@ document.getElementById("resetScore").onclick=()=>{
 };
 document.getElementById("beamSelected").onclick=()=>{
  const idx=state.notes.map((n,i)=>n&&state.selectedIds.has(n.id)?i:null).filter(i=>i!==null).sort((a,b)=>a-b);
- if(idx.length<2)return alert("เลือกอย่างน้อย 2 โน้ต: คลิกตัวแรก แล้ว Shift+Click ตัวสุดท้าย หรือใช้ปุ่ม เลือกหลายโน้ต");
- if(idx.some((v,i)=>i>0&&v!==idx[i-1]+1))return alert("กรุณาเลือกโน้ตที่อยู่ติดกัน");
- if(idx.some(i=>!["eighth","sixteenth"].includes(state.notes[i].rhythm)))return alert("Beam ได้เฉพาะ eighth/sixteenth notes");
- if(idx.some(i=>Math.floor(i/7)!==Math.floor(idx[0]/7)))return alert("เลือกโน้ตในห้องเดียวกันเพื่อ Beam");
+ const validation=notationBeaming.validateBeamSelection(idx,state.notes,i=>Math.floor(i/7));
+ if(!validation.ok){
+   if(validation.reason==="minimum") return alert("เลือกอย่างน้อย 2 โน้ต: คลิกตัวแรก แล้ว Shift+Click ตัวสุดท้าย หรือใช้ปุ่ม เลือกหลายโน้ต");
+   if(validation.reason==="contiguous") return alert("กรุณาเลือกโน้ตที่อยู่ติดกัน");
+   if(validation.reason==="rhythm") return alert("Beam ได้เฉพาะ eighth/sixteenth notes");
+   if(validation.reason==="measure") return alert("เลือกโน้ตในห้องเดียวกันเพื่อ Beam");
+ }
  const gid=newBeamGroupId();
  const groupDir=effectiveStem(state.notes[idx[0]]) || autoStem(state.notes[idx[0]].letter,state.notes[idx[0]].octave);
- idx.forEach(i=>{state.notes[i].beamGroup=gid;state.notes[i].stem=groupDir;});
+ notationBeaming.applyBeamGroup(state.notes,idx,gid,groupDir);
  normalizeBeamGroups();render();
 };
 document.getElementById("unbeamSelected").onclick=()=>{
-  const groups=new Set(state.notes.filter(n=>n && state.selectedIds.has(n.id) && n.beamGroup!=null).map(n=>n.beamGroup));
-  state.notes.forEach(n=>{if(n && groups.has(n.beamGroup)) n.beamGroup=null;});
+  notationBeaming.clearSelectedBeamGroups(state.notes,state.selectedIds);
   normalizeBeamGroups();
   render();
 };
@@ -1509,21 +1325,7 @@ function effectiveStem(note){
 }
 
 function beamGroupSignatures(notes){
-  const groups=new Map();
-
-  notes.forEach((n,i)=>{
-    if(!n || !n.beamGroup) return;
-
-    if(!groups.has(n.beamGroup)){
-      groups.set(n.beamGroup,[]);
-    }
-
-    groups.get(n.beamGroup).push(i);
-  });
-
-  return [...groups.values()]
-    .map(indices=>indices.sort((a,b)=>a-b).join("-"))
-    .sort();
+  return notationBeaming.beamGroupSignatures(notes);
 }
 
 function check(){

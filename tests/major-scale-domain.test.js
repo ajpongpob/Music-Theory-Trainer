@@ -6,6 +6,7 @@ const golden=JSON.parse(read('tests/fixtures/major-scale-v080b-golden.json'));
 const trainer=read('src/trainer.js');
 const ctx={window:{}};vm.createContext(ctx);
 vm.runInContext(read('src/domain/notation/notation-core.js'),ctx);
+vm.runInContext(read('src/domain/notation/notation-beaming.js'),ctx);
 for(const file of ['major-scale.config.js','major-scale.domain.js']){
   const source=read('src/exercises/major-scale/'+file);
   assert(!/\bdocument\b|\bsupabase\b|\bfetch\s*\(|\beval\s*\(|new Function|import\s*\(/i.test(source),'pure module must not access UI/backend or dynamic code');
@@ -26,7 +27,7 @@ const slice=(a,b)=>trainer.slice(trainer.indexOf(a),trainer.indexOf(b));
 const helpers=slice('function autoStem(','/* Fixed 3-measure pattern:')+
   slice('function pitchToStep(','function stepToPitch(')+
   slice('function effectiveStem(','function check(){');
-vm.runInContext('const notationCore=window.MajorScaleApp.notationCore;\nconst LETTERS=["C","D","E","F","G","A","B"];\n'+helpers+
+vm.runInContext('const notationCore=window.MajorScaleApp.notationCore;\nconst notationBeaming=window.MajorScaleApp.notationBeaming;\nconst LETTERS=["C","D","E","F","G","A","B"];\n'+helpers+
   '\nwindow.rules=window.MajorScaleApp.majorScaleDomain.createRules({autoStem,beamStemDirectionFromNotes,pitchToStep,effectiveStem,beamGroupSignatures});',ctx);
 const rules=ctx.window.rules;
 for(const fixture of golden.scales){
@@ -59,7 +60,8 @@ const restoreFeedback=require('./helpers/restore-feedback-answer-snapshot.cjs');
 const restoreNarrow=require('./helpers/restore-narrow-notation-layout.cjs');
 const restoreLayout=require('./helpers/restore-renderer-score-layout.cjs');
 const restoreInteraction=require('./helpers/restore-notation-interaction.cjs');
-let restored=require('./helpers/restore-notation-baseline.cjs')(restoreRenderer(restoreStatic(restoreNote(restoreFeedback(restoreNarrow(restoreLayout(restoreInteraction(trainer,'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js');
+const restoreBeaming=require('./helpers/restore-notation-beaming.cjs');
+let restored=require('./helpers/restore-notation-baseline.cjs')(restoreRenderer(restoreStatic(restoreNote(restoreFeedback(restoreNarrow(restoreLayout(restoreInteraction(restoreBeaming(trainer,'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js');
 for(const {before,after,offset} of [...boundary.substitutions].reverse()){
   assert.equal(restored.slice(offset,offset+after.length),after,'extraction wrapper changed unexpectedly');
   restored=restored.slice(0,offset)+before+restored.slice(offset+after.length);
