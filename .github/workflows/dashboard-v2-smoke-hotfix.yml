@@ -18,7 +18,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Make dashboard smoke harness accept cache-busted scripts
+      - name: Make legacy dashboard smoke harness accept cache-busted scripts
         shell: bash
         run: |
           python - <<'PY'
@@ -30,7 +30,7 @@ jobs:
           if len(hits) != 1:
               raise SystemExit(f'Expected exactly one script extraction line, found {len(hits)}')
           i = hits[0]
-          lines[i] = "  const scripts=[...html.matchAll(/<script\\s+src=\"\\.\\/(src\\/[^\"?#]+\\.js)(?:[?#][^\"]*)?\"/g)].map(m=>m[1]).filter(f=>!['src/trainer.js','src/keyboard.js'].includes(f));"
+          lines[i] = "  const scripts=[...html.matchAll(/<script\\s+src=\"\\.\\/(src\\/[^\"?#]+\\.js)(?:[?#][^\"]*)?\"/g)].map(m=>m[1]).filter(f=>!['src/trainer.js','src/keyboard.js','src/dashboard/student-dashboard-v2.js','src/dashboard/student-dashboard-v2-compat.js'].includes(f));"
           path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
           PY
 
