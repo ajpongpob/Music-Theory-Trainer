@@ -1,0 +1,12 @@
+'use strict';
+const fs=require('fs'),path=require('path');
+const root=path.resolve(__dirname,'..');
+const file=path.join(root,'tests/major-scale-domain.test.js');
+let source=fs.readFileSync(file,'utf8');
+const before="let restored=require('./helpers/restore-notation-baseline.cjs')(trainer,'src/trainer.js');";
+const after="const restoreRenderer=require('./helpers/restore-renderer-foundation.cjs');\nlet restored=require('./helpers/restore-notation-baseline.cjs')(restoreRenderer(trainer,'src/trainer.js'),'src/trainer.js');";
+if(!source.includes(before)) throw new Error('missing expected Major Scale boundary restore line');
+if(source.includes(after)) throw new Error('Major Scale boundary restore already patched');
+source=source.replace(before,after);
+fs.writeFileSync(file,source);
+console.log('Patched Major Scale boundary restoration for renderer foundation');
