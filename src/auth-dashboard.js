@@ -74,11 +74,16 @@ async function resolveAuthenticatedRole() {
   if(error) throw error;
   return data?.role || 'student';
 }
+async function closeActiveExercise() {
+  const host=app.exerciseHost;
+  if(host?.getCurrentContext()) return host.close();
+  const close=window.majorScaleTrainerClosePracticeSession;
+  if(typeof close==='function') return close();
+}
 async function showTeacherDashboardForAuthenticatedUser({closeSession=false}={}) {
   if(!activeUser) return;
   if(closeSession){
-    const closeTrainerSession=window.majorScaleTrainerClosePracticeSession;
-    if(typeof closeTrainerSession==='function') await closeTrainerSession();
+    await closeActiveExercise();
   }
   screen.hidden=true;
   dashboard.hidden=true; dashboard.inert=true;
@@ -103,8 +108,7 @@ async function showDashboardForAuthenticatedUser({closeSession=false}={}) {
     return;
   }
   if(closeSession){
-    const closeTrainerSession=window.majorScaleTrainerClosePracticeSession;
-    if(typeof closeTrainerSession==='function') await closeTrainerSession();
+    await closeActiveExercise();
   }
   screen.hidden=true;
   teacherDashboard.hidden=true; teacherDashboard.inert=true;
@@ -292,12 +296,7 @@ $('logoutButton').addEventListener('click', async () => {
   if (busy || !ready) return;
   busy = true; controls();
   try {
-    const closeTrainerSession=
-      window.majorScaleTrainerClosePracticeSession;
-
-    if(typeof closeTrainerSession==="function"){
-      await closeTrainerSession();
-    }
+    await closeActiveExercise();
 
     const {error} = await authRepository.signOutLocal();
     if (error) throw error;
@@ -345,4 +344,3 @@ async function initializeAuth() {
 // Wait until the existing trainer has installed its event handlers.
 document.addEventListener('DOMContentLoaded', initializeAuth, {once:true});
 })();
-

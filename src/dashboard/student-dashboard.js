@@ -314,30 +314,13 @@ async function loadStudentDashboard() {
 
 async function openExerciseFromDashboard(exerciseCode,stageCode) {
   if(dashboardOpening) return;
-  if(exerciseCode!=='MAJOR_SCALE_NOTATION'){
-    alert('แบบฝึกหัดนี้ยังไม่มีหน้าฝึกในเวอร์ชันปัจจุบัน');
-    return;
-  }
   dashboardOpening=true;
   try{
-    const match=/^STAGE_(\d+)$/.exec(stageCode || '');
-    const select=$('levelSelect');
-    if(match && select) select.value=String(Number(match[1]));
-
-    dashboard.hidden=true;
-    dashboard.inert=true;
-    teacherDashboard.hidden=true;
-    teacherDashboard.inert=true;
-    trainer.hidden=false;
-    trainer.inert=false;
-
-    const startTrainer=window.majorScaleTrainerStartForAuthenticatedUser;
-    const requestedLevel=match ? Number(match[1]) : null;
-    if(typeof startTrainer==='function') await startTrainer(requestedLevel);
-    else $('restartSession').click();
-
-    requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
-    requestAnimationFrame(() => window.dispatchEvent(new Event('major-scale-trainer-visible')));
+    const host=app.exerciseHost;
+    if(!host) throw new Error('Exercise Host ยังไม่พร้อมใช้งาน');
+    const result=await host.launch({exerciseCode,stageCode,userId:activeUser});
+    if(!result.ok && result.message) alert(result.message);
+    return result;
   }catch(error){
     console.error('OPEN EXERCISE FROM DASHBOARD ERROR:',error);
     trainer.hidden=true;
@@ -360,6 +343,7 @@ app.studentDashboard = Object.freeze({
     return openExerciseFromDashboard(exerciseCode, stageCode);
   },
   invalidate() {
+    app.exerciseHost?.close();
     activeUser = null;
     dashboardLoadToken++;
     dashboardOpening = false;

@@ -1,40 +1,17 @@
-# v0.8.0-a Validation
+# v0.8.1-a Validation
 
-## Status
+- Baseline c: 15 suites + actual Chrome browser + syntax/static checks passed before extraction.
+- Characterization ran against original source before moving helpers: PASS.
+- Target 38 JavaScript/CJS syntax checks: PASS.
+- All 17 unit/contract/structural suites: PASS.
+- Actual Chrome browser regression with fixture backend: PASS.
+- Shared core golden checks: 63 pitches, 50 steps, 11 clamps, 12 accidental cases, 21 lookup cases, 20 unit cases and 80 movement cases: PASS.
+- Existing Major Scale golden checks: 29 keys / 261 evaluations / 24 generation sequences: PASS.
+- Historical final-sixteenth inward hook, both stems: PASS.
+- Exact a→c source reconstruction and inherited c→b reconstruction: PASS.
+- Protected production file hashes and unchanged keyboard.js: PASS.
+- 104 unique DOM IDs, no missing literal references, 20 local HTML assets: PASS.
+- Static HTTP: 21 production files under project subpath, HTTP 200 and identical bytes: PASS.
+- Script order, production security and core leakage scan: PASS.
 
-PASS in local structural/runtime QA.
-
-## Automated validation completed
-
-- 14 source JavaScript files pass syntax validation.
-- 10 test files pass.
-- Existing v0.7.5 regression suite remains green after updating only the intentional application-version expectation.
-- Exercise Contract/Registry contract tests pass.
-- Exercise architecture-boundary test passes.
-- Package static-integrity test passes: 104 unique DOM IDs and 15 local assets.
-- Static server smoke checks return HTTP 200 for representative runtime assets.
-- Frontend runtime security scan finds no `service_role`.
-
-## Change boundary
-
-Compared with user-verified v0.7.5:
-
-- Existing Auth, Dashboard, repository, Keyboard, and CSS runtime files are byte-for-byte unchanged.
-- `trainer.js` changes only the application-version string.
-- `index.html` changes only the version and three Exercise infrastructure script tags.
-- New runtime files are limited to:
-  - `src/exercises/exercise-contract.js`
-  - `src/exercises/exercise-registry.js`
-  - `src/exercises/major-scale/exercise.definition.js`
-
-The Student Dashboard still routes `MAJOR_SCALE_NOTATION` through the legacy Major Scale runtime. This is intentional; registry-driven launch begins in v0.8.0-b.
-
-## Deployment verification still required
-
-After deployment to GitHub Pages, confirm:
-- no console errors at startup;
-- Student and Teacher Dashboard flows;
-- Major Scale Continue/Review launch;
-- result-feedback transition and Natural `.` shortcut;
-- 5-question session and mastery/progression;
-- notation regression checks, especially secondary beams.
+See DELIVERY-CHECKS.txt for ZIP integrity and clean extracted test/browser reruns. Live backend, physical touch hardware and exhaustive cross-browser QA were not run and are not claimed as passed.

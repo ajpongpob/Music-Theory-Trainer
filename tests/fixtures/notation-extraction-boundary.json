@@ -1,0 +1,121 @@
+{
+  "baseline": "v0.8.0-c",
+  "files": {
+    "src/trainer.js": {
+      "sha256": "da5a66ea038df9bf4b4ee351926346a35b097cc7aa41f54f6f840ae2981678c0",
+      "substitutions": [
+        {
+          "before": "function pitchToStep(letter,octave){return octave*7+LETTERS.indexOf(letter)-(4*7+LETTERS.indexOf(\"E\"))}",
+          "after": "function pitchToStep(letter,octave){return notationCore.pitchToStep(letter,octave);}",
+          "offset": 4119
+        },
+        {
+          "before": "function stepToPitch(step){const idx=4*7+LETTERS.indexOf(\"E\")+step;return{letter:LETTERS[(idx%7+7)%7],octave:Math.floor(idx/7)}}",
+          "after": "function stepToPitch(step){return notationCore.stepToPitch(step);}",
+          "offset": 4204
+        },
+        {
+          "before": "function musicEm(staffObj){ return staffObj.spacing*4; }",
+          "after": "function musicEm(staffObj){return notationCore.musicEm(staffObj);}",
+          "offset": 3587
+        },
+        {
+          "before": "function sp(staffObj,value=1){ return staffObj.spacing*value; }",
+          "after": "function sp(staffObj,value=1){return notationCore.sp(staffObj,value);}",
+          "offset": 3654
+        },
+        {
+          "before": "function clampStaffStep(step){\n  return Math.max(MIN_STAFF_STEP,Math.min(MAX_STAFF_STEP,step));\n}",
+          "after": "function clampStaffStep(step){\n  return notationCore.clampStaffStep(step,MIN_STAFF_STEP,MAX_STAFF_STEP);\n}",
+          "offset": 10231
+        },
+        {
+          "before": "const rhythm={\"1\":\"whole\",\"2\":\"half\",\"3\":\"quarter\",\"4\":\"eighth\",\"5\":\"sixteenth\"}[key];",
+          "after": "const rhythm=notationCore.rhythmFromShortcut(key);",
+          "offset": 109051
+        },
+        {
+          "before": "const accidental={\".\":\"\",\"+\":\"#\",\"-\":\"b\",\"*\":\"##\",\"/\":\"bb\"}[key];",
+          "after": "const accidental=notationCore.accidentalFromShortcut(key);",
+          "offset": 109186
+        },
+        {
+          "before": "const majorScaleModule=",
+          "after": "const notationCore=window.MajorScaleApp.notationCore;\nconst majorScaleModule=",
+          "offset": 25
+        },
+        {
+          "before": "app_version:\"0.8.0-c\"",
+          "after": "app_version:\"0.8.1-a\"",
+          "offset": 62506
+        }
+      ]
+    },
+    "src/exercises/major-scale/major-scale.domain.js": {
+      "sha256": "14f946c4642caf5973d536bcf9825cef9f0ad12cc0ba211119ccbfa6723b2c51",
+      "substitutions": [
+        {
+          "before": "function accidentalOffset(a){\n const offsets={\"\":0,\"#\":1,\"b\":-1,\"##\":2,\"bb\":-2};\n if(!Object.prototype.hasOwnProperty.call(offsets,a))throw new Error(\"รองรับเครื่องหมายถึง Double Sharp/Flat เท่านั้น\");\n return offsets[a];\n}\n",
+          "after": "function accidentalOffset(a){return app.notationCore.accidentalOffset(a);}\n",
+          "offset": 337
+        }
+      ]
+    },
+    "index.html": {
+      "sha256": "87ba3f47b49686eaea3386f69a1b6597e5a5b46df53e41bb9955e4eec0cacc86",
+      "substitutions": [
+        {
+          "before": "0.8.0-c",
+          "after": "0.8.1-a",
+          "offset": 165
+        },
+        {
+          "before": "0.8.0-c",
+          "after": "0.8.1-a",
+          "offset": 12358
+        },
+        {
+          "before": "<script src=\"./src/exercises/exercise-contract.js\"",
+          "after": "<script src=\"./src/domain/notation/notation-core.js\"></script>\n<script src=\"./src/exercises/exercise-contract.js\"",
+          "offset": 31413
+        }
+      ]
+    },
+    "src/exercises/major-scale/exercise.definition.js": {
+      "sha256": "0bb992b46ff95d12822048739444fe8f140e89077dc86d0eeabc8fdd60045451",
+      "substitutions": [
+        {
+          "before": "0.8.0-c",
+          "after": "0.8.1-a",
+          "offset": 760
+        }
+      ]
+    }
+  },
+  "coreExactCopies": [
+    "function pitchToStep(letter,octave){return octave*7+LETTERS.indexOf(letter)-(4*7+LETTERS.indexOf(\"E\"))}",
+    "function stepToPitch(step){const idx=4*7+LETTERS.indexOf(\"E\")+step;return{letter:LETTERS[(idx%7+7)%7],octave:Math.floor(idx/7)}}",
+    "function musicEm(staffObj){ return staffObj.spacing*4; }",
+    "function sp(staffObj,value=1){ return staffObj.spacing*value; }",
+    "function clampStaffStep(step,MIN_STAFF_STEP,MAX_STAFF_STEP){\n  return Math.max(MIN_STAFF_STEP,Math.min(MAX_STAFF_STEP,step));\n}",
+    "function accidentalOffset(a){\n const offsets={\"\":0,\"#\":1,\"b\":-1,\"##\":2,\"bb\":-2};\n if(!Object.prototype.hasOwnProperty.call(offsets,a))throw new Error(\"รองรับเครื่องหมายถึง Double Sharp/Flat เท่านั้น\");\n return offsets[a];\n}"
+  ],
+  "protectedProduction": {
+    "src/auth-dashboard.js": "151ea456d897e498c41a3450e5269a02cee279f0de245baf785560642ef29740",
+    "src/dashboard/dashboard-utils.js": "380eb9db36c240a07fb1740ca3ef9aa0bdc28e427bac8bc2881aeb403ce58f1a",
+    "src/dashboard/student-dashboard.js": "03a56f87d02c70a641b0212b908e37d8d1a56a966ef4a62a0e1b0742aade64a5",
+    "src/dashboard/teacher-dashboard.js": "4920eda99d12e1efd05594bfd8cf33a335db64f0a07015dc2b9bfac91f1143c5",
+    "src/data/auth.repository.js": "2b40efeb61e0fc22a93988d5740db682545bb09d771c83d069674965d5951d75",
+    "src/data/dashboard.repository.js": "87de0eca1cd6172aee3e04918a42b3955753d7c1683b4593bfc5e059cef99bb1",
+    "src/data/mastery.repository.js": "48d751769306190245a812ee5db1f39deb0ce641e0a2eef6f39443cd59553c14",
+    "src/data/practice.repository.js": "074e0c6aab3dc39658acdf8c12180cae579d0a302120493412181ea669294f58",
+    "src/data/supabase-client.js": "ff5c08ea7fccaf26c2928b9e5c8a3f7fec873208d23081df2e8c213b3c43a819",
+    "src/exercises/exercise-contract.js": "36422ddc4bdd3ab9da715ee9ed4d2d51e0a8026a2ac98eac79a066bf9a92b142",
+    "src/exercises/exercise-host.js": "3166e2b584e6b99f085c4b75d91aadd564f1e1220dafee5395c2d12d4cf7555b",
+    "src/exercises/exercise-registry.js": "93169fe67409fb52485a91145823c1e8bf23339478fb30bbb345c70f2f6c6a57",
+    "src/exercises/major-scale/major-scale.config.js": "a5800da5f80120891d234d47e24a752b942254b90c9b5d6605a6d2a50e227ff4",
+    "src/exercises/major-scale/runtime-adapter.js": "a03b2c603d3b43770517d689ab51a38e7b69bfa6cd5d586a95e16c2984126b43",
+    "src/keyboard.js": "d5f976408a159011a432c280477f2501d80f3bc67c872619185bc4727243f7a4",
+    "styles/app.css": "2c6eaf732d29e693881449d1c0a6f82935348ff70eff1e4690ab4a700092450f"
+  }
+}

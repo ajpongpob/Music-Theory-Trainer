@@ -1,0 +1,13 @@
+v0.8.1-a delivery validation
+
+Project: 17 automated test files PASS; actual Chrome browser suite PASS; 38 syntax checks PASS.
+ZIP integrity / CRC: PASS.
+Clean extracted directory: all 17 test files PASS.
+Clean extracted directory: actual Chrome browser regression PASS (fixture backend).
+Static HTTP: all 21 production files return 200 with exact packaged bytes.
+DOM: 104 unique IDs, 20 local HTML assets, no missing literal references.
+Source reconstruction and protected production hashes: PASS.
+Shared core characterization and inherited Major Scale golden results: PASS.
+Final archive: Major-Scale-Notation-Trainer-v0.8.1-a-QA-passed.zip.
+Live backend, physical touch hardware and cross-browser manual QA were not performed.
+No deployment, commit or database change.

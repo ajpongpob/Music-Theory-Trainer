@@ -147,6 +147,26 @@ async function runScenario(scenario){
     check('path rendered',get('dashboardPathList').innerHTML.includes('MUSIC_THEORY_FOUNDATIONS'));
     check('stage2 rendered',get('dashboardPathList').innerHTML.includes('Stage 2'));
     check('mastery rendered',get('dashboardMasteryBody').innerHTML.includes('80%'),get('dashboardMasteryBody').innerHTML.slice(0,200));
+    let launchCount=0,closeCount=0,lastLevel=null;
+    ctx.majorScaleTrainerStartForAuthenticatedUser=async level=>{launchCount++;lastLevel=level;};
+    ctx.majorScaleTrainerClosePracticeSession=async()=>{closeCount++;};
+    const clickExercise=code=>get('studentDashboard').dispatch('click',{
+      target:{closest(){return {dataset:{exerciseCode:code,stageCode:'STAGE_2'}};}}
+    });
+    clickExercise(' major_scale_notation ');clickExercise(' major_scale_notation ');
+    await new Promise(r=>setTimeout(r,20));
+    check('Dashboard Host adapter launches exactly once',launchCount===1 && lastLevel===2);
+    check('Host receives stage and user',ctx.MajorScaleApp.exerciseHost.getCurrentContext()?.stageCode==='STAGE_2' && ctx.MajorScaleApp.exerciseHost.getCurrentContext()?.userId==='student-1');
+    check('trainer visible through adapter',get('trainerApp').hidden===false);
+    get('dashboardButton').click();await new Promise(r=>setTimeout(r,30));
+    check('return clears Host and closes once',ctx.MajorScaleApp.exerciseHost.getCurrentContext()===null && closeCount===1);
+    check('return refreshes Dashboard',get('studentDashboard').hidden===false);
+    clickExercise('INTERVAL_WRITING');await new Promise(r=>setTimeout(r,10));
+    check('unsupported stays Dashboard without Major Scale launch',launchCount===1 && get('studentDashboard').hidden===false);
+    clickExercise('MAJOR_SCALE_NOTATION');await new Promise(r=>setTimeout(r,10));
+    check('reopen after return',launchCount===2);
+    get('logoutButton').click();await new Promise(r=>setTimeout(r,20));
+    check('logout clears Host and closes once more',ctx.MajorScaleApp.exerciseHost.getCurrentContext()===null && closeCount===2);
   }
   if(scenario==='loginTeacher'){
     check('auth initially visible',get('authScreen').hidden===false,get('authScreen').hidden);

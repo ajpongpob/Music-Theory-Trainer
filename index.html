@@ -1,7 +1,7 @@
 <html lang="th" class=""><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Major Scale Notation Trainer — v0.8.0-a</title>
+<title>Major Scale Notation Trainer — v0.8.1-a</title>
 <link rel="stylesheet" href="./styles/app.css">
 </head>
 <body>
@@ -394,7 +394,7 @@
       </label>
       <button type="button" id="dashboardButton" class="btn auth-logout">แดชบอร์ด</button>
       <button type="button" id="logoutButton" class="btn auth-logout">ออกจากระบบ</button>
-      <span class="pill">v0.8.0-a</span>
+      <span class="pill">v0.8.1-a</span>
   </header>
 
   <main class="session-main">
@@ -606,8 +606,13 @@
 <script src="./src/data/dashboard.repository.js"></script>
 <script src="./src/data/practice.repository.js"></script>
 <script src="./src/data/mastery.repository.js"></script>
+<script src="./src/domain/notation/notation-core.js"></script>
 <script src="./src/exercises/exercise-contract.js"></script>
 <script src="./src/exercises/exercise-registry.js"></script>
+<script src="./src/exercises/exercise-host.js"></script>
+<script src="./src/exercises/major-scale/major-scale.config.js"></script>
+<script src="./src/exercises/major-scale/major-scale.domain.js"></script>
+<script src="./src/exercises/major-scale/runtime-adapter.js"></script>
 <script src="./src/exercises/major-scale/exercise.definition.js"></script>
 <script src="./src/dashboard/dashboard-utils.js"></script>
 <script src="./src/dashboard/student-dashboard.js"></script>

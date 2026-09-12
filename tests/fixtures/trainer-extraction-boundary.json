@@ -1,0 +1,105 @@
+{
+  "baselineSha256": "cfc3875950d282b4b882d541e9708c46cd07a99f16ba1bcd6805704bcd475f41",
+  "substitutions": [
+    {
+      "before": "const KEYS=[\n{name:\"C major\",tonic:\"C\",acc:0,type:\"natural\"},\n{name:\"G major\",tonic:\"G\",acc:1,type:\"sharp\"},{name:\"D major\",tonic:\"D\",acc:2,type:\"sharp\"},\n{name:\"A major\",tonic:\"A\",acc:3,type:\"sharp\"},{name:\"E major\",tonic:\"E\",acc:4,type:\"sharp\"},\n{name:\"B major\",tonic:\"B\",acc:5,type:\"sharp\"},{name:\"F# major\",tonic:\"F#\",acc:6,type:\"sharp\"},\n{name:\"C# major\",tonic:\"C#\",acc:7,type:\"sharp\"},\n{name:\"F major\",tonic:\"F\",acc:1,type:\"flat\"},{name:\"Bb major\",tonic:\"Bb\",acc:2,type:\"flat\"},\n{name:\"Eb major\",tonic:\"Eb\",acc:3,type:\"flat\"},{name:\"Ab major\",tonic:\"Ab\",acc:4,type:\"flat\"},\n{name:\"Db major\",tonic:\"Db\",acc:5,type:\"flat\"},{name:\"Gb major\",tonic:\"Gb\",acc:6,type:\"flat\"},\n{name:\"Cb major\",tonic:\"Cb\",acc:7,type:\"flat\"},\n...[\"G#\",\"D#\",\"A#\",\"E#\",\"B#\",\"F##\",\"C##\"].map((tonic,i)=>({name:tonic.replace('##','𝄪')+' major',tonic,acc:8+i,type:\"sharp\"})),\n...[\"Fb\",\"Bbb\",\"Ebb\",\"Abb\",\"Dbb\",\"Gbb\",\"Cbb\"].map((tonic,i)=>({name:tonic.replace('bb','𝄫')+' major',tonic,acc:8+i,type:\"flat\"}))];\n",
+      "after": "const majorScaleModule=window.MajorScaleApp.majorScaleDomain;\nconst {KEYS,LEVEL_KEYS,LO_META}=window.MajorScaleApp.majorScaleConfig;\nconst majorScaleRules=majorScaleModule.createRules({autoStem,beamStemDirectionFromNotes,pitchToStep,effectiveStem,beamGroupSignatures});\n",
+      "offset": 25
+    },
+    {
+      "before": "const LEVEL_KEYS={\n  1:[\"C\",\"F\",\"Bb\",\"G\",\"D\"],\n  2:[\"A\",\"E\",\"B\",\"Eb\",\"Ab\",\"Db\"],\n  3:[\"Gb\",\"Cb\",\"F#\",\"C#\",\"G#\",\"Fb\",\"D#\",\"Bbb\"],\n  4:[\"A#\",\"Ebb\",\"E#\",\"Abb\",\"B#\",\"Dbb\",\"F##\",\"Gbb\",\"C##\",\"Cbb\"]\n};\n\nconst LO_META={\n  BN01_TREBLE_PITCH:{\n    code:\"BN01_TREBLE_PITCH\",\n    short:\"Treble Pitch\",\n    th:\"ตำแหน่งระดับเสียงบนกุญแจซอล\"\n  },\n  BN06_STEM_DIRECTION:{\n    code:\"BN06_STEM_DIRECTION\",\n    short:\"Stem Direction\",\n    th:\"ทิศทางก้านโน้ต\"\n  },\n  RH01_DURATION_VALUE:{\n    code:\"RH01_DURATION_VALUE\",\n    short:\"Duration Value\",\n    th:\"ค่าความยาวตัวโน้ต\"\n  },\n  GR02_PRIMARY_BEAM:{\n    code:\"GR02_PRIMARY_BEAM\",\n    short:\"Primary Beam\",\n    th:\"การเชื่อม Primary Beam\"\n  },\n  MS03_SCALE_ACCIDENTAL:{\n    code:\"MS03_SCALE_ACCIDENTAL\",\n    short:\"Scale Accidental\",\n    th:\"Accidental ของ Scale Degree\"\n  }\n};\n\n/* Scoring policy: preserve LO codes/JSON keys; only the computed score uses\n   these weights. Mastery is decided at the 5-question session level. */\nconst LO_WEIGHTS={\n  BN01_TREBLE_PITCH:30,\n  BN06_STEM_DIRECTION:10,\n  RH01_DURATION_VALUE:15,\n  GR02_PRIMARY_BEAM:15,\n  MS03_SCALE_ACCIDENTAL:30\n};\n\n",
+      "after": "",
+      "offset": 518
+    },
+    {
+      "before": "const LETTERS=[\"C\",\"D\",\"E\",\"F\",\"G\",\"A\",\"B\"], MAJOR_INTERVALS=[0,2,4,5,7,9,11,12];\nconst NATURAL_PC={C:0,D:2,E:4,F:5,G:7,A:9,B:11};",
+      "after": "const LETTERS=[\"C\",\"D\",\"E\",\"F\",\"G\",\"A\",\"B\"];",
+      "offset": 386
+    },
+    {
+      "before": "function parseTonic(s){return{letter:s[0],accidental:s.slice(1)}}\nfunction accidentalOffset(a){\n const offsets={\"\":0,\"#\":1,\"b\":-1,\"##\":2,\"bb\":-2};\n if(!Object.prototype.hasOwnProperty.call(offsets,a))throw new Error(\"รองรับเครื่องหมายถึง Double Sharp/Flat เท่านั้น\");\n return offsets[a];\n}\nfunction notePc(l,a){return(NATURAL_PC[l]+accidentalOffset(a)+12)%12}\nfunction buildMajorScale(key){\n const tonic=parseTonic(key.tonic), start=LETTERS.indexOf(tonic.letter), tonicPc=notePc(tonic.letter,tonic.accidental);\n return MAJOR_INTERVALS.map((semi,i)=>{\n   const letter=LETTERS[(start+i)%7], target=(tonicPc+semi)%12, nat=NATURAL_PC[letter];\n   const diff=(target-nat+12)%12;\n   const spellings={0:\"\",1:\"#\",2:\"##\",10:\"bb\",11:\"b\"};\n   if(!Object.prototype.hasOwnProperty.call(spellings,diff))throw new Error(\"คีย์นี้ต้องใช้เครื่องหมายเกิน Double Sharp/Flat\");\n   return{letter,accidental:spellings[diff]};\n });\n}\nfunction ascendingScaleWithOctaves(key){\n const s=buildMajorScale(key); let octave=4,prev=LETTERS.indexOf(s[0].letter);\n return s.map((n,i)=>{const idx=LETTERS.indexOf(n.letter);if(i>0&&idx<=prev)octave++;prev=idx;return{...n,octave}});\n}\n",
+      "after": "",
+      "offset": 1275
+    },
+    {
+      "before": "function buildExpected(key=state.key){\n const asc=ascendingScaleWithOctaves(key); // degrees 1..8\n const m1=asc.slice(0,7).map((n,i)=>({...n,rhythm:i===0?\"quarter\":\"eighth\",measure:1}));\n const m2=[asc[7],...asc.slice(1,7).reverse()].map((n,i)=>({...n,rhythm:i===0?\"quarter\":\"eighth\",measure:2}));\n const low={...asc[0],rhythm:\"whole\",measure:3};\n let out=[...m1,...m2,low];\n // Beaming pattern requested:\n // beat 2 = one pair of eighth notes\n // beats 3–4 = four eighth notes under one beam\n // Same pattern in measures 1 and 2.\n const beamGroups=[[1,2],[3,4,5,6],[8,9],[10,11,12,13]];\n beamGroups.forEach((group,g)=>group.forEach(idx=>out[idx].beamGroup=g+1));\n\n out=out.map(n=>({...n,stem:n.rhythm===\"whole\"?null:autoStem(n.letter,n.octave)}));\n\n // A beamed group has one unified stem direction.\n beamGroups.forEach(group=>{\n   const dir=beamStemDirectionFromNotes(group.map(idx=>out[idx]));\n   group.forEach(idx=>{ out[idx].stem=dir; });\n });\n\n return out;\n}\n\n",
+      "after": "function buildExpected(key=state.key){\n  return majorScaleRules.buildExpected(key);\n}\n\n",
+      "offset": 2723
+    },
+    {
+      "before": "function percent(correct,total){\n  return total ? Math.round((correct/total)*100) : null;\n}\n\n",
+      "after": "const percent=majorScaleModule.percent;\n\n",
+      "offset": 54730
+    },
+    {
+      "before": "function weightedScore(evidence){\n  let weightedTotal=0;\n  let activeWeight=0;\n\n  Object.entries(evidence).forEach(([id,item])=>{\n    if(!item || !Number.isFinite(item.score)) return;\n    const weight=LO_WEIGHTS[id] || 0;\n    if(weight<=0) return;\n    weightedTotal+=item.score*weight;\n    activeWeight+=weight;\n  });\n\n  return activeWeight ? Math.round(weightedTotal/activeWeight) : null;\n}\n\n",
+      "after": "const weightedScore=majorScaleModule.weightedScore;\n\n",
+      "offset": 54981
+    },
+    {
+      "before": "function makeEvidence(flags){\n  // null means that this LO is not applicable for this response (for\n  // example, a whole note has no stem). It must not become a second penalty.\n  const applicable=flags.filter(flag=>flag!==null);\n  const correct=applicable.filter(Boolean).length;\n  const total=applicable.length;\n  return{\n    flags,\n    correct,\n    total,\n    score:percent(correct,total)\n  };\n}\n\n",
+      "after": "",
+      "offset": 55423
+    },
+    {
+      "before": "function check(){\n  const expected=buildExpected();\n  const actual=state.notes;\n\n  const scaleCheckIndices=Array.from({length:15},(_,i)=>i);\n  const expectedBeamGroups=[\n    [1,2],\n    [3,4,5,6],\n    [8,9],\n    [10,11,12,13]\n  ];\n\n  /* BN01 — Treble staff position\n     Accidental is intentionally excluded here.\n     The staff position must match the correct letter + octave. */\n  const bn01Flags=expected.map((x,i)=>{\n    const n=actual[i];\n    return !!n &&\n      pitchToStep(n.letter,n.octave)===\n      pitchToStep(x.letter,x.octave);\n  });\n\n  /* BN06 — Stem direction\n     Two independent quarter-note units + four beamed-group units.\n     Direction is judged from the positions actually written by the learner,\n     so a pitch error is not automatically counted again as a stem error. */\n  const bn06Flags=[];\n\n  [0,7].forEach(i=>{\n    const n=actual[i];\n    bn06Flags.push(\n      !n ? false :\n      n.rhythm===\"whole\" ? false :\n      effectiveStem(n)===autoStem(n.letter,n.octave)\n    );\n  });\n\n  expectedBeamGroups.forEach(indices=>{\n    const notes=indices.map(i=>actual[i]);\n    if(notes.some(n=>!n)){\n      bn06Flags.push(false);\n      return;\n    }\n    const direction=beamStemDirectionFromNotes(notes);\n    const stemmed=notes.filter(n=>n.rhythm!==\"whole\");\n    bn06Flags.push(\n      stemmed.length===notes.length &&\n      stemmed.every(n=>effectiveStem(n)===direction)\n    );\n  });\n\n  /* RH01 — Duration value */\n  const rh01Flags=expected.map((x,i)=>{\n    const n=actual[i];\n    return !!n && n.rhythm===x.rhythm;\n  });\n\n  /* GR02 — Primary beam\n     Four expected group units + one \"no unexpected group\" unit.\n     Internal beamGroup IDs are irrelevant; only exact membership matters. */\n  const expectedSignatures=expectedBeamGroups\n    .map(g=>g.join(\"-\"))\n    .sort();\n\n  const actualSignatures=beamGroupSignatures(actual);\n\n  const gr02Flags=expectedSignatures.map(\n    sig=>actualSignatures.includes(sig)\n  );\n\n  gr02Flags.push(\n    actualSignatures.every(sig=>expectedSignatures.includes(sig))\n  );\n\n  /* MS03 — Scale accidental\n     Check the same scale positions, including the final tonic. */\n  const ms03Flags=scaleCheckIndices.map(i=>{\n    const n=actual[i];\n    return !!n &&\n      (n.accidental||\"\")===(expected[i].accidental||\"\");\n  });\n\n  const lo={\n    BN01_TREBLE_PITCH:makeEvidence(bn01Flags),\n    BN06_STEM_DIRECTION:makeEvidence(bn06Flags),\n    RH01_DURATION_VALUE:makeEvidence(rh01Flags),\n    GR02_PRIMARY_BEAM:makeEvidence(gr02Flags),\n    MS03_SCALE_ACCIDENTAL:makeEvidence(ms03Flags)\n  };\n\n  const score=weightedScore(lo);\n\n  return{\n    score,\n    lo,\n    expected\n  };\n}\n\n",
+      "after": "function check(){\n  return majorScaleRules.evaluateAnswer(buildExpected(),state.notes);\n}\n\n",
+      "offset": 55935
+    },
+    {
+      "before": "function shuffle(array){\n  const a=[...array];\n\n  for(let i=a.length-1;i>0;i--){\n    const j=Math.floor(Math.random()*(i+1));\n    [a[i],a[j]]=[a[j],a[i]];\n  }\n\n  return a;\n}\n\n",
+      "after": "",
+      "offset": 58716
+    },
+    {
+      "before": "function refillSessionBag(){\n  const allowed=KEYS.filter(\n    k=>LEVEL_KEYS[state.level].includes(k.tonic)\n  );\n\n  if(!allowed.length){\n    state.sessionBag=[];\n    return;\n  }\n\n  const previousTonic=\n    state.sessionResults.length>0\n      ? state.key?.tonic\n      : null;\n\n  const bag=shuffle(allowed);\n\n  // At a cycle boundary, avoid immediately repeating the key\n  // that was just completed when another key is available.\n  if(\n    previousTonic &&\n    bag.length>1 &&\n    bag[0].tonic===previousTonic\n  ){\n    const swapIndex=bag.findIndex(\n      item=>item.tonic!==previousTonic\n    );\n\n    if(swapIndex>0){\n      [bag[0],bag[swapIndex]]=\n        [bag[swapIndex],bag[0]];\n    }\n  }\n\n  state.sessionBag=bag;\n}\n\n",
+      "after": "function refillSessionBag(){\n  state.sessionBag=majorScaleModule.createSessionBag(state.level,state.sessionResults.length>0 ? state.key?.tonic : null);\n}\n\n",
+      "offset": 60386
+    },
+    {
+      "before": "function takeNextQuestionFromBag(){\n  const allowedTonics=\n    LEVEL_KEYS[state.level] || [];\n\n  const priorityCode=\n    (state.masteryPriorityItemCodes || [])\n      .find(code=>allowedTonics.includes(code));\n\n  if(priorityCode){\n    if(!state.sessionBag.length){\n      refillSessionBag();\n    }\n\n    const bagIndex=\n      state.sessionBag.findIndex(\n        item=>item.tonic===priorityCode\n      );\n\n    if(bagIndex>=0){\n      const [priorityItem]=\n        state.sessionBag.splice(bagIndex,1);\n\n      console.log(\n        \"MASTERY-AWARE QUESTION:\",\n        priorityItem.name\n      );\n\n      return priorityItem;\n    }\n\n    const priorityItem=\n      KEYS.find(\n        item=>item.tonic===priorityCode\n      );\n\n    if(priorityItem){\n      console.log(\n        \"MASTERY-AWARE QUESTION:\",\n        priorityItem.name\n      );\n\n      return priorityItem;\n    }\n  }\n\n  if(!state.sessionBag.length){\n    refillSessionBag();\n  }\n\n  return state.sessionBag.shift() || null;\n}\n\n",
+      "after": "function takeNextQuestionFromBag(){\n  const next=majorScaleModule.takeNextQuestion({\n    level:state.level,\n    sessionBag:state.sessionBag,\n    masteryPriorityItemCodes:state.masteryPriorityItemCodes,\n    previousTonic:state.sessionResults.length>0 ? state.key?.tonic : null\n  });\n  state.sessionBag=next.bag;\n  if(next.priority) console.log(\"MASTERY-AWARE QUESTION:\",next.key.name);\n  return next.key;\n}\n\n",
+      "offset": 60541
+    },
+    {
+      "before": "app_version:\"0.8.0-b\"",
+      "after": "app_version:\"0.8.0-c\"",
+      "offset": 62459
+    },
+    {
+      "before": "const {KEYS,LEVEL_KEYS,LO_META}=window.MajorScaleApp.majorScaleConfig;",
+      "after": "const majorScaleConfig=window.MajorScaleApp.majorScaleConfig;\nconst {KEYS,LEVEL_KEYS,LO_META}=majorScaleConfig;",
+      "offset": 87
+    },
+    {
+      "before": "\"MAJOR_SCALE_NOTATION\"",
+      "after": "majorScaleConfig.exerciseCode",
+      "offset": 61274
+    },
+    {
+      "before": "\"MAJOR_SCALE_NOTATION\"",
+      "after": "majorScaleConfig.exerciseCode",
+      "offset": 67190
+    },
+    {
+      "before": "\"MAJOR_SCALE_NOTATION\"",
+      "after": "majorScaleConfig.exerciseCode",
+      "offset": 79460
+    },
+    {
+      "before": "\"MAJOR_SCALE_NOTATION\"",
+      "after": "majorScaleConfig.exerciseCode",
+      "offset": 87915
+    },
+    {
+      "before": "`No usable mastery result for MAJOR_SCALE_NOTATION / ${stageCode}`",
+      "after": "`No usable mastery result for ${majorScaleConfig.exerciseCode} / ${stageCode}`",
+      "offset": 81109
+    },
+    {
+      "before": "`No usable progression result for MAJOR_SCALE_NOTATION / ${stageCode}`",
+      "after": "`No usable progression result for ${majorScaleConfig.exerciseCode} / ${stageCode}`",
+      "offset": 89417
+    }
+  ]
+}

@@ -1,38 +1,29 @@
-# Major Scale Notation Trainer v0.8.0-a
+# Major Scale Notation Trainer v0.8.1-a
 
-Baseline: deployed-and-user-verified v0.7.5.
+Shared Notation Core Extraction. This remains a static classic-JavaScript SPA with the same user-visible Major Scale behavior as v0.8.0-c. No build, framework or database migration.
 
-## Scope
+Platform / Dashboard → Exercise Host → Registry → Major Scale adapter/module → Trainer controller → shared pure core + unchanged legacy rendering/interaction/beaming → repositories → Supabase.
 
-v0.8.0-a introduces the first Generic Exercise Platform boundary without changing runtime behavior.
+## Shared core
 
-### Added
+`src/domain/notation/notation-core.js` exposes one frozen `MajorScaleApp.notationCore` object using the existing app namespace. Eight functions:
 
-- `src/exercises/exercise-contract.js`
-  - Defines Exercise Definition Contract v1.0.
-  - Validates exercise identity, localized names, capabilities, and metadata.
-  - Has no DOM, Supabase, notation, or scoring dependencies.
-- `src/exercises/exercise-registry.js`
-  - Registers and resolves exercise definitions by `exercise_code`.
-  - Rejects duplicate or invalid definitions.
-- `src/exercises/major-scale/exercise.definition.js`
-  - Registers `MAJOR_SCALE_NOTATION` as the first platform exercise definition.
-  - Metadata only at this checkpoint; it does not replace the existing trainer runtime.
+- `pitchToStep(letter, octave)` and `stepToPitch(step)`: original E4=0 diatonic convention.
+- `clampStaffStep(step, MIN_STAFF_STEP, MAX_STAFF_STEP)`: exact arithmetic; Trainer supplies its original −14/20 limits.
+- `musicEm(staffObj)` and `sp(staffObj, value=1)`: original spacing arithmetic only.
+- `accidentalOffset(symbol)`: original internal-symbol offsets and exact unsupported-symbol error.
+- `rhythmFromShortcut(key)` and `accidentalFromShortcut(key)`: original lookup expressions. These do not register keyboard listeners or edit notes.
 
-### Intentionally unchanged
+The core has no DOM, SVG, network, repository, session, scale/key or stage knowledge. There is no newly invented accidental normalizer or duration arithmetic. State remains in Trainer. Renderer, beam functions, gestures, stem rules and keyboard event code remain legacy. Major Scale delegates its existing accidentalOffset helper; its spelling/generation/scoring logic stays in the exercise module.
 
-- Student Dashboard still opens the legacy Major Scale runtime directly.
-- `trainer.js` retains all Major Scale generation, notation, scoring, session, and progression behavior.
-- Notation algorithms, beaming, note input, answer checking, mastery rules, database schema, RPCs, and repositories are unchanged.
-- No second exercise is added.
-- No Exercise Host lifecycle is active yet.
+## Run as a static site
 
-## Why this checkpoint exists
+Serve this folder, for example with `python3 -m http.server 8000`, or use GitHub Pages. No npm install/build or Node backend is required for deployment. Existing Supabase CDN and font dependencies are unchanged and need network access. This checkpoint was not deployed.
 
-The registry becomes a stable source of exercise identity before routing/runtime behavior changes. v0.8.0-b can therefore connect Dashboard → Exercise Host → Registry as a separate, testable change.
+## Run QA
 
-## Tests
+With Node installed: `for t in tests/*.test.js; do node "$t" || exit 1; done`.
 
-```bash
-for t in tests/*.test.js; do node "$t" || exit 1; done
-```
+Actual browser suite: `PLAYWRIGHT_MODULE=/path/to/playwright node tests/exercise-routing.browser.cjs` with Chrome installed. Tooling is QA-only; backend data is mocked. Default test runs exercise the delivered shared core.
+
+Read NOTATION-AUDIT.md (pre-extraction decisions), QA-REPORT.md, VALIDATION.md, REGRESSION-CHECKLIST.md, SEARCH-AUDIT.md and MIGRATION-MANIFEST.json. EXTRACTION-AUDIT.md and the b/c golden fixtures are preserved historical evidence from the prior checkpoint. Stop at v0.8.1-a; no renderer, beam, interaction or keyboard extraction follows in this delivery.

@@ -187,6 +187,7 @@ function loadTrainer(context) {
   assert(source.includes(oldTail), 'trainer initialization tail not found');
   source = source.replace(oldTail, newTail);
   vm.createContext(context);
+  for(const rel of ['src/domain/notation/notation-core.js','src/exercises/major-scale/major-scale.config.js','src/exercises/major-scale/major-scale.domain.js']) vm.runInContext(fs.readFileSync(path.join(ROOT,rel),'utf8'),context,{filename:rel});
   vm.runInContext(source, context, {filename:'trainer.js'});
   assert(context.__trainerDataTestHooks, 'trainer data test hooks not exposed');
   return context.__trainerDataTestHooks;
@@ -269,7 +270,7 @@ function loadTrainer(context) {
   }
 
   const sessionCreates = calls.filter(call => call[0] === 'practice.createPracticeSession');
-  assert(sessionCreates.some(call => call[1]?.app_version === '0.8.0-a'), 'practice session should persist app_version 0.8.0-a');
+  assert(sessionCreates.some(call => call[1]?.app_version === '0.8.1-a'), 'practice session should persist app_version 0.8.1-a');
 
   console.log('PASS trainer practice/mastery data-flow smoke');
 })().catch(error => {

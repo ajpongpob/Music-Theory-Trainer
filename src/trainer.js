@@ -2,66 +2,13 @@
 (() => {
 "use strict";
 
-const KEYS=[
-{name:"C major",tonic:"C",acc:0,type:"natural"},
-{name:"G major",tonic:"G",acc:1,type:"sharp"},{name:"D major",tonic:"D",acc:2,type:"sharp"},
-{name:"A major",tonic:"A",acc:3,type:"sharp"},{name:"E major",tonic:"E",acc:4,type:"sharp"},
-{name:"B major",tonic:"B",acc:5,type:"sharp"},{name:"F# major",tonic:"F#",acc:6,type:"sharp"},
-{name:"C# major",tonic:"C#",acc:7,type:"sharp"},
-{name:"F major",tonic:"F",acc:1,type:"flat"},{name:"Bb major",tonic:"Bb",acc:2,type:"flat"},
-{name:"Eb major",tonic:"Eb",acc:3,type:"flat"},{name:"Ab major",tonic:"Ab",acc:4,type:"flat"},
-{name:"Db major",tonic:"Db",acc:5,type:"flat"},{name:"Gb major",tonic:"Gb",acc:6,type:"flat"},
-{name:"Cb major",tonic:"Cb",acc:7,type:"flat"},
-...["G#","D#","A#","E#","B#","F##","C##"].map((tonic,i)=>({name:tonic.replace('##','𝄪')+' major',tonic,acc:8+i,type:"sharp"})),
-...["Fb","Bbb","Ebb","Abb","Dbb","Gbb","Cbb"].map((tonic,i)=>({name:tonic.replace('bb','𝄫')+' major',tonic,acc:8+i,type:"flat"}))];
+const notationCore=window.MajorScaleApp.notationCore;
+const majorScaleModule=window.MajorScaleApp.majorScaleDomain;
+const majorScaleConfig=window.MajorScaleApp.majorScaleConfig;
+const {KEYS,LEVEL_KEYS,LO_META}=majorScaleConfig;
+const majorScaleRules=majorScaleModule.createRules({autoStem,beamStemDirectionFromNotes,pitchToStep,effectiveStem,beamGroupSignatures});
 const SHARP_ORDER=["F","C","G","D","A","E","B"], FLAT_ORDER=["B","E","A","D","G","C","F"];
-const LETTERS=["C","D","E","F","G","A","B"], MAJOR_INTERVALS=[0,2,4,5,7,9,11,12];
-const NATURAL_PC={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
-
-const LEVEL_KEYS={
-  1:["C","F","Bb","G","D"],
-  2:["A","E","B","Eb","Ab","Db"],
-  3:["Gb","Cb","F#","C#","G#","Fb","D#","Bbb"],
-  4:["A#","Ebb","E#","Abb","B#","Dbb","F##","Gbb","C##","Cbb"]
-};
-
-const LO_META={
-  BN01_TREBLE_PITCH:{
-    code:"BN01_TREBLE_PITCH",
-    short:"Treble Pitch",
-    th:"ตำแหน่งระดับเสียงบนกุญแจซอล"
-  },
-  BN06_STEM_DIRECTION:{
-    code:"BN06_STEM_DIRECTION",
-    short:"Stem Direction",
-    th:"ทิศทางก้านโน้ต"
-  },
-  RH01_DURATION_VALUE:{
-    code:"RH01_DURATION_VALUE",
-    short:"Duration Value",
-    th:"ค่าความยาวตัวโน้ต"
-  },
-  GR02_PRIMARY_BEAM:{
-    code:"GR02_PRIMARY_BEAM",
-    short:"Primary Beam",
-    th:"การเชื่อม Primary Beam"
-  },
-  MS03_SCALE_ACCIDENTAL:{
-    code:"MS03_SCALE_ACCIDENTAL",
-    short:"Scale Accidental",
-    th:"Accidental ของ Scale Degree"
-  }
-};
-
-/* Scoring policy: preserve LO codes/JSON keys; only the computed score uses
-   these weights. Mastery is decided at the 5-question session level. */
-const LO_WEIGHTS={
-  BN01_TREBLE_PITCH:30,
-  BN06_STEM_DIRECTION:10,
-  RH01_DURATION_VALUE:15,
-  GR02_PRIMARY_BEAM:15,
-  MS03_SCALE_ACCIDENTAL:30
-};
+const LETTERS=["C","D","E","F","G","A","B"];
 
 const MASTERY_CRITERIA={
   overall:90,
@@ -103,27 +50,6 @@ const state={
  masteryPriorityItemCodes:[]
 };
 
-function parseTonic(s){return{letter:s[0],accidental:s.slice(1)}}
-function accidentalOffset(a){
- const offsets={"":0,"#":1,"b":-1,"##":2,"bb":-2};
- if(!Object.prototype.hasOwnProperty.call(offsets,a))throw new Error("รองรับเครื่องหมายถึง Double Sharp/Flat เท่านั้น");
- return offsets[a];
-}
-function notePc(l,a){return(NATURAL_PC[l]+accidentalOffset(a)+12)%12}
-function buildMajorScale(key){
- const tonic=parseTonic(key.tonic), start=LETTERS.indexOf(tonic.letter), tonicPc=notePc(tonic.letter,tonic.accidental);
- return MAJOR_INTERVALS.map((semi,i)=>{
-   const letter=LETTERS[(start+i)%7], target=(tonicPc+semi)%12, nat=NATURAL_PC[letter];
-   const diff=(target-nat+12)%12;
-   const spellings={0:"",1:"#",2:"##",10:"bb",11:"b"};
-   if(!Object.prototype.hasOwnProperty.call(spellings,diff))throw new Error("คีย์นี้ต้องใช้เครื่องหมายเกิน Double Sharp/Flat");
-   return{letter,accidental:spellings[diff]};
- });
-}
-function ascendingScaleWithOctaves(key){
- const s=buildMajorScale(key); let octave=4,prev=LETTERS.indexOf(s[0].letter);
- return s.map((n,i)=>{const idx=LETTERS.indexOf(n.letter);if(i>0&&idx<=prev)octave++;prev=idx;return{...n,octave}});
-}
 function autoStem(letter,octave){
  const diatonic=octave*7+LETTERS.indexOf(letter),b4=4*7+LETTERS.indexOf("B");
  return diatonic>=b4?"down":"up";
@@ -169,27 +95,7 @@ function beamStemDirectionFromNotes(notes){
    M3: low tonic = whole
 */
 function buildExpected(key=state.key){
- const asc=ascendingScaleWithOctaves(key); // degrees 1..8
- const m1=asc.slice(0,7).map((n,i)=>({...n,rhythm:i===0?"quarter":"eighth",measure:1}));
- const m2=[asc[7],...asc.slice(1,7).reverse()].map((n,i)=>({...n,rhythm:i===0?"quarter":"eighth",measure:2}));
- const low={...asc[0],rhythm:"whole",measure:3};
- let out=[...m1,...m2,low];
- // Beaming pattern requested:
- // beat 2 = one pair of eighth notes
- // beats 3–4 = four eighth notes under one beam
- // Same pattern in measures 1 and 2.
- const beamGroups=[[1,2],[3,4,5,6],[8,9],[10,11,12,13]];
- beamGroups.forEach((group,g)=>group.forEach(idx=>out[idx].beamGroup=g+1));
-
- out=out.map(n=>({...n,stem:n.rhythm==="whole"?null:autoStem(n.letter,n.octave)}));
-
- // A beamed group has one unified stem direction.
- beamGroups.forEach(group=>{
-   const dir=beamStemDirectionFromNotes(group.map(idx=>out[idx]));
-   group.forEach(idx=>{ out[idx].stem=dir; });
- });
-
- return out;
+  return majorScaleRules.buildExpected(key);
 }
 
 const NS="http://www.w3.org/2000/svg";
@@ -219,8 +125,8 @@ const SMUFL={
   accidentalDoubleFlat:"\uE264"
 };
 
-function musicEm(staffObj){ return staffObj.spacing*4; }
-function sp(staffObj,value=1){ return staffObj.spacing*value; }
+function musicEm(staffObj){return notationCore.musicEm(staffObj);}
+function sp(staffObj,value=1){return notationCore.sp(staffObj,value);}
 
 function accidentalSmuflGlyph(value){
   return {
@@ -232,8 +138,8 @@ function accidentalSmuflGlyph(value){
   }[value] ?? "";
 }
 function el(name,attrs={},text=""){const n=document.createElementNS(NS,name);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v));if(text)n.textContent=text;return n}
-function pitchToStep(letter,octave){return octave*7+LETTERS.indexOf(letter)-(4*7+LETTERS.indexOf("E"))}
-function stepToPitch(step){const idx=4*7+LETTERS.indexOf("E")+step;return{letter:LETTERS[(idx%7+7)%7],octave:Math.floor(idx/7)}}
+function pitchToStep(letter,octave){return notationCore.pitchToStep(letter,octave);}
+function stepToPitch(step){return notationCore.stepToPitch(step);}
 
 function drawSignature(svg,key,signatureMode,staff){
  if(signatureMode!=="shown"||key.acc===0)return;
@@ -388,7 +294,7 @@ function newBeamGroupId(){
   return `beam-${Date.now()}-${beamGroupSerial}`;
 }
 function clampStaffStep(step){
-  return Math.max(MIN_STAFF_STEP,Math.min(MAX_STAFF_STEP,step));
+  return notationCore.clampStaffStep(step,MIN_STAFF_STEP,MAX_STAFF_STEP);
 }
 
 
@@ -1885,29 +1791,14 @@ document.getElementById("unbeamSelected").onclick=()=>{
   render();
 };
 
-function percent(correct,total){
-  return total ? Math.round((correct/total)*100) : null;
-}
+const percent=majorScaleModule.percent;
 
 function meanScore(evidence){
   const scores=Object.values(evidence).map(item=>item.score).filter(Number.isFinite);
   return scores.length ? Math.round(scores.reduce((sum,n)=>sum+n,0)/scores.length) : null;
 }
 
-function weightedScore(evidence){
-  let weightedTotal=0;
-  let activeWeight=0;
-
-  Object.entries(evidence).forEach(([id,item])=>{
-    if(!item || !Number.isFinite(item.score)) return;
-    const weight=LO_WEIGHTS[id] || 0;
-    if(weight<=0) return;
-    weightedTotal+=item.score*weight;
-    activeWeight+=weight;
-  });
-
-  return activeWeight ? Math.round(weightedTotal/activeWeight) : null;
-}
+const weightedScore=majorScaleModule.weightedScore;
 
 function evaluateMastery(overall,aggregate){
   const failedLOs=Object.entries(MASTERY_CRITERIA.perLO)
@@ -1920,20 +1811,6 @@ function evaluateMastery(overall,aggregate){
   return{
     passed:Number.isFinite(overall) && overall>=MASTERY_CRITERIA.overall && failedLOs.length===0,
     failedLOs
-  };
-}
-
-function makeEvidence(flags){
-  // null means that this LO is not applicable for this response (for
-  // example, a whole note has no stem). It must not become a second penalty.
-  const applicable=flags.filter(flag=>flag!==null);
-  const correct=applicable.filter(Boolean).length;
-  const total=applicable.length;
-  return{
-    flags,
-    correct,
-    total,
-    score:percent(correct,total)
   };
 }
 
@@ -1963,102 +1840,7 @@ function beamGroupSignatures(notes){
 }
 
 function check(){
-  const expected=buildExpected();
-  const actual=state.notes;
-
-  const scaleCheckIndices=Array.from({length:15},(_,i)=>i);
-  const expectedBeamGroups=[
-    [1,2],
-    [3,4,5,6],
-    [8,9],
-    [10,11,12,13]
-  ];
-
-  /* BN01 — Treble staff position
-     Accidental is intentionally excluded here.
-     The staff position must match the correct letter + octave. */
-  const bn01Flags=expected.map((x,i)=>{
-    const n=actual[i];
-    return !!n &&
-      pitchToStep(n.letter,n.octave)===
-      pitchToStep(x.letter,x.octave);
-  });
-
-  /* BN06 — Stem direction
-     Two independent quarter-note units + four beamed-group units.
-     Direction is judged from the positions actually written by the learner,
-     so a pitch error is not automatically counted again as a stem error. */
-  const bn06Flags=[];
-
-  [0,7].forEach(i=>{
-    const n=actual[i];
-    bn06Flags.push(
-      !n ? false :
-      n.rhythm==="whole" ? false :
-      effectiveStem(n)===autoStem(n.letter,n.octave)
-    );
-  });
-
-  expectedBeamGroups.forEach(indices=>{
-    const notes=indices.map(i=>actual[i]);
-    if(notes.some(n=>!n)){
-      bn06Flags.push(false);
-      return;
-    }
-    const direction=beamStemDirectionFromNotes(notes);
-    const stemmed=notes.filter(n=>n.rhythm!=="whole");
-    bn06Flags.push(
-      stemmed.length===notes.length &&
-      stemmed.every(n=>effectiveStem(n)===direction)
-    );
-  });
-
-  /* RH01 — Duration value */
-  const rh01Flags=expected.map((x,i)=>{
-    const n=actual[i];
-    return !!n && n.rhythm===x.rhythm;
-  });
-
-  /* GR02 — Primary beam
-     Four expected group units + one "no unexpected group" unit.
-     Internal beamGroup IDs are irrelevant; only exact membership matters. */
-  const expectedSignatures=expectedBeamGroups
-    .map(g=>g.join("-"))
-    .sort();
-
-  const actualSignatures=beamGroupSignatures(actual);
-
-  const gr02Flags=expectedSignatures.map(
-    sig=>actualSignatures.includes(sig)
-  );
-
-  gr02Flags.push(
-    actualSignatures.every(sig=>expectedSignatures.includes(sig))
-  );
-
-  /* MS03 — Scale accidental
-     Check the same scale positions, including the final tonic. */
-  const ms03Flags=scaleCheckIndices.map(i=>{
-    const n=actual[i];
-    return !!n &&
-      (n.accidental||"")===(expected[i].accidental||"");
-  });
-
-  const lo={
-    BN01_TREBLE_PITCH:makeEvidence(bn01Flags),
-    BN06_STEM_DIRECTION:makeEvidence(bn06Flags),
-    RH01_DURATION_VALUE:makeEvidence(rh01Flags),
-    GR02_PRIMARY_BEAM:makeEvidence(gr02Flags),
-    MS03_SCALE_ACCIDENTAL:makeEvidence(ms03Flags)
-  };
-
-  const score=weightedScore(lo);
-
-  return{
-    score,
-    lo,
-    expected
-  };
+  return majorScaleRules.evaluateAnswer(buildExpected(),state.notes);
 }
 
 function feedbackUnitLabels(){
@@ -2130,17 +1912,6 @@ function questionFeedback(result){
   `;
 }
 
-function shuffle(array){
-  const a=[...array];
-
-  for(let i=a.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [a[i],a[j]]=[a[j],a[i]];
-  }
-
-  return a;
-}
-
 function resetQuestionWorkspace(){
   state.notes=Array(15).fill(null);
   state.selectedIds.clear();
@@ -2210,92 +1981,19 @@ function startQuestion(key){
 }
 
 function refillSessionBag(){
-  const allowed=KEYS.filter(
-    k=>LEVEL_KEYS[state.level].includes(k.tonic)
-  );
-
-  if(!allowed.length){
-    state.sessionBag=[];
-    return;
-  }
-
-  const previousTonic=
-    state.sessionResults.length>0
-      ? state.key?.tonic
-      : null;
-
-  const bag=shuffle(allowed);
-
-  // At a cycle boundary, avoid immediately repeating the key
-  // that was just completed when another key is available.
-  if(
-    previousTonic &&
-    bag.length>1 &&
-    bag[0].tonic===previousTonic
-  ){
-    const swapIndex=bag.findIndex(
-      item=>item.tonic!==previousTonic
-    );
-
-    if(swapIndex>0){
-      [bag[0],bag[swapIndex]]=
-        [bag[swapIndex],bag[0]];
-    }
-  }
-
-  state.sessionBag=bag;
+  state.sessionBag=majorScaleModule.createSessionBag(state.level,state.sessionResults.length>0 ? state.key?.tonic : null);
 }
 
 function takeNextQuestionFromBag(){
-  const allowedTonics=
-    LEVEL_KEYS[state.level] || [];
-
-  const priorityCode=
-    (state.masteryPriorityItemCodes || [])
-      .find(code=>allowedTonics.includes(code));
-
-  if(priorityCode){
-    if(!state.sessionBag.length){
-      refillSessionBag();
-    }
-
-    const bagIndex=
-      state.sessionBag.findIndex(
-        item=>item.tonic===priorityCode
-      );
-
-    if(bagIndex>=0){
-      const [priorityItem]=
-        state.sessionBag.splice(bagIndex,1);
-
-      console.log(
-        "MASTERY-AWARE QUESTION:",
-        priorityItem.name
-      );
-
-      return priorityItem;
-    }
-
-    const priorityItem=
-      KEYS.find(
-        item=>item.tonic===priorityCode
-      );
-
-    if(priorityItem){
-      console.log(
-        "MASTERY-AWARE QUESTION:",
-        priorityItem.name
-      );
-
-      return priorityItem;
-    }
-  }
-
-  if(!state.sessionBag.length){
-    refillSessionBag();
-  }
-
-  return state.sessionBag.shift() || null;
+  const next=majorScaleModule.takeNextQuestion({
+    level:state.level,
+    sessionBag:state.sessionBag,
+    masteryPriorityItemCodes:state.masteryPriorityItemCodes,
+    previousTonic:state.sessionResults.length>0 ? state.key?.tonic : null
+  });
+  state.sessionBag=next.bag;
+  if(next.priority) console.log("MASTERY-AWARE QUESTION:",next.key.name);
+  return next.key;
 }
 
 async function resolveMajorScaleExerciseStage(level){
@@ -2307,7 +2005,7 @@ async function resolveMajorScaleExerciseStage(level){
 
   const {data:exercise,error:exerciseError}=
     await repo.getRequiredActiveExerciseByCode(
-      "MAJOR_SCALE_NOTATION"
+      majorScaleConfig.exerciseCode
     );
 
   if(exerciseError) throw exerciseError;
@@ -2365,7 +2063,7 @@ async function createPracticeSessionRecord(generation, level){
         stage_id:stageId,
         mode:"practice",
         completed_questions:0,
-        app_version:"0.8.0-a"
+        app_version:"0.8.1-a"
       });
 
     if(error) throw error;
@@ -2590,7 +2288,7 @@ async function loadCurrentLevelFromProgress(){
   try{
     const {data:exercise,error:exerciseError}=
       await masteryRepository.getOptionalActiveExerciseByCode(
-        "MAJOR_SCALE_NOTATION"
+        majorScaleConfig.exerciseCode
       );
 
     if(exerciseError) throw exerciseError;
@@ -3086,7 +2784,7 @@ async function refreshMasteryProgress(level=state.level){
     // Primary source: generic Exercise + Stage mastery architecture.
     const genericResponse=
       await masteryRepository.getStageMastery({
-        exerciseCode:"MAJOR_SCALE_NOTATION",
+        exerciseCode:majorScaleConfig.exerciseCode,
         stageCode
       });
 
@@ -3146,7 +2844,7 @@ async function refreshMasteryProgress(level=state.level){
     // If it returns no usable row, surface an error instead of silently reading
     // the retired Level-based mastery architecture.
     throw new Error(
-      `No usable mastery result for MAJOR_SCALE_NOTATION / ${stageCode}`
+      `No usable mastery result for ${majorScaleConfig.exerciseCode} / ${stageCode}`
     );
 
   }catch(error){
@@ -3457,7 +3155,7 @@ async function advanceLevelIfMastered({
     // Primary progression engine: generic Exercise + Stage architecture.
     const genericResponse=
       await masteryRepository.advanceStageIfMastered({
-        exerciseCode:"MAJOR_SCALE_NOTATION",
+        exerciseCode:majorScaleConfig.exerciseCode,
         stageCode
       });
 
@@ -3512,7 +3210,7 @@ async function advanceLevelIfMastered({
     // Keep legacy data only as a compatibility mirror; never use the retired
     // Level engine to decide whether the learner advances.
     throw new Error(
-      `No usable progression result for MAJOR_SCALE_NOTATION / ${stageCode}`
+      `No usable progression result for ${majorScaleConfig.exerciseCode} / ${stageCode}`
     );
 
   }catch(error){
@@ -3767,14 +3465,14 @@ function setQuestionResultAction({disabled,text}){
 }
 
 function setTrainerInertForQuestionResult(active){
-  const app=document.querySelector('.session-app');
-  if(!app) return;
-
-  app.inert=!!active;
-  if(active){
-    app.setAttribute('aria-hidden','true');
-  }else if(!state.sessionComplete){
-    app.removeAttribute('aria-hidden');
+  // Keep the dialog interactive: only its background siblings become inert.
+  for(const background of document.querySelectorAll('.session-app > .session-header, .session-app > .session-main')){
+    background.inert=!!active;
+    if(active){
+      background.setAttribute('aria-hidden','true');
+    }else{
+      background.removeAttribute('aria-hidden');
+    }
   }
 }
 
@@ -4215,12 +3913,12 @@ window.majorScaleTrainerKeyboard={
     insertNoteAtCursor();
   },
   setRhythm(key){
-    const rhythm={"1":"whole","2":"half","3":"quarter","4":"eighth","5":"sixteenth"}[key];
+    const rhythm=notationCore.rhythmFromShortcut(key);
     if(!rhythm)return;
     setTool("rhythm",rhythm);
   },
   setAccidental(key){
-    const accidental={".":"","+":"#","-":"b","*":"##","/":"bb"}[key];
+    const accidental=notationCore.accidentalFromShortcut(key);
     if(accidental===undefined)return;
     setTool("accidental",accidental);
   }

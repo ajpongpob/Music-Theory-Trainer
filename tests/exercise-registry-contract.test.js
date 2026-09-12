@@ -23,8 +23,11 @@ context.globalThis = context.window;
 vm.createContext(context);
 
 for (const rel of [
+  'src/domain/notation/notation-core.js',
   'src/exercises/exercise-contract.js',
   'src/exercises/exercise-registry.js',
+  'src/exercises/major-scale/major-scale.config.js',
+  'src/exercises/major-scale/major-scale.domain.js',
   'src/exercises/major-scale/exercise.definition.js'
 ]) {
   vm.runInContext(read(rel), context, {filename: rel});
@@ -47,9 +50,11 @@ assert.strictEqual(major.capabilities.staged, true);
 assert.strictEqual(major.capabilities.mastery, true);
 assert.strictEqual(major.capabilities.notation, true);
 assert.strictEqual(major.metadata.runtimeStatus, 'legacy-trainer');
+assert.strictEqual(major.metadata.migrationCheckpoint, 'v0.8.1-a');
 assert(Object.isFrozen(major), 'registered definition should be frozen');
 assert(Object.isFrozen(major.name), 'exercise name should be frozen');
 assert(Object.isFrozen(major.capabilities), 'exercise capabilities should be frozen');
+assert(Object.isFrozen(major.metadata), 'exercise metadata should be frozen');
 
 assert.throws(
   () => app.exerciseRegistry.register({code:'bad-code',name:{th:'Bad'}}),

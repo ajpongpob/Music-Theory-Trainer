@@ -10,7 +10,8 @@ if (!registry || typeof registry.register !== 'function') {
 
 registry.register({
   contractVersion: '1.0',
-  code: 'MAJOR_SCALE_NOTATION',
+  code: app.majorScaleConfig.exerciseCode,
+  runtime: app.majorScaleRuntimeAdapter,
   name: {
     th: 'การเขียนบันไดเสียงเมเจอร์',
     en: 'Major Scale Notation'
@@ -24,7 +25,7 @@ registry.register({
   },
   metadata: {
     runtimeStatus: 'legacy-trainer',
-    migrationCheckpoint: 'v0.8.0-a'
+    migrationCheckpoint: 'v0.8.1-a'
   }
 });
 })();

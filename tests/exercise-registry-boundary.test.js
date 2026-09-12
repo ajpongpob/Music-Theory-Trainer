@@ -17,6 +17,10 @@ const definition = read('src/exercises/major-scale/exercise.definition.js');
 const order = [
   './src/exercises/exercise-contract.js',
   './src/exercises/exercise-registry.js',
+  './src/exercises/exercise-host.js',
+  './src/exercises/major-scale/major-scale.config.js',
+  './src/exercises/major-scale/major-scale.domain.js',
+  './src/exercises/major-scale/runtime-adapter.js',
   './src/exercises/major-scale/exercise.definition.js',
   './src/dashboard/dashboard-utils.js',
   './src/dashboard/student-dashboard.js',
@@ -34,9 +38,9 @@ assert(!contract.includes('supabase'), 'exercise contract must not know Supabase
 assert(!registry.includes('supabase'), 'exercise registry must not know Supabase');
 assert(!definition.includes('supabase'), 'exercise definition must not know Supabase');
 
-// v0.8.0-a is intentionally non-invasive: runtime remains legacy until v0.8.0-b.
-assert(student.includes("exerciseCode!=='MAJOR_SCALE_NOTATION'"), 'student runtime routing must remain legacy in v0.8.0-a');
+assert(!student.includes('MAJOR_SCALE_NOTATION'), 'Dashboard routing must be generic');
+assert(student.includes('host.launch({exerciseCode,stageCode,userId:activeUser})'));
 assert(trainer.includes('window.majorScaleTrainerStartForAuthenticatedUser'), 'legacy Major Scale runtime must remain intact');
-assert(!student.includes('exerciseRegistry.get('), 'Dashboard must not consume registry until v0.8.0-b');
+assert(!student.includes('exerciseRegistry.get('), 'Dashboard must delegate Registry lookup to Host');
 
 console.log('PASS exercise registry boundary');

@@ -21,7 +21,8 @@ assert(html.includes('data-acc="" data-shortcut="."'), 'Natural button must disp
 assert(!html.includes('data-acc="" data-shortcut="N"'), 'Natural button must no longer display N shortcut');
 assert(css.includes('.question-result-overlay.is-visible'), 'question result transition CSS must exist');
 assert(css.includes('@media(prefers-reduced-motion:reduce)'), 'transition must respect reduced motion');
-assert(trainerSource.includes('const accidental={".":""'), 'trainer accidental map must accept . as Natural');
+assert(trainerSource.includes('const accidental=notationCore.accidentalFromShortcut(key);'), 'trainer must delegate the same accidental lookup');
+assert(read('src/domain/notation/notation-core.js').includes('{".":""'), 'shared accidental lookup must accept . as Natural');
 assert(keyboardSource.includes('[".","+","-","*","/"]'), 'keyboard accidental shortcut set must include .');
 assert(!keyboardSource.includes('key==="n"'), 'legacy N Natural shortcut must be removed');
 
@@ -88,7 +89,10 @@ function buildTrainerHarness(){
       if(selector==='.session-app') return sessionApp;
       return get('query:'+selector);
     },
-    querySelectorAll(){return [];},
+    querySelectorAll(selector){
+      if(selector==='.session-app > .session-header, .session-app > .session-main') return [get('session-header'),get('session-main')];
+      return [];
+    },
     createElementNS(){return new MockElement();},
     createElement(){return new MockElement();},
     addEventListener(){}
@@ -114,6 +118,7 @@ function buildTrainerHarness(){
   );
 
   vm.createContext(context);
+  for(const rel of ['src/domain/notation/notation-core.js','src/exercises/major-scale/major-scale.config.js','src/exercises/major-scale/major-scale.domain.js']) vm.runInContext(fs.readFileSync(path.join(ROOT,rel),'utf8'),context,{filename:rel});
   vm.runInContext(trainerSource,context,{filename:'trainer.js'});
   return {context,elements,get,sessionApp};
 }
@@ -145,7 +150,11 @@ function buildTrainerHarness(){
   assert.strictEqual(get('questionResultScore').textContent,'100%');
   assert(get('questionResultFeedback').innerHTML.includes('ไม่พบข้อผิดพลาด'), 'feedback should show all-correct summary');
   assert.strictEqual(get('questionResultContinue').disabled,true,'continue waits for persistence/mastery evaluation');
-  assert.strictEqual(sessionApp.inert,true,'trainer must be inert while modal is open');
+  assert.strictEqual(sessionApp.inert,false,'dialog ancestor must remain interactive');
+  for(const id of ['session-header','session-main']){
+    assert.strictEqual(get(id).inert,true,'trainer background must be inert while modal is open');
+    assert.strictEqual(get(id).getAttribute('aria-hidden'),'true');
+  }
   assert(overlay.classList.contains('is-visible'),'overlay transition class should be applied');
 
   api.setQuestionResultAction({disabled:false,text:'ทำข้อต่อไป'});
@@ -155,6 +164,10 @@ function buildTrainerHarness(){
   api.hideQuestionResultTransition({immediate:true});
   assert.strictEqual(overlay.hidden,true,'overlay should hide cleanly');
   assert.strictEqual(sessionApp.inert,false,'trainer should be interactive after modal closes');
+  for(const id of ['session-header','session-main']){
+    assert.strictEqual(get(id).inert,false,'background should be interactive after modal closes');
+    assert.strictEqual(get(id).getAttribute('aria-hidden'),null);
+  }
 }
 
 // Runtime keyboard contract: . selects Natural; N must no longer do so.

@@ -37,7 +37,8 @@ function loadWithRepositories({authRepository,practiceRepository,masteryReposito
   const replacement=`window.__hooks={state,createPracticeSessionRecord,saveAttemptRecord,advanceLevelIfMastered};\n})();`;
   assert(source.includes(old));
   source=source.replace(old,replacement);
-  vm.createContext(context);vm.runInContext(source,context,{filename:'trainer.js'});
+  vm.createContext(context);for(const rel of ['src/domain/notation/notation-core.js','src/exercises/major-scale/major-scale.config.js','src/exercises/major-scale/major-scale.domain.js']) vm.runInContext(fs.readFileSync(path.join(ROOT,rel),'utf8'),context,{filename:rel});
+  vm.runInContext(source,context,{filename:'trainer.js'});
   return context.__hooks;
 }
 
