@@ -1,0 +1,65 @@
+name: Live Pilot QA
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: Public app URL to verify
+        required: true
+        default: https://ajpongpob.github.io/Music-Theory-Trainer/
+      verify_teacher:
+        description: Require Teacher Dashboard credentials/checks
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  live-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: pilot-qa
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate dedicated QA secrets
+        shell: bash
+        env:
+          QA_STUDENT_EMAIL: ${{ secrets.QA_STUDENT_EMAIL }}
+          QA_STUDENT_PASSWORD: ${{ secrets.QA_STUDENT_PASSWORD }}
+          QA_TEACHER_EMAIL: ${{ secrets.QA_TEACHER_EMAIL }}
+          QA_TEACHER_PASSWORD: ${{ secrets.QA_TEACHER_PASSWORD }}
+          VERIFY_TEACHER: ${{ inputs.verify_teacher }}
+        run: |
+          set -euo pipefail
+          test -n "$QA_STUDENT_EMAIL" || { echo 'Missing pilot-qa secret QA_STUDENT_EMAIL'; exit 1; }
+          test -n "$QA_STUDENT_PASSWORD" || { echo 'Missing pilot-qa secret QA_STUDENT_PASSWORD'; exit 1; }
+          if [ "$VERIFY_TEACHER" = "true" ]; then
+            test -n "$QA_TEACHER_EMAIL" || { echo 'Missing pilot-qa secret QA_TEACHER_EMAIL'; exit 1; }
+            test -n "$QA_TEACHER_PASSWORD" || { echo 'Missing pilot-qa secret QA_TEACHER_PASSWORD'; exit 1; }
+          fi
+
+      - name: Install pinned Playwright library
+        run: npm install --no-save --ignore-scripts playwright@1.63.0
+
+      - name: Run live student and optional teacher verification
+        env:
+          PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
+          BROWSER_CHANNEL: chrome
+          LIVE_TEST_CONFIRM: YES
+          LIVE_APP_URL: ${{ inputs.app_url }}
+          QA_STUDENT_EMAIL: ${{ secrets.QA_STUDENT_EMAIL }}
+          QA_STUDENT_PASSWORD: ${{ secrets.QA_STUDENT_PASSWORD }}
+          QA_TEACHER_EMAIL: ${{ inputs.verify_teacher && secrets.QA_TEACHER_EMAIL || '' }}
+          QA_TEACHER_PASSWORD: ${{ inputs.verify_teacher && secrets.QA_TEACHER_PASSWORD || '' }}
+          QA_CLASS_ID: ${{ vars.QA_CLASS_ID }}
+          QA_EXPECT_STUDENT_IN_TEACHER: ${{ inputs.verify_teacher && 'YES' || 'NO' }}
+        run: node tests/live-pilot.browser.cjs
