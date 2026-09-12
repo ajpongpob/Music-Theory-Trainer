@@ -96,11 +96,13 @@ app.dashboardRepository = Object.freeze(dashboardRepository);
 
 // M1.5 is intentionally an additive presentation layer. Load it after the
 // original dashboard/trainer scripts so notation and scoring remain frozen.
-window.addEventListener('load', () => {
-  if (document.querySelector('script[data-m15-learning-feedback]')) return;
-  const script = document.createElement('script');
-  script.src = './src/m15-learning-feedback.js';
-  script.dataset.m15LearningFeedback = 'true';
-  document.body.appendChild(script);
-}, {once:true});
+if (typeof window.addEventListener === 'function' && typeof document !== 'undefined') {
+  window.addEventListener('load', () => {
+    if (document.querySelector('script[data-m15-learning-feedback]')) return;
+    const script = document.createElement('script');
+    script.src = './src/m15-learning-feedback.js';
+    script.dataset.m15LearningFeedback = 'true';
+    document.body.appendChild(script);
+  }, {once:true});
+}
 })();
