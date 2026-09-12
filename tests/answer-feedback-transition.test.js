@@ -16,6 +16,7 @@ let trainerSource=read('src/trainer.js');
 // Static contract: the deployed markup and visible shortcut label must match.
 assert(html.includes('id="questionResultOverlay"'), 'question result overlay must exist');
 assert(html.includes('id="questionResultFeedback"'), 'question result feedback container must exist');
+assert(html.includes('id="questionResultNotation"'), 'question result notation snapshot container must exist');
 assert(html.includes('id="questionResultContinue"'), 'question result continue button must exist');
 assert(html.includes('data-acc="" data-shortcut="."'), 'Natural button must display . shortcut');
 assert(!html.includes('data-acc="" data-shortcut="N"'), 'Natural button must no longer display N shortcut');
@@ -65,6 +66,7 @@ class MockElement {
   getAttribute(name){return this.attributes[name] ?? null;}
   querySelectorAll(){return [];}
   querySelector(){return null;}
+  cloneNode(){const clone=new MockElement(this.id);clone.tagName=this.tagName;clone.innerHTML=this.innerHTML;clone.textContent=this.textContent;clone.attributes={...this.attributes};return clone;}
   focus(){this.focused=true;}
   click(){if(typeof this.onclick==='function')this.onclick({target:this,currentTarget:this,preventDefault(){}});}
   setPointerCapture(){}
@@ -149,6 +151,8 @@ function buildTrainerHarness(){
   assert.strictEqual(get('questionResultTitle').textContent,'ผ่านข้อนี้แล้ว ✓');
   assert.strictEqual(get('questionResultScore').textContent,'100%');
   assert(get('questionResultFeedback').innerHTML.includes('ไม่พบข้อผิดพลาด'), 'feedback should show all-correct summary');
+  assert(!get('questionResultFeedback').innerHTML.includes('คะแนนรวมแบบถ่วงน้ำหนัก'), 'question feedback must not show weighted-score wording');
+  assert.strictEqual(get('questionResultNotation').children.length,1,'submitted notation snapshot should be shown with feedback');
   assert.strictEqual(get('questionResultContinue').disabled,true,'continue waits for persistence/mastery evaluation');
   assert.strictEqual(sessionApp.inert,false,'dialog ancestor must remain interactive');
   for(const id of ['session-header','session-main']){

@@ -77,6 +77,10 @@ const server=http.createServer((req,res)=>{
     await page.locator('#checkAnswer').click();
     await page.waitForFunction(()=>document.getElementById('questionResultScore').textContent==='100%');
     await page.locator('#questionResultOverlay').waitFor({state:'visible'});
+    assert.equal(await page.locator('#questionResultNotation svg').count(),1,'feedback should show a submitted notation snapshot');
+    assert.equal(await page.locator('#questionResultNotation .entry-cursor').count(),0,'review snapshot should not show the editing cursor');
+    assert.equal(await page.locator('#questionResultNotation .note-hit-target').count(),0,'review snapshot should not contain interaction hit targets');
+    assert.equal(await page.locator('#questionResultFeedback').evaluate(el=>el.textContent.includes('คะแนนรวมแบบถ่วงน้ำหนัก')),false,'weighted-score wording should be removed from feedback');
     assert.equal(await page.locator('#questionResultContinue').evaluate(el=>!!el.closest('[inert]')),false,'feedback must not have an inert ancestor');
     assert.equal(await page.locator('.session-main').evaluate(el=>el.inert),true,'feedback background is inert');
     await page.waitForFunction(()=>__qaCalls.some(c=>c[0]==='practice.createAttempt'));
