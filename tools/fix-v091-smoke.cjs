@@ -1,0 +1,16 @@
+'use strict';
+const fs=require('fs');
+const file='tests/trainer-data-flow-smoke.test.js';
+let s=fs.readFileSync(file,'utf8');
+const before=`  context.__elements.get('levelSelect').value='4';
+  hooks.startSession();
+  assert.strictEqual(hooks.state.level,2,'startSession must keep authoritative path level');
+  assert.strictEqual(context.__elements.get('levelSelect').value,'2','level select must be restored to authoritative level');
+  assert.strictEqual(context.__elements.get('levelSelect').disabled,true,'path level control must be disabled');`;
+const after=`  context.__elements.get('levelSelect').value='4';
+  hooks.enforceAuthoritativeLevelControl();
+  assert.strictEqual(hooks.effectiveSessionLevel(Number(context.__elements.get('levelSelect').value)),2,'authoritative level remains effective after UI tamper');
+  assert.strictEqual(context.__elements.get('levelSelect').value,'2','level select must be restored to authoritative level');
+  assert.strictEqual(context.__elements.get('levelSelect').disabled,true,'path level control must be disabled');`;
+if(!s.includes(before)) throw new Error('v0.9.1 smoke block not found');
+fs.writeFileSync(file,s.replace(before,after));
