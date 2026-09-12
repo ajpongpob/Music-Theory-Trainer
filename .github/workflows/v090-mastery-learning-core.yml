@@ -55,13 +55,13 @@ jobs:
           const domainFile='tests/major-scale-domain.test.js';
           let domain=fs.readFileSync(domainFile,'utf8');
           domain=domain.replace("const restoreInteraction=require('./helpers/restore-notation-interaction.cjs');", "const restoreInteraction=require('./helpers/restore-notation-interaction.cjs');\nconst restoreV090=require('./helpers/restore-v090-master-core.cjs');");
-          domain=domain.replace("restoreInteraction(trainer,'src/trainer.js')", "restoreInteraction(restoreV090(trainer,'src/trainer.js'),'src/trainer.js')");
+          domain=domain.replace("restoreBeaming(trainer,'src/trainer.js')", "restoreBeaming(restoreV090(trainer,'src/trainer.js'),'src/trainer.js')");
           fs.writeFileSync(domainFile,domain);
 
           const boundaryFile='tests/notation-boundary.test.js';
           let boundary=fs.readFileSync(boundaryFile,'utf8');
           boundary=boundary.replace("const restoreInteraction=require('./helpers/restore-notation-interaction.cjs');", "const restoreInteraction=require('./helpers/restore-notation-interaction.cjs');\nconst restoreV090=require('./helpers/restore-v090-master-core.cjs');");
-          boundary=boundary.replaceAll('restoreInteraction(read(file),file)','restoreInteraction(restoreV090(read(file),file),file)');
+          boundary=boundary.replaceAll('restoreBeaming(read(file),file)','restoreBeaming(restoreV090(read(file),file),file)');
           fs.writeFileSync(boundaryFile,boundary);
           NODE
       - name: JavaScript syntax checks
