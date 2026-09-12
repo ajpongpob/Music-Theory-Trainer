@@ -76,6 +76,10 @@ function makeContext() {
       calls.push(['practice.createPracticeSession', payload]);
       return {data:{id:'session-new'}, error:null};
     },
+    async getOpenLearningSessions(userId) {
+      calls.push(['practice.getOpenLearningSessions', userId]);
+      return {data:[{id:'stale-1',started_at:'2026-09-01T00:00:00Z',last_activity_at:'2026-09-01T00:10:00Z',mode:'practice'}],error:null};
+    },
     async getOpenPracticeSessions(userId) {
       calls.push(['practice.getOpenPracticeSessions', userId]);
       return {data:[{id:'stale-1',started_at:'2026-09-01T00:00:00Z',last_activity_at:'2026-09-01T00:10:00Z'}],error:null};
@@ -150,6 +154,10 @@ function makeContext() {
     }
   };
 
+  const learningRepository={
+    async applyDiagnosticPlacement(code){calls.push(['learning.applyDiagnosticPlacement',code]);return {data:[{applied:true,exercise_code:code,placement_stage_code:'STAGE_3',diagnostic_mastered_stages:2,exercise_mastered:false,reason_code:'DIAGNOSTIC_PLACED'}],error:null};}
+  };
+
   const windowListeners = {};
   const context = {
     console:{log(){},warn(){},error(...args){calls.push(['console.error', ...args.map(String)]);}},
@@ -170,7 +178,7 @@ function makeContext() {
   context.window.addEventListener = (type, cb) => {(windowListeners[type] ||= []).push(cb);};
   context.window.removeEventListener = () => {};
   context.window.confirm = () => true;
-  context.window.MajorScaleApp = {authRepository, practiceRepository, masteryRepository};
+  context.window.MajorScaleApp = {authRepository, practiceRepository, masteryRepository,learningRepository};
   context.__calls = calls;
   context.__elements = elements;
   return context;
@@ -183,11 +191,11 @@ function loadTrainer(context) {
     `state,resolveMajorScaleExerciseStage,createPracticeSessionRecord,ensurePracticeSessionRecord,` +
     `closeStalePracticeSessionsForCurrentUser,closeCurrentPracticeSession,loadCurrentLevelFromProgress,` +
     `loadMissingStageItemCodes,refreshMasteryProgress,saveAttemptSkillResults,updatePracticeSessionProgress,` +
-    `completePracticeSessionRecord,advanceLevelIfMastered,saveAttemptRecord};\n})();`;
+    `completePracticeSessionRecord,advanceLevelIfMastered,saveAttemptRecord,startTrainerForAuthenticatedUser,startSession};\n})();`;
   assert(source.includes(oldTail), 'trainer initialization tail not found');
   source = source.replace(oldTail, newTail);
   vm.createContext(context);
-  for(const rel of ['src/domain/notation/notation-core.js','src/exercises/major-scale/major-scale.config.js','src/exercises/major-scale/major-scale.domain.js']) vm.runInContext(fs.readFileSync(path.join(ROOT,rel),'utf8'),context,{filename:rel});
+  for(const rel of ['src/domain/mastery/mastery-learning-core.js','src/domain/notation/notation-core.js','src/exercises/major-scale/major-scale.config.js','src/exercises/major-scale/major-scale.domain.js']) vm.runInContext(fs.readFileSync(path.join(ROOT,rel),'utf8'),context,{filename:rel});
   vm.runInContext(source, context, {filename:'trainer.js'});
   assert(context.__trainerDataTestHooks, 'trainer data test hooks not exposed');
   return context.__trainerDataTestHooks;
@@ -270,7 +278,7 @@ function loadTrainer(context) {
   }
 
   const sessionCreates = calls.filter(call => call[0] === 'practice.createPracticeSession');
-  assert(sessionCreates.some(call => call[1]?.app_version === '0.8.1-a'), 'practice session should persist app_version 0.8.1-a');
+  assert(sessionCreates.some(call => call[1]?.app_version === '0.9.0'), 'practice session should persist app_version 0.9.0');
 
   console.log('PASS trainer practice/mastery data-flow smoke');
 })().catch(error => {

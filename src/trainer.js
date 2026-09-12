@@ -2,6 +2,8 @@
 (() => {
 "use strict";
 
+const masteryLearningCore=window.MajorScaleApp.masteryLearningCore;
+const learningRepository=window.MajorScaleApp.learningRepository;
 const notationCore=window.MajorScaleApp.notationCore;
 const notationRenderer=window.MajorScaleApp.notationRenderer;
 const notationInteraction=window.MajorScaleApp.notationInteraction;
@@ -50,7 +52,9 @@ const state={
  practiceSessionGeneration:0,
  practiceSessionPromise:null,
  attemptSaveChain:Promise.resolve(),
- masteryPriorityItemCodes:[]
+ masteryPriorityItemCodes:[],
+ sessionMode:"practice",
+ diagnosticItemCodes:[]
 };
 
 function autoStem(letter,octave){
@@ -1473,6 +1477,9 @@ function refillSessionBag(){
 }
 
 function takeNextQuestionFromBag(){
+  if(state.sessionMode==="pretest"){
+    return state.sessionBag.shift() || null;
+  }
   const next=majorScaleModule.takeNextQuestion({
     level:state.level,
     sessionBag:state.sessionBag,
@@ -1549,9 +1556,10 @@ async function createPracticeSessionRecord(generation, level){
         user_id:user.id,
         exercise_id:exerciseId,
         stage_id:stageId,
-        mode:"practice",
+        mode:state.sessionMode,
+        planned_questions:Number.isInteger(state.sessionLength) ? state.sessionLength : null,
         completed_questions:0,
-        app_version:"0.8.1-a"
+        app_version:"0.9.0"
       });
 
     if(error) throw error;
@@ -1631,10 +1639,10 @@ async function closeStalePracticeSessionsForCurrentUser(){
     if(userError) throw userError;
     if(!user) return 0;
 
-    const {data:sessions,error:sessionError}=
-      await practiceRepository.getOpenPracticeSessions(
-        user.id
-      );
+    const loadOpen=practiceRepository.getOpenLearningSessions
+      ? practiceRepository.getOpenLearningSessions.bind(practiceRepository)
+      : practiceRepository.getOpenPracticeSessions.bind(practiceRepository);
+    const {data:sessions,error:sessionError}=await loadOpen(user.id);
 
     if(sessionError) throw sessionError;
     if(!sessions?.length) return 0;
@@ -2349,8 +2357,9 @@ async function refreshMasteryProgress(level=state.level){
   }
 }
 
-async function startTrainerForAuthenticatedUser(levelOverride=null){
+async function startTrainerForAuthenticatedUser(levelOverride=null,sessionMode="practice"){
   await closeStalePracticeSessionsForCurrentUser();
+  state.sessionMode=masteryLearningCore?.normalizeSessionMode(sessionMode) || "practice";
 
   const requestedLevel=Number(levelOverride);
   const level=(Number.isInteger(requestedLevel) && LEVEL_KEYS[requestedLevel])
@@ -2364,13 +2373,35 @@ async function startTrainerForAuthenticatedUser(levelOverride=null){
 
   console.log(
     "CURRENT LEARNING LEVEL:",
-    level
+    level,
+    "MODE:",
+    state.sessionMode
   );
 
+  state.diagnosticItemCodes=[];
+  if(state.sessionMode==="pretest"){
+    const masteryRepository=window.MajorScaleApp?.masteryRepository;
+    const {stageId}=await resolveMajorScaleExerciseStage(level);
+    const required=masteryRepository
+      ? await masteryRepository.getRequiredStageItems(stageId)
+      : {data:[],error:null};
+    if(required?.error) throw required.error;
+    state.diagnosticItemCodes=masteryLearningCore.buildDiagnosticItemCodes(
+      required?.data || [],
+      LEVEL_KEYS[level] || []
+    );
+    if(!state.diagnosticItemCodes.length){
+      throw new Error("ไม่มีโจทย์ Diagnostic สำหรับ Stage นี้");
+    }
+  }
+
+  const levelSelect=document.getElementById("levelSelect");
+  if(levelSelect) levelSelect.disabled=state.sessionMode==="pretest";
   startSession();
 
-  const mastery=
-    await refreshMasteryProgress(level);
+  const mastery=state.sessionMode==="practice"
+    ? await refreshMasteryProgress(level)
+    : null;
 
   if(
     mastery?.enough_attempts===true &&
@@ -2405,7 +2436,7 @@ function startSession(){
 
   state.sessionQueue=[];
   state.sessionBag=[];
-  state.sessionLength=null;
+  state.sessionLength=state.sessionMode==="pretest" ? state.diagnosticItemCodes.length : null;
   state.masteryPriorityItemCodes=[];
   document.getElementById("levelStatus").textContent=
     `Level ${state.level}`;
@@ -2431,8 +2462,15 @@ function startSession(){
   const restart=document.getElementById('restartSession');
   if(restart) restart.textContent="เริ่มการฝึกใหม่";
 
-  refillSessionBag();
-  startQuestion(takeNextQuestionFromBag());
+  if(state.sessionMode==="pretest"){
+    state.sessionBag=state.diagnosticItemCodes
+      .map(code=>KEYS.find(key=>key.tonic===code))
+      .filter(Boolean);
+  }else{
+    refillSessionBag();
+  }
+  const firstQuestion=takeNextQuestionFromBag();
+  if(firstQuestion) startQuestion(firstQuestion);
 
 }
 
@@ -2821,6 +2859,7 @@ async function saveAttemptRecord({
     );
 
     let mastery=null;
+    let diagnosticPlacement=null;
 
     if(skillResultsSaved){
       const progressSaved=
@@ -2830,11 +2869,23 @@ async function saveAttemptRecord({
         });
 
       if(progressSaved){
-        mastery=await advanceLevelIfMastered({
-          generation,
-          level,
-          practiceSessionId
-        });
+        if(state.sessionMode==="pretest"){
+          if(masteryLearningCore.diagnosticComplete(completedQuestions,state.sessionLength)){
+            const sessionOverall=state.sessionResults.length
+              ? Math.round(state.sessionResults.reduce((sum,item)=>sum+Number(item.score || 0),0)/state.sessionResults.length)
+              : null;
+            await completePracticeSessionRecord(practiceSessionId,sessionOverall);
+            const placementResponse=await learningRepository.applyDiagnosticPlacement(majorScaleConfig.exerciseCode);
+            if(placementResponse?.error) throw placementResponse.error;
+            diagnosticPlacement=masteryLearningCore.firstResult(placementResponse?.data);
+          }
+        }else{
+          mastery=await advanceLevelIfMastered({
+            generation,
+            level,
+            practiceSessionId
+          });
+        }
       }
     }else{
       console.error(
@@ -2844,7 +2895,8 @@ async function saveAttemptRecord({
 
     return {
       attemptId:data.id,
-      mastery
+      mastery,
+      diagnosticPlacement
     };
 
   }catch(error){
@@ -2942,6 +2994,7 @@ function renderSessionSummary(){
 }
 
 let pendingLevelMasteryTransition=null;
+let pendingDiagnosticPlacement=null;
 let questionResultHideTimer=0;
 const QUESTION_RESULT_TRANSITION_MS=180;
 
@@ -3161,10 +3214,16 @@ document.getElementById("checkAnswer").onclick=()=>{
         }
 
         const mastery=saveResult?.mastery;
+        const diagnosticPlacement=saveResult?.diagnosticPlacement;
 
-        await refreshMasteryProgress(attemptLevel);
+        if(state.sessionMode==="practice") await refreshMasteryProgress(attemptLevel);
 
-        if(mastery?.advanced){
+        if(diagnosticPlacement){
+          pendingDiagnosticPlacement=diagnosticPlacement;
+          const nextButton=document.getElementById("nextQuestion");
+          if(nextButton){nextButton.disabled=true;nextButton.hidden=true;}
+          setQuestionResultAction({disabled:false,text:"ดูแผนการเรียนที่แนะนำ"});
+        }else if(mastery?.advanced){
           pendingLevelMasteryTransition=mastery;
 
           const nextButton=
@@ -3234,6 +3293,12 @@ document.getElementById("checkAnswer").onclick=()=>{
 };
 
 document.getElementById("questionResultContinue").onclick=()=>{
+  if(pendingDiagnosticPlacement){
+    pendingDiagnosticPlacement=null;
+    hideQuestionResultTransition({immediate:true});
+    document.getElementById("dashboardButton")?.click();
+    return;
+  }
   const mastery=pendingLevelMasteryTransition;
   pendingLevelMasteryTransition=null;
 
@@ -3320,9 +3385,10 @@ function taskText(){
     ? `<span class="font-warning">Bravura/SMuFL ยังโหลดไม่สำเร็จ</span>`
     : "";
 
+  const diagnostic=state.sessionMode==="pretest";
   return `
-    <strong>เขียนบันไดเสียง ${state.key.name}</strong>
-    <span>ขาขึ้น–ขาลงตาม Rhythm Pattern โดยใส่ accidental, stem และ beam ให้ถูกต้อง</span>
+    <strong>${diagnostic ? "แบบประเมินก่อนเรียน • " : "เขียนบันไดเสียง "}${state.key.name}</strong>
+    <span>${diagnostic ? "ใช้คำตอบนี้เพื่อวิเคราะห์จุดเริ่มต้น โดยยังใช้เกณฑ์การเขียนเดียวกับแบบฝึก" : "ขาขึ้น–ขาลงตาม Rhythm Pattern โดยใส่ accidental, stem และ beam ให้ถูกต้อง"}</span>
     ${fontWarning}
   `;
 }

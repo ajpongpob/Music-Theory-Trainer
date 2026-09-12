@@ -1,0 +1,14 @@
+'use strict';
+const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('assert');
+const ctx={window:{}};vm.createContext(ctx);vm.runInContext(fs.readFileSync(path.join(__dirname,'../src/domain/mastery/mastery-learning-core.js'),'utf8'),ctx);
+const api=ctx.window.MajorScaleApp.masteryLearningCore;
+assert(api && Object.isFrozen(api));
+assert.equal(api.normalizeSessionMode('PRETEST'),'pretest');
+assert.equal(api.normalizeSessionMode('mastery_test'),'practice');
+assert.equal(api.normalizeSessionMode('mastery_test',{allowMasteryTest:true}),'mastery_test');
+assert.deepStrictEqual(JSON.parse(JSON.stringify(api.buildDiagnosticItemCodes([{item_code:'G',sequence_order:2},{item_code:'C',sequence_order:1},{item_code:'C',sequence_order:3}],[]))),['C','G']);
+assert.deepStrictEqual(JSON.parse(JSON.stringify(api.buildDiagnosticItemCodes([],['D','D','A']))),['D','A']);
+const r=api.normalizeRecommendation([{learning_path_code:'P',exercise_code:'E',stage_code:'S',action_type:'target_skill',target_skill_code:'BN01',reason_code:'WEAK',reason_th:'ฝึก',overall_score:'81',overall_threshold:'90',attempts_found:10,rolling_window:10}]);
+assert.equal(r.actionType,'target_skill');assert.equal(r.overallScore,81);assert.equal(api.recommendationActionLabel(r),'ฝึกทักษะที่ยังอ่อน');
+assert(api.diagnosticComplete(5,5));assert(!api.diagnosticComplete(4,5));
+console.log('PASS mastery learning core: modes, diagnostic plan, normalized recommendation and completion');

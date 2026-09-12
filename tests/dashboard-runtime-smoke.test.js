@@ -83,7 +83,7 @@ function makeClient(scenario, ctx){
       async updateUser(){calls.updatePassword++; return {data:{user:currentUser},error:null};}
     },
     from:query,
-    async rpc(name,args){calls.rpc.push({name,args}); if(name==='get_my_teacher_dashboard') return {data:teacherSummary,error:null}; if(name==='get_my_teacher_class_dashboard') return {data:teacherDetail,error:null}; if(name==='get_my_student_dashboard') return {data:studentRows,error:null}; if(name==='get_my_stage_mastery') return {data:mastery,error:null}; return {data:null,error:null};}
+    async rpc(name,args){calls.rpc.push({name,args}); if(name==='get_my_teacher_dashboard') return {data:teacherSummary,error:null}; if(name==='get_my_teacher_class_dashboard') return {data:teacherDetail,error:null}; if(name==='get_my_student_dashboard') return {data:studentRows,error:null}; if(name==='get_my_stage_mastery') return {data:mastery,error:null}; if(name==='ensure_my_learning_path_progression') return {data:[{learning_path_code:'MUSIC_THEORY_FOUNDATIONS',current_exercise_code:'MAJOR_SCALE_NOTATION',current_stage_code:'STAGE_2'}],error:null}; if(name==='get_my_recommended_next_action') return {data:[{learning_path_code:'MUSIC_THEORY_FOUNDATIONS',exercise_code:'MAJOR_SCALE_NOTATION',stage_code:'STAGE_2',action_type:'diagnostic',target_skill_code:null,target_item_code:null,reason_code:'NO_STAGE_EVIDENCE',reason_th:'เริ่มแบบประเมินก่อนเรียน',overall_score:null,overall_threshold:null,attempts_found:0,rolling_window:10}],error:null}; if(name==='get_my_exercise_diagnostic') return {data:[],error:null}; if(name==='apply_my_diagnostic_placement') return {data:[{applied:true,exercise_code:'MAJOR_SCALE_NOTATION',placement_stage_code:'STAGE_2',diagnostic_mastered_stages:1,exercise_mastered:false,reason_code:'DIAGNOSTIC_PLACED'}],error:null}; if(name==='get_my_stage_evidence') return {data:mastery,error:null}; return {data:null,error:null};}
   };
 }
 
@@ -147,8 +147,9 @@ async function runScenario(scenario){
     check('path rendered',get('dashboardPathList').innerHTML.includes('MUSIC_THEORY_FOUNDATIONS'));
     check('stage2 rendered',get('dashboardPathList').innerHTML.includes('Stage 2'));
     check('mastery rendered',get('dashboardMasteryBody').innerHTML.includes('80%'),get('dashboardMasteryBody').innerHTML.slice(0,200));
+    check('recommended next action rendered',get('dashboardRecommendation').innerHTML.includes('แบบประเมินก่อนเรียน'),get('dashboardRecommendation').innerHTML);
     let launchCount=0,closeCount=0,lastLevel=null;
-    ctx.majorScaleTrainerStartForAuthenticatedUser=async level=>{launchCount++;lastLevel=level;};
+    let lastMode=null;ctx.majorScaleTrainerStartForAuthenticatedUser=async (level,mode)=>{launchCount++;lastLevel=level;lastMode=mode;};
     ctx.majorScaleTrainerClosePracticeSession=async()=>{closeCount++;};
     const clickExercise=code=>get('studentDashboard').dispatch('click',{
       target:{closest(){return {dataset:{exerciseCode:code,stageCode:'STAGE_2'}};}}
@@ -156,7 +157,7 @@ async function runScenario(scenario){
     clickExercise(' major_scale_notation ');clickExercise(' major_scale_notation ');
     await new Promise(r=>setTimeout(r,20));
     check('Dashboard Host adapter launches exactly once',launchCount===1 && lastLevel===2);
-    check('Host receives stage and user',ctx.MajorScaleApp.exerciseHost.getCurrentContext()?.stageCode==='STAGE_2' && ctx.MajorScaleApp.exerciseHost.getCurrentContext()?.userId==='student-1');
+    check('Host receives stage and user',ctx.MajorScaleApp.exerciseHost.getCurrentContext()?.stageCode==='STAGE_2' && ctx.MajorScaleApp.exerciseHost.getCurrentContext()?.userId==='student-1' && lastMode==='practice');
     check('trainer visible through adapter',get('trainerApp').hidden===false);
     get('dashboardButton').click();await new Promise(r=>setTimeout(r,30));
     check('return clears Host and closes once',ctx.MajorScaleApp.exerciseHost.getCurrentContext()===null && closeCount===1);

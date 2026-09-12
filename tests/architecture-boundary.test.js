@@ -12,6 +12,8 @@ const student = read('src/dashboard/student-dashboard.js');
 const teacher = read('src/dashboard/teacher-dashboard.js');
 const practiceRepo = read('src/data/practice.repository.js');
 const masteryRepo = read('src/data/mastery.repository.js');
+const learningRepo = read('src/data/learning.repository.js');
+const masteryCore = read('src/domain/mastery/mastery-learning-core.js');
 const html = read('index.html');
 
 for (const [label, pattern] of [
@@ -27,7 +29,7 @@ for (const [name, source] of [['student-dashboard.js',student],['teacher-dashboa
   assert(!source.includes('.from('), `${name} must not call .from() directly`);
   assert(!source.includes('.rpc('), `${name} must not call .rpc() directly`);
 }
-for (const [name, source] of [['practice.repository.js',practiceRepo],['mastery.repository.js',masteryRepo]]) {
+for (const [name, source] of [['practice.repository.js',practiceRepo],['mastery.repository.js',masteryRepo],['learning.repository.js',learningRepo]]) {
   assert(!source.includes('document.'), `${name} must not access DOM`);
   assert(!source.includes('getElementById'), `${name} must not access UI elements`);
 }
@@ -40,6 +42,8 @@ for (const table of expectedTables.practice) assert(practiceRepo.includes(`'${ta
 for (const table of expectedTables.mastery) assert(masteryRepo.includes(`'${table}'`), `mastery repository missing ${table}`);
 assert(masteryRepo.includes("'get_my_stage_mastery'"), 'mastery repository missing get_my_stage_mastery RPC');
 assert(masteryRepo.includes("'advance_my_stage_if_mastered'"), 'mastery repository missing progression RPC');
+for(const rpc of ['get_my_exercise_diagnostic','apply_my_diagnostic_placement','get_my_recommended_next_action','ensure_my_learning_path_progression','get_my_stage_evidence']) assert(learningRepo.includes(`'${rpc}'`),`learning repository missing ${rpc}`);
+assert(!/\bdocument\b|\bsupabase\b|\bfetch\s*\(/i.test(masteryCore),'mastery core must stay pure');
 
 const scripts = [...html.matchAll(/<script\s+src="\.\/(src\/[^\"]+\.js)"/g)].map(m => m[1]);
 const indexOf = file => {
@@ -51,6 +55,11 @@ assert(indexOf('src/data/supabase-client.js') < indexOf('src/data/practice.repos
 assert(indexOf('src/data/supabase-client.js') < indexOf('src/data/mastery.repository.js'));
 assert(indexOf('src/data/auth.repository.js') < indexOf('src/trainer.js'));
 assert(indexOf('src/data/practice.repository.js') < indexOf('src/trainer.js'));
+assert(indexOf('src/data/mastery.repository.js') < indexOf('src/data/learning.repository.js'));
+assert(indexOf('src/data/learning.repository.js') < indexOf('src/domain/mastery/mastery-learning-core.js'));
+assert(indexOf('src/domain/mastery/mastery-learning-core.js') < indexOf('src/exercises/exercise-host.js'));
+assert(indexOf('src/data/learning.repository.js') < indexOf('src/dashboard/student-dashboard.js'));
+assert(indexOf('src/data/learning.repository.js') < indexOf('src/trainer.js'));
 assert(indexOf('src/data/mastery.repository.js') < indexOf('src/trainer.js'));
 assert(indexOf('src/trainer.js') < indexOf('src/keyboard.js'));
 

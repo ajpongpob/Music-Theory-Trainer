@@ -91,6 +91,23 @@ const server=http.createServer((req,res)=>{
     await page.locator('#dashboardButton').click();
     await page.waitForFunction(()=>!document.getElementById('studentDashboard').hidden);
     assert.equal(await page.evaluate(()=>MajorScaleApp.exerciseHost.getCurrentContext()),null);
+    // Diagnostic recommendation uses the same exercise runtime with an explicit pretest mode.
+    const diagnostic=page.locator('#dashboardRecommendation .dashboard-continue');
+    await diagnostic.click();
+    await page.waitForFunction(()=>!document.getElementById('trainerApp').hidden && __qa.state.sessionMode==='pretest');
+    assert.equal(await page.evaluate(()=>MajorScaleApp.exerciseHost.getCurrentContext().sessionMode),'pretest','Host carries diagnostic mode');
+    assert.equal(await page.evaluate(()=>__qa.state.sessionLength),2,'diagnostic plan uses required Stage items');
+    for(let q=0;q<2;q++){
+      await page.evaluate(questionIndex=>{__qa.state.notes=__qa.buildExpected(__qa.state.key).map((n,i)=>({...n,id:'diag'+questionIndex+'-'+i}));__qa.render();},q);
+      await page.locator('#checkAnswer').click();
+      await page.locator('#questionResultOverlay').waitFor({state:'visible'});
+      await page.waitForFunction(()=>!document.getElementById('questionResultContinue').disabled);
+      await page.locator('#questionResultContinue').click();
+      if(q===0) await page.waitForFunction(()=>document.getElementById('questionResultOverlay').hidden && __qa.state.questionIndex===1);
+    }
+    await page.waitForFunction(()=>!document.getElementById('studentDashboard').hidden);
+    assert(await page.evaluate(()=>__qaCalls.some(c=>c[0]==='learning.applyDiagnosticPlacement')),'diagnostic placement persisted after final pretest item');
+    assert(await page.evaluate(()=>__qaCalls.some(c=>c[0]==='practice.createPracticeSession' && c[1]?.mode==='pretest')),'pretest session persisted with explicit mode');
     await page.locator('.dashboard-continue').first().click();
     await page.waitForFunction(()=>!document.getElementById('trainerApp').hidden);
     assert.equal(await page.evaluate(()=>__qa.state.notes.filter(Boolean).length),0,'reopen clears answer');
@@ -110,6 +127,6 @@ const server=http.createServer((req,res)=>{
     const reviewBox=await page.locator('#questionResultNotation svg').boundingBox();
     assert(reviewBox && reviewBox.width>320,'narrow review notation should use the available popup width');
     assert.deepEqual(errors,[]);assert.deepEqual(badAssets,[]);
-    console.log('PASS browser: HTTP subpath, Dashboard double click → Host → legacy runtime, A-G, click, drag, Shift/mobile selection, accidentals, durations, stems, beams/remove, 100% answer, popup, narrow score sizing + compact review, attempt save, return/reopen');
+    console.log('PASS browser: HTTP subpath, Dashboard recommendation → diagnostic persistence/placement, double click → Host → legacy runtime, A-G, click, drag, Shift/mobile selection, accidentals, durations, stems, beams/remove, 100% answer, popup, narrow score sizing + compact review, attempt save, return/reopen');
   }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(()=>server.close());
