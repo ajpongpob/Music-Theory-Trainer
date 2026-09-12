@@ -1,25 +1,33 @@
 {
-  "version": "0.7.2.1",
-  "baseline": "0.7.1",
-  "checkpoint": "dashboard-modularization",
-  "new_files": [
-    "src/dashboard/dashboard-utils.js",
-    "src/dashboard/student-dashboard.js",
-    "src/dashboard/teacher-dashboard.js"
+  "version": "0.7.4",
+  "baseline": "0.7.3-QA-passed-deployed",
+  "migration_type": "practice-mastery-data-repository-extraction",
+  "runtime_changes": [
+    "add src/data/practice.repository.js",
+    "add src/data/mastery.repository.js",
+    "route Trainer practice/session/attempt writes through practiceRepository",
+    "route Trainer Stage progress/mastery reads and progression RPC through masteryRepository",
+    "reuse authRepository for authenticated-user reads inside Trainer persistence flow",
+    "load practice/mastery repositories before trainer.js",
+    "update app_version to 0.7.4"
   ],
-  "modified_files": [
-    "index.html",
-    "src/auth-dashboard.js",
-    "src/trainer.js",
-    "README.md",
-    "REGRESSION-CHECKLIST.md",
-    "CODEX-REVIEW-PROMPT.md"
+  "protected_areas_not_refactored": [
+    "Major Scale question generation",
+    "notation rendering",
+    "note input and selection",
+    "accidentals",
+    "stem logic",
+    "primary and secondary beaming",
+    "scoring and answer checking",
+    "LO evidence computation",
+    "Stage-to-Level mapping",
+    "backend schema, RLS and RPC definitions"
   ],
-  "intentionally_unchanged": [
-    "styles/app.css",
-    "src/keyboard.js",
-    "src/data/supabase-client.js",
-    "src/data/auth.repository.js"
+  "automated_tests_added": [
+    "practice-mastery-repository-contract.test.js",
+    "trainer-data-flow-smoke.test.js",
+    "trainer-data-error-paths.test.js",
+    "architecture-boundary.test.js"
   ],
-  "behavior_change_intended": false
+  "next_candidate_checkpoint": "v0.8.0 Generic Exercise Host + Exercise Registry, only after v0.7.4 passes deployed regression testing"
 }

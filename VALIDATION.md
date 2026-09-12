@@ -1,33 +1,69 @@
-# Validation — v0.7.2.1
+# v0.7.4 Validation
 
-## Automated structural checks passed
+Baseline: v0.7.3 QA-passed and confirmed working on deployed GitHub Pages by the user.
 
-- JavaScript syntax (`node --check`) passed for every `.js` file.
-- All local files referenced by the app returned HTTP 200 from a local static server.
-- 97 HTML IDs remain unique.
-- 106 literal `$("id")` / `$('id')` JavaScript references were checked; none point to a missing HTML ID.
-- `styles/app.css` is byte-for-byte identical to tested v0.7.1.
-- `src/keyboard.js` is byte-for-byte identical to tested v0.7.1.
-- `src/data/supabase-client.js` is byte-for-byte identical to tested v0.7.1.
-- `src/data/auth.repository.js` is byte-for-byte identical to tested v0.7.1.
-- `src/trainer.js` differs from v0.7.1 only in `app_version: "0.7.1"` -> `"0.7.2.1"`.
-- No stale references to the moved dashboard-local state/functions remain in `src/auth-dashboard.js`.
-- No `service_role` string/key is present in runtime frontend files.
-- Dashboard RPC calls are now located in their respective dashboard modules.
+## Structural checks
+- All runtime JavaScript files pass `node --check`.
+- All test JavaScript files pass `node --check`.
+- `trainer.js` contains no direct `window.majorScaleSupabase`, `client.from()`, `client.rpc()`, or direct `client.auth.getUser()` access.
+- Practice persistence is centralized in `src/data/practice.repository.js`.
+- Mastery/progress reads and progression RPCs are centralized in `src/data/mastery.repository.js`.
+- Student/Teacher Dashboard modules remain free of direct `.from()` / `.rpc()` calls.
+- Repository modules do not access the DOM.
+- Script load order places all required repositories before `trainer.js`.
+- 97 DOM IDs found; all 97 are unique.
+- 84 literal `getElementById()` references were checked; none point to a missing ID.
+- Browser source contains no `service_role` marker.
+- The Supabase publishable key occurs exactly once in runtime source.
 
-## Intentional structural changes
+## Baseline protection checks
+Byte-identical to v0.7.3:
+- `styles/app.css`
+- `src/keyboard.js`
+- `src/auth-dashboard.js`
+- `src/data/supabase-client.js`
+- `src/data/auth.repository.js`
+- `src/data/dashboard.repository.js`
+- `src/dashboard/dashboard-utils.js`
+- `src/dashboard/student-dashboard.js`
+- `src/dashboard/teacher-dashboard.js`
 
-- Shared dashboard presentation helpers moved to `src/dashboard/dashboard-utils.js`.
-- Student Dashboard functions/state moved to `src/dashboard/student-dashboard.js`.
-- Teacher Dashboard functions/state moved to `src/dashboard/teacher-dashboard.js`.
-- `src/auth-dashboard.js` delegates dashboard loading/actions to those modules.
-- Sign-out invalidates both dashboard modules' in-flight load tokens.
-- Teacher class refresh/change remain protected by the teacher dashboard load token.
+Critical Trainer/domain functions compared against v0.7.3 and confirmed unchanged (18 functions), including:
+- Major Scale construction / expected answer
+- beam stem direction
+- score layout / note rendering
+- primary/secondary beam construction
+- note pitch movement / beam normalization
+- answer checking / scoring / mastery evaluation
+- question feedback
+- session aggregation / summary / finish flow
 
-## Not automatically verified here
+## Repository contract tests
+- Dashboard repository: PASS (7 operations).
+- Practice/Mastery repositories: PASS (17 operations), including exact table names, filters, RPC names, and RPC parameter names.
 
-A complete browser end-to-end test against the live Supabase project was not performed in this build environment. Use `REGRESSION-CHECKLIST.md` on the deployed GitHub Pages site before declaring v0.7.2.1 the new baseline.
+## Runtime/mock smoke tests
+PASS:
+- Teacher Dashboard
+- Student Dashboard
+- Login -> Teacher routing
+- Forgot Password
+- Reset Password
+- Current Stage lookup from generic Stage progress
+- Missing required-item coverage lookup
+- Mastery Progress refresh
+- Practice-session creation and stale-session close
+- Attempt -> skill evidence -> session progress -> progression RPC -> session completion
 
-## Extended QA
+## Error-path safeguards
+PASS:
+- Stale session generation cannot create a session or Attempt.
+- Skill-evidence write failure blocks session-progress update and Stage advancement.
+- Progression RPC failure does not complete the practice session.
+- Anonymous user does not create a practice session.
 
-See `QA-REPORT.md` for the post-hotfix runtime harness, baseline differential checks, static-hosting smoke test, security scan, and limitations.
+## Static hosting check
+A local static HTTP server returned HTTP 200 for `index.html` and all 12 local runtime CSS/JS assets (13 URLs total).
+
+## Scope note
+These tests verify source/package behavior with deterministic mocks. They do not replace the final live Supabase/browser regression test on the deployed GitHub Pages build.

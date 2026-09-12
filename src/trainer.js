@@ -2299,30 +2299,26 @@ function takeNextQuestionFromBag(){
 }
 
 async function resolveMajorScaleExerciseStage(level){
-  const client=window.majorScaleSupabase;
+  const repo=window.MajorScaleApp?.practiceRepository;
 
-  if(!client){
-    throw new Error("Supabase client not available");
+  if(!repo){
+    throw new Error("Practice repository not available");
   }
 
-  const {data:exercise,error:exerciseError}=await client
-    .from("exercises")
-    .select("id")
-    .eq("code","MAJOR_SCALE_NOTATION")
-    .eq("active",true)
-    .single();
+  const {data:exercise,error:exerciseError}=
+    await repo.getRequiredActiveExerciseByCode(
+      "MAJOR_SCALE_NOTATION"
+    );
 
   if(exerciseError) throw exerciseError;
 
   const stageCode=`STAGE_${level}`;
 
-  const {data:stage,error:stageError}=await client
-    .from("exercise_stages")
-    .select("id")
-    .eq("exercise_id",exercise.id)
-    .eq("code",stageCode)
-    .eq("active",true)
-    .single();
+  const {data:stage,error:stageError}=
+    await repo.getRequiredActiveStageByCode(
+      exercise.id,
+      stageCode
+    );
 
   if(stageError) throw stageError;
 
@@ -2334,10 +2330,12 @@ async function resolveMajorScaleExerciseStage(level){
 
 async function createPracticeSessionRecord(generation, level){
 
-  const client = window.majorScaleSupabase;
+  const app=window.MajorScaleApp || {};
+  const authRepository=app.authRepository;
+  const practiceRepository=app.practiceRepository;
 
-  if(!client){
-    console.error("Supabase client not available");
+  if(!authRepository || !practiceRepository){
+    console.error("Supabase data repositories not available");
     return;
   }
 
@@ -2346,7 +2344,7 @@ async function createPracticeSessionRecord(generation, level){
     const {
       data:{user},
       error:userError
-    } = await client.auth.getUser();
+    } = await authRepository.getUser();
 
     if(userError) throw userError;
 
@@ -2360,18 +2358,15 @@ async function createPracticeSessionRecord(generation, level){
       stageId
     }=await resolveMajorScaleExerciseStage(level);
 
-    const {data,error} = await client
-      .from("practice_sessions")
-      .insert({
+    const {data,error}=
+      await practiceRepository.createPracticeSession({
         user_id:user.id,
         exercise_id:exerciseId,
         stage_id:stageId,
         mode:"practice",
         completed_questions:0,
-        app_version:"0.7.2.1"
-      })
-      .select("id")
-      .single();
+        app_version:"0.7.4"
+      });
 
     if(error) throw error;
 
@@ -2435,25 +2430,25 @@ async function ensurePracticeSessionRecord(generation, level){
 }
 
 async function closeStalePracticeSessionsForCurrentUser(){
-  const client=window.majorScaleSupabase;
+  const app=window.MajorScaleApp || {};
+  const authRepository=app.authRepository;
+  const practiceRepository=app.practiceRepository;
 
-  if(!client) return 0;
+  if(!authRepository || !practiceRepository) return 0;
 
   try{
     const {
       data:{user},
       error:userError
-    }=await client.auth.getUser();
+    }=await authRepository.getUser();
 
     if(userError) throw userError;
     if(!user) return 0;
 
-    const {data:sessions,error:sessionError}=await client
-      .from("practice_sessions")
-      .select("id,started_at,last_activity_at")
-      .eq("user_id",user.id)
-      .eq("mode","practice")
-      .is("completed_at",null);
+    const {data:sessions,error:sessionError}=
+      await practiceRepository.getOpenPracticeSessions(
+        user.id
+      );
 
     if(sessionError) throw sessionError;
     if(!sessions?.length) return 0;
@@ -2466,12 +2461,12 @@ async function closeStalePracticeSessionsForCurrentUser(){
         session.started_at ||
         new Date().toISOString();
 
-      const {error}=await client
-        .from("practice_sessions")
-        .update({
-          completed_at:inferredCompletedAt
-        })
-        .eq("id",session.id);
+      const {error}=
+        await practiceRepository.closePracticeSession({
+          sessionId:session.id,
+          completedAt:inferredCompletedAt,
+          onlyIfOpen:false
+        });
 
       if(error){
         console.error(
@@ -2504,9 +2499,10 @@ async function closeStalePracticeSessionsForCurrentUser(){
 }
 
 async function closeCurrentPracticeSession(){
-  const client=window.majorScaleSupabase;
+  const practiceRepository=
+    window.MajorScaleApp?.practiceRepository;
 
-  if(!client) return false;
+  if(!practiceRepository) return false;
 
   // If an answer is currently being persisted, finish that write first.
   try{
@@ -2527,13 +2523,12 @@ async function closeCurrentPracticeSession(){
   try{
     const closedAt=new Date().toISOString();
 
-    const {error}=await client
-      .from("practice_sessions")
-      .update({
-        completed_at:closedAt
-      })
-      .eq("id",practiceSessionId)
-      .is("completed_at",null);
+    const {error}=
+      await practiceRepository.closePracticeSession({
+        sessionId:practiceSessionId,
+        completedAt:closedAt,
+        onlyIfOpen:true
+      });
 
     if(error) throw error;
 
@@ -2560,10 +2555,12 @@ window.majorScaleTrainerClosePracticeSession=
   closeCurrentPracticeSession;
 
 async function loadCurrentLevelFromProgress(){
-  const client=window.majorScaleSupabase;
+  const app=window.MajorScaleApp || {};
+  const authRepository=app.authRepository;
+  const masteryRepository=app.masteryRepository;
 
-  if(!client){
-    console.error("Supabase client not available — using Level 1");
+  if(!authRepository || !masteryRepository){
+    console.error("Supabase data repositories not available — using Level 1");
     return 1;
   }
 
@@ -2573,7 +2570,7 @@ async function loadCurrentLevelFromProgress(){
     const {
       data:{user:authenticatedUser},
       error:userError
-    }=await client.auth.getUser();
+    }=await authRepository.getUser();
 
     if(userError) throw userError;
     if(!authenticatedUser) return 1;
@@ -2591,21 +2588,18 @@ async function loadCurrentLevelFromProgress(){
   // Primary lookup: generic Exercise + Stage progress architecture.
   // UI still uses Level 1–4 temporarily, so STAGE_n is mapped to Level n.
   try{
-    const {data:exercise,error:exerciseError}=await client
-      .from("exercises")
-      .select("id")
-      .eq("code","MAJOR_SCALE_NOTATION")
-      .eq("active",true)
-      .maybeSingle();
+    const {data:exercise,error:exerciseError}=
+      await masteryRepository.getOptionalActiveExerciseByCode(
+        "MAJOR_SCALE_NOTATION"
+      );
 
     if(exerciseError) throw exerciseError;
 
     if(exercise?.id){
-      const {data:stages,error:stagesError}=await client
-        .from("exercise_stages")
-        .select("id,code")
-        .eq("exercise_id",exercise.id)
-        .eq("active",true);
+      const {data:stages,error:stagesError}=
+        await masteryRepository.getActiveStagesForExercise(
+          exercise.id
+        );
 
       if(stagesError) throw stagesError;
 
@@ -2613,12 +2607,11 @@ async function loadCurrentLevelFromProgress(){
       const stageIds=stageRows.map(row=>row.id).filter(Boolean);
 
       if(stageIds.length){
-        const {data:progressRows,error:progressError}=await client
-          .from("student_stage_progress")
-          .select("stage_id,status")
-          .eq("user_id",user.id)
-          .eq("status","in_progress")
-          .in("stage_id",stageIds);
+        const {data:progressRows,error:progressError}=
+          await masteryRepository.getInProgressStageProgress(
+            user.id,
+            stageIds
+          );
 
         if(progressError) throw progressError;
 
@@ -2992,10 +2985,13 @@ async function loadMissingStageItemCodes({
   stageId,
   rollingWindow
 }){
-  const client=window.majorScaleSupabase;
+  const app=window.MajorScaleApp || {};
+  const authRepository=app.authRepository;
+  const masteryRepository=app.masteryRepository;
 
   if(
-    !client ||
+    !authRepository ||
+    !masteryRepository ||
     !exerciseId ||
     !stageId ||
     !rollingWindow
@@ -3005,12 +3001,9 @@ async function loadMissingStageItemCodes({
 
   try{
     const {data:required,error:requiredError}=
-      await client
-        .from("stage_required_items")
-        .select("item_code,sequence_order")
-        .eq("stage_id",stageId)
-        .eq("active",true)
-        .order("sequence_order",{ascending:true});
+      await masteryRepository.getRequiredStageItems(
+        stageId
+      );
 
     if(requiredError) throw requiredError;
 
@@ -3026,19 +3019,17 @@ async function loadMissingStageItemCodes({
     const {
       data:{user},
       error:userError
-    }=await client.auth.getUser();
+    }=await authRepository.getUser();
 
     if(userError) throw userError;
     if(!user) return [];
 
     const {data:sessions,error:sessionsError}=
-      await client
-        .from("practice_sessions")
-        .select("id")
-        .eq("user_id",user.id)
-        .eq("mode","practice")
-        .eq("exercise_id",exerciseId)
-        .eq("stage_id",stageId);
+      await masteryRepository.getPracticeSessionsForStage({
+        userId:user.id,
+        exerciseId,
+        stageId
+      });
 
     if(sessionsError) throw sessionsError;
 
@@ -3050,13 +3041,10 @@ async function loadMissingStageItemCodes({
     }
 
     const {data:attempts,error:attemptsError}=
-      await client
-        .from("attempts")
-        .select("item_code,checked_at")
-        .in("practice_session_id",sessionIds)
-        .not("item_code","is",null)
-        .order("checked_at",{ascending:false})
-        .limit(Number(rollingWindow));
+      await masteryRepository.getRecentAttemptItems(
+        sessionIds,
+        rollingWindow
+      );
 
     if(attemptsError) throw attemptsError;
 
@@ -3081,9 +3069,10 @@ async function loadMissingStageItemCodes({
 }
 
 async function refreshMasteryProgress(level=state.level){
-  const client=window.majorScaleSupabase;
+  const masteryRepository=
+    window.MajorScaleApp?.masteryRepository;
 
-  if(!client){
+  if(!masteryRepository){
     renderMasteryProgressError();
     return null;
   }
@@ -3095,13 +3084,11 @@ async function refreshMasteryProgress(level=state.level){
 
   try{
     // Primary source: generic Exercise + Stage mastery architecture.
-    const genericResponse=await client.rpc(
-      "get_my_stage_mastery",
-      {
-        p_exercise_code:"MAJOR_SCALE_NOTATION",
-        p_stage_code:stageCode
-      }
-    );
+    const genericResponse=
+      await masteryRepository.getStageMastery({
+        exerciseCode:"MAJOR_SCALE_NOTATION",
+        stageCode
+      });
 
     if(!genericResponse.error){
       const genericResult=
@@ -3282,10 +3269,11 @@ function snapshotAttemptResponse(){
 }
 
 async function saveAttemptSkillResults(attemptId, loResults){
-  const client=window.majorScaleSupabase;
+  const practiceRepository=
+    window.MajorScaleApp?.practiceRepository;
 
-  if(!client || !attemptId || !loResults){
-    console.error("ATTEMPT SKILL RESULTS NOT SAVED: missing client, attempt id, or LO results");
+  if(!practiceRepository || !attemptId || !loResults){
+    console.error("ATTEMPT SKILL RESULTS NOT SAVED: missing repository, attempt id, or LO results");
     return false;
   }
 
@@ -3299,9 +3287,10 @@ async function saveAttemptSkillResults(attemptId, loResults){
   }));
 
   try{
-    const {error}=await client
-      .from("attempt_skill_results")
-      .insert(rows);
+    const {error}=
+      await practiceRepository.createAttemptSkillResults(
+        rows
+      );
 
     if(error) throw error;
 
@@ -3326,11 +3315,12 @@ async function updatePracticeSessionProgress({
   practiceSessionId,
   completedQuestions
 }){
-  const client=window.majorScaleSupabase;
+  const practiceRepository=
+    window.MajorScaleApp?.practiceRepository;
 
-  if(!client || !practiceSessionId){
+  if(!practiceRepository || !practiceSessionId){
     console.error(
-      "PRACTICE SESSION PROGRESS NOT SAVED: missing client or session id"
+      "PRACTICE SESSION PROGRESS NOT SAVED: missing repository or session id"
     );
     return false;
   }
@@ -3341,10 +3331,11 @@ async function updatePracticeSessionProgress({
   };
 
   try{
-    const {error}=await client
-      .from("practice_sessions")
-      .update(updates)
-      .eq("id",practiceSessionId);
+    const {error}=
+      await practiceRepository.updatePracticeSession(
+        practiceSessionId,
+        updates
+      );
 
     if(error) throw error;
 
@@ -3369,24 +3360,26 @@ async function completePracticeSessionRecord(
   practiceSessionId,
   overallScore
 ){
-  const client=window.majorScaleSupabase;
+  const practiceRepository=
+    window.MajorScaleApp?.practiceRepository;
 
-  if(!client || !practiceSessionId){
+  if(!practiceRepository || !practiceSessionId){
     console.error(
-      "PRACTICE SESSION COMPLETION NOT SAVED: missing client or session id"
+      "PRACTICE SESSION COMPLETION NOT SAVED: missing repository or session id"
     );
     return false;
   }
 
   try{
-    const {error}=await client
-      .from("practice_sessions")
-      .update({
-        overall_score:overallScore,
-        last_activity_at:new Date().toISOString(),
-        completed_at:new Date().toISOString()
-      })
-      .eq("id",practiceSessionId);
+    const {error}=
+      await practiceRepository.updatePracticeSession(
+        practiceSessionId,
+        {
+          overall_score:overallScore,
+          last_activity_at:new Date().toISOString(),
+          completed_at:new Date().toISOString()
+        }
+      );
 
     if(error) throw error;
 
@@ -3412,10 +3405,11 @@ async function advanceLevelIfMastered({
   level,
   practiceSessionId
 }){
-  const client=window.majorScaleSupabase;
+  const masteryRepository=
+    window.MajorScaleApp?.masteryRepository;
 
   if(
-    !client ||
+    !masteryRepository ||
     generation!==state.practiceSessionGeneration
   ){
     return {
@@ -3461,13 +3455,11 @@ async function advanceLevelIfMastered({
 
   try{
     // Primary progression engine: generic Exercise + Stage architecture.
-    const genericResponse=await client.rpc(
-      "advance_my_stage_if_mastered",
-      {
-        p_exercise_code:"MAJOR_SCALE_NOTATION",
-        p_stage_code:stageCode
-      }
-    );
+    const genericResponse=
+      await masteryRepository.advanceStageIfMastered({
+        exerciseCode:"MAJOR_SCALE_NOTATION",
+        stageCode
+      });
 
     if(!genericResponse.error){
       const result=Array.isArray(genericResponse.data)
@@ -3595,10 +3587,11 @@ async function saveAttemptRecord({
   completedQuestions,
   level
 }){
-  const client=window.majorScaleSupabase;
+  const practiceRepository=
+    window.MajorScaleApp?.practiceRepository;
 
-  if(!client){
-    console.error("Supabase client not available — attempt not saved");
+  if(!practiceRepository){
+    console.error("Practice repository not available — attempt not saved");
     return null;
   }
 
@@ -3619,17 +3612,14 @@ async function saveAttemptRecord({
   }
 
   try{
-    const {data,error}=await client
-      .from("attempts")
-      .insert({
+    const {data,error}=
+      await practiceRepository.createAttempt({
         practice_session_id:practiceSessionId,
         question_number:questionNumber,
         item_code:itemCode,
         score:score,
         response_json:responseJson
-      })
-      .select("id")
-      .single();
+      });
 
     if(error) throw error;
 
@@ -3676,6 +3666,7 @@ async function saveAttemptRecord({
       "CREATE ATTEMPT ERROR:",
       error
     );
+
     return null;
   }
 }

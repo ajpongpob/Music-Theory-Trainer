@@ -2,8 +2,8 @@
 'use strict';
 const app = window.MajorScaleApp = window.MajorScaleApp || {};
 const $ = id => document.getElementById(id);
-const client = app.supabaseClient;
 const authRepository = app.authRepository;
+const dashboardRepository = app.dashboardRepository;
 const utils = app.dashboardUtils || {};
 const {escapeDashboardHtml,dashboardStatusMeta,dashboardPercent,dashboardScore,dashboardCompletionDate} = utils;
 let activeUser = null;
@@ -206,13 +206,13 @@ async function loadTeacherClassDashboard(classId,token) {
   $('teacherClassMeta').textContent=[classInfo.code,classInfo.name,teacherClassLabel(classInfo)].filter(Boolean).join(' · ');
   renderTeacherAssignedPaths(classInfo);
 
-  const {data,error}=await client.rpc('get_my_teacher_class_dashboard',{p_class_id:classId});
+  const {data,error}=await dashboardRepository.getTeacherClassDashboard(classId);
   if(error) throw error;
   if(token!==teacherDashboardLoadToken) return;
   renderTeacherStudents(classInfo,Array.isArray(data) ? data : []);
 }
 async function loadTeacherDashboard({preferredClassId=null}={}) {
-  if(!client || !activeUser) return;
+  if(!dashboardRepository || !activeUser) return;
   const token=++teacherDashboardLoadToken;
   const messageBox=$('teacherDashboardMessage');
   const content=$('teacherDashboardContent');
@@ -227,8 +227,8 @@ async function loadTeacherDashboard({preferredClassId=null}={}) {
     if(!user) throw new Error('Authentication required');
 
     const [summaryResult,profileResult]=await Promise.all([
-      client.rpc('get_my_teacher_dashboard'),
-      client.from('profiles').select('full_name,role').eq('id',user.id).maybeSingle()
+      dashboardRepository.getTeacherDashboard(),
+      dashboardRepository.getTeacherProfile(user.id)
     ]);
     if(summaryResult.error) throw summaryResult.error;
     if(token!==teacherDashboardLoadToken) return;

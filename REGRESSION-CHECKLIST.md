@@ -1,43 +1,45 @@
-# Regression Checklist — v0.7.2.1
+# v0.7.4 Regression Checklist
 
-## Authentication
-- [ ] Existing student can log in.
-- [ ] Existing teacher can log in.
-- [ ] Register flow still behaves as before.
-- [ ] Forgot-password email flow works.
-- [ ] Recovery URL opens reset-password panel.
-- [ ] Reset password works.
-- [ ] Logout works from trainer.
-- [ ] Logout works from Student Dashboard.
-- [ ] Logout works from Teacher Dashboard.
+Use the deployed GitHub Pages build.
 
-## Student Dashboard
-- [ ] Student is routed to Student Dashboard after login.
-- [ ] User name loads.
-- [ ] Learning Path / Exercise / Stage rows match v0.7.1.
-- [ ] Current mastery panel loads.
-- [ ] Continue/Review launches the correct exercise/stage.
-- [ ] Dashboard button returns from trainer correctly.
+## Auth / Dashboard regression
+- [ ] Student login succeeds.
+- [ ] Teacher login succeeds.
+- [ ] Logout succeeds.
+- [ ] Forgot / Reset Password still work.
+- [ ] Student Dashboard renders Path / Exercise / Stage / Mastery.
+- [ ] Teacher Dashboard renders Class / Path / Student progress.
+- [ ] Dashboard refresh and class switching work without console errors.
 
-## Teacher Dashboard
-- [ ] Teacher/admin is routed to Teacher Dashboard after login.
-- [ ] Class selector loads.
-- [ ] Class metadata/student/path counts load.
-- [ ] Student progress rows load.
-- [ ] Changing class reloads detail.
-- [ ] Refresh reloads currently selected class.
-- [ ] Student account cannot access teacher RPC data.
+## Practice persistence — priority for v0.7.4
+- [ ] Opening Trainer starts normally.
+- [ ] A checked answer creates/saves an Attempt.
+- [ ] No duplicate Attempt appears for one question.
+- [ ] Skill evidence saves successfully.
+- [ ] `completed_questions` advances after a successful saved Attempt.
+- [ ] Leaving/returning does not leave an incorrect open practice session.
+- [ ] Completing 5 questions records session completion/score normally.
 
-## Trainer / notation — must be unchanged
-- [ ] Five-question session works.
-- [ ] Click/tap note input works.
-- [ ] Mobile pitch drag works.
-- [ ] Note selection/range selection works.
-- [ ] Sharp/flat/double-sharp/double-flat work.
+## Mastery / Stage progression — priority for v0.7.4
+- [ ] Current Stage opens correctly from Student progress.
+- [ ] Mastery Progress panel loads.
+- [ ] Missing-key/coverage guidance still appears when appropriate.
+- [ ] Mastery RPC result is reflected in UI.
+- [ ] Passing a Stage advances to the next Stage exactly as before.
+- [ ] Final Stage mastery completes the Exercise/Path as before.
+
+## Notation / scoring protected regression
+- [ ] Note click/tap works.
+- [ ] Mobile pitch drag works if tested on touch device.
+- [ ] Multi-note selection works.
+- [ ] Sharp / flat / double sharp / double flat work.
 - [ ] Stem direction works.
-- [ ] Primary beam works.
-- [ ] Secondary beam/hook direction works, especially terminal 8th+16th and initial 16th+8th cases.
-- [ ] 2+4 beam grouping works.
-- [ ] Whole/half noteheads work.
-- [ ] Answer checking and score match v0.7.1.
-- [ ] Attempt saving and stage progression still work.
+- [ ] Primary beam grouping works.
+- [ ] Secondary beam/hook direction remains correct, especially terminal 8th + 16th cases.
+- [ ] Scoring behaves as before.
+- [ ] 5-question summary behaves as before.
+
+## Browser developer tools
+- [ ] No unexpected JavaScript error in Console.
+- [ ] No local asset 404 in Network tab.
+- [ ] `practice.repository.js` and `mastery.repository.js` both load successfully.

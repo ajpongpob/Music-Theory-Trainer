@@ -2,8 +2,8 @@
 'use strict';
 const app = window.MajorScaleApp = window.MajorScaleApp || {};
 const $ = id => document.getElementById(id);
-const client = app.supabaseClient;
 const authRepository = app.authRepository;
+const dashboardRepository = app.dashboardRepository;
 const dashboard = $('studentDashboard');
 const teacherDashboard = $('teacherDashboard');
 const trainer = $('trainerApp');
@@ -205,9 +205,9 @@ async function loadDashboardCurrentMastery(currentRow,skillNameMap,token) {
   body.className='dashboard-message';
   body.textContent='กำลังโหลดผลการเรียน...';
   try{
-    const {data,error}=await client.rpc('get_my_stage_mastery',{
-      p_exercise_code:currentRow.exercise_code,
-      p_stage_code:currentRow.stage_code
+    const {data,error}=await dashboardRepository.getStageMastery({
+      exerciseCode:currentRow.exercise_code,
+      stageCode:currentRow.stage_code
     });
     if(error) throw error;
     if(token!==dashboardLoadToken) return;
@@ -263,7 +263,7 @@ async function loadDashboardCurrentMastery(currentRow,skillNameMap,token) {
   }
 }
 async function loadStudentDashboard() {
-  if(!client || !activeUser) return;
+  if(!dashboardRepository || !activeUser) return;
   const token=++dashboardLoadToken;
   const messageBox=$('dashboardMessage');
   const content=$('dashboardContent');
@@ -278,9 +278,9 @@ async function loadStudentDashboard() {
     if(!user) throw new Error('Authentication required');
 
     const [dashboardResult,profileResult,skillsResult]=await Promise.all([
-      client.rpc('get_my_student_dashboard'),
-      client.from('profiles').select('full_name').eq('id',user.id).maybeSingle(),
-      client.from('skills').select('code,short_name,name_th').eq('active',true)
+      dashboardRepository.getStudentDashboard(),
+      dashboardRepository.getStudentProfile(user.id),
+      dashboardRepository.getActiveSkills()
     ]);
     if(dashboardResult.error) throw dashboardResult.error;
     if(token!==dashboardLoadToken) return;

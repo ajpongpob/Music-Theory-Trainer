@@ -1,147 +1,56 @@
-# QA Report — v0.7.2.1
+# QA Report — v0.7.4
 
-Date: 2026-09-12
-Scope: regression validation after Teacher Dashboard modularization hotfix.
+## Result
+**PASS for source/package QA. Live deployed regression testing is still required before adopting v0.7.4 as the new golden baseline.**
 
-## Release decision
+## Why this checkpoint is intentionally narrow
+v0.7.3 was confirmed working by the user. v0.7.4 therefore moves only the Trainer's persistence/read boundary. It does not introduce the Generic Exercise Host yet and does not restructure notation, scoring, or the Major Scale domain.
 
-**PASS for user acceptance testing.**
+## New data boundaries
 
-The known v0.7.2 regression (`dashboardCompletionDate is not defined`) is fixed. No additional Critical/High runtime issue was found in the tested Auth/Dashboard paths.
+### `practice.repository.js`
+Owns Supabase details for:
+1. Resolve required active Exercise.
+2. Resolve required active Stage.
+3. Create practice session.
+4. Read open practice sessions.
+5. Close practice session.
+6. Create Attempt.
+7. Create Attempt Skill Results.
+8. Update/complete practice session.
 
-## 1. JavaScript syntax
+### `mastery.repository.js`
+Owns Supabase details for:
+1. Resolve active Exercise for progress lookup.
+2. Read active Stages.
+3. Read in-progress Stage progress.
+4. Read required Stage items.
+5. Read practice sessions scoped to Exercise/Stage.
+6. Read recent Attempt item coverage.
+7. Call `get_my_stage_mastery`.
+8. Call `advance_my_stage_if_mastered`.
 
-`node --check` passed for every runtime JavaScript file:
+`trainer.js` still owns orchestration. This is intentional: data access was extracted without simultaneously rewriting business logic.
 
-- `src/data/supabase-client.js`
-- `src/data/auth.repository.js`
-- `src/dashboard/dashboard-utils.js`
-- `src/dashboard/student-dashboard.js`
-- `src/dashboard/teacher-dashboard.js`
-- `src/auth-dashboard.js`
-- `src/trainer.js`
-- `src/keyboard.js`
+## Automated test result
+All passed:
+- `architecture-boundary.test.js`
+- `dashboard-repository-contract.test.js`
+- `dashboard-runtime-smoke.test.js`
+- `practice-mastery-repository-contract.test.js`
+- `trainer-data-flow-smoke.test.js`
+- `trainer-data-error-paths.test.js`
 
-## 2. Runtime Auth/Dashboard harness
+## Protected logic comparison
+18 high-risk notation/scoring/session functions were compared directly against v0.7.3 and are unchanged. In particular, secondary-beam algorithms, stem direction, answer checking, and score aggregation were not edited.
 
-The actual JavaScript files were loaded in original dependency order in a Node VM with a mocked DOM and mocked Supabase client. No database writes were made.
-
-Passed scenarios:
-
-1. Teacher session -> role routing -> Teacher Dashboard
-   - Teacher Dashboard visible
-   - class selector populated
-   - class metadata rendered
-   - student count = 1
-   - Learning Path count = 1
-   - completed count = 1
-   - student `test2` rendered
-   - latest mastery `100%` rendered
-   - assigned date formatting executed successfully
-   - Refresh path completed without runtime error
-
-2. Student session -> Student Dashboard
-   - Student Dashboard visible
-   - assigned Learning Path rendered
-   - Stage 2 current progress rendered
-   - mastery detail rendered
-
-3. Login -> Teacher role routing
-   - sign-in handler called once
-   - Teacher Dashboard opened
-   - teacher class/student data rendered
-
-4. Forgot Password
-   - reset-password request invoked
-   - confirmation message rendered
-
-5. Recovery / Set New Password
-   - reset panel opened
-   - password update invoked
-   - local sign-out invoked
-   - returned to Login panel
-
-All runtime scenarios completed with **zero captured `console.error` messages**.
-
-The same harness was also run against v0.7.1 (the previously user-tested baseline), and both v0.7.1 and v0.7.2.1 passed the same scenarios.
-
-## 3. Regression isolation
-
-Compared with v0.7.2:
-
-Unchanged byte-for-byte:
-
-- `styles/app.css`
-- `src/keyboard.js`
-- `src/data/supabase-client.js`
-- `src/data/auth.repository.js`
-- `src/dashboard/dashboard-utils.js`
-- `src/dashboard/student-dashboard.js`
-- `src/auth-dashboard.js`
-
-`src/trainer.js` is identical after normalizing only:
-
-- `app_version: "0.7.2"` -> `app_version: "0.7.2.1"`
-
-Functional hotfix in `src/dashboard/teacher-dashboard.js`:
-
-- added `dashboardCompletionDate` to the functions obtained from `dashboardUtils`.
-
-`index.html` changes from v0.7.2 are version labels only.
-
-The trainer is also identical to the user-tested v0.7.1 after normalizing the `app_version` string.
-
-## 4. HTML / DOM validation
-
-- 97 HTML IDs found
-- 97 unique IDs
-- no duplicate IDs
-- 89 statically detected `getElementById` / `$()` references
-- no missing referenced IDs
-- all local `<script>` and `<link>` paths exist
-
-## 5. CSS structural validation
-
-- opening braces: 841
-- closing braces: 841
-- two `@import` declarations remain at the beginning of the stylesheet
-
-## 6. Static hosting smoke test
-
-A local static HTTP server returned HTTP 200 for:
-
-- `index.html`
-- `styles/app.css`
-- every runtime JavaScript file
-
-## 7. Frontend security checks
-
-- no `service_role` reference in runtime frontend files
-- exactly one Supabase publishable key occurrence in runtime source
-- Supabase client creation remains centralized in `src/data/supabase-client.js`
-
-## 8. ZIP integrity
-
-`unzip -t` reports no compressed-data errors.
-
-## Limitation
-
-An automated real Chromium end-to-end run could not be completed reliably in this container because the environment blocks/hangs local browser execution. Therefore this QA does **not** replace final testing in a real browser against the live Supabase project.
-
-The runtime mock tests specifically cover the dependency/module regression that caused the v0.7.2 Teacher Dashboard failure, while Trainer/Notation risk is controlled by byte-level comparison to the already tested baseline.
-
-## User acceptance tests still required
-
-Before declaring v0.7.2.1 the new baseline, test on the deployed GitHub Pages site:
-
-- Teacher login and Teacher Dashboard
-- Student login and Student Dashboard
-- Forgot / Reset Password
-- Dashboard -> Trainer -> Dashboard
-- 5-question practice session
-- note input and drag
-- accidentals including double sharp/flat
-- stem direction
-- primary/secondary beams, especially 8th + 16th terminal hook
-- scoring and stage progression
-
+## Live GitHub Pages checks still required
+- Student login and Student Dashboard.
+- Teacher login and Teacher Dashboard.
+- Continue/Review -> Trainer.
+- Complete a 5-question session and verify no duplicate/error in Attempt saving.
+- Confirm Mastery Progress updates.
+- Confirm Stage progression after mastery.
+- Recheck note input, accidentals, stem direction, primary beam, and secondary beam/hook behavior.
+- Browser Console: no unexpected error.
+- Network: no local asset 404.
