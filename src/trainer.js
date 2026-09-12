@@ -3,6 +3,7 @@
 "use strict";
 
 const notationCore=window.MajorScaleApp.notationCore;
+const notationRenderer=window.MajorScaleApp.notationRenderer;
 const majorScaleModule=window.MajorScaleApp.majorScaleDomain;
 const majorScaleConfig=window.MajorScaleApp.majorScaleConfig;
 const {KEYS,LEVEL_KEYS,LO_META}=majorScaleConfig;
@@ -128,16 +129,8 @@ const SMUFL={
 function musicEm(staffObj){return notationCore.musicEm(staffObj);}
 function sp(staffObj,value=1){return notationCore.sp(staffObj,value);}
 
-function accidentalSmuflGlyph(value){
-  return {
-    "b":SMUFL.accidentalFlat,
-    "":SMUFL.accidentalNatural,
-    "#":SMUFL.accidentalSharp,
-    "##":SMUFL.accidentalDoubleSharp,
-    "bb":SMUFL.accidentalDoubleFlat
-  }[value] ?? "";
-}
-function el(name,attrs={},text=""){const n=document.createElementNS(NS,name);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v));if(text)n.textContent=text;return n}
+function accidentalSmuflGlyph(value){return notationRenderer.accidentalSmuflGlyph(value,SMUFL);}
+function el(name,attrs={},text=""){return notationRenderer.createSvgElement(name,attrs,text);}
 function pitchToStep(letter,octave){return notationCore.pitchToStep(letter,octave);}
 function stepToPitch(step){return notationCore.stepToPitch(step);}
 
@@ -203,11 +196,7 @@ function drawTimeSignature(svg,staff,x){
    },glyph));
  });
 }
-function drawLedger(svg,x,step,stepToY){
- const ys=[];if(step<0){for(let s=-2;s>=step;s-=2)ys.push(stepToY(s))}
- else if(step>8){for(let s=10;s<=step;s+=2)ys.push(stepToY(s))}
- ys.forEach(y=>svg.appendChild(el("line",{x1:x-18,y1:y,x2:x+18,y2:y,stroke:"#111","stroke-width":1.4})));
-}
+function drawLedger(svg,x,step,stepToY){return notationRenderer.drawLedger(svg,x,step,stepToY);}
 
 /* Example */
 const exampleSvg=document.getElementById("exampleSvg");
