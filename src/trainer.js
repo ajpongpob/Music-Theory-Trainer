@@ -3324,6 +3324,37 @@ function setTrainerInertForQuestionResult(active){
   }
 }
 
+function optimizeQuestionResultSnapshotLayout(snapshot){
+  const systems=Array.from(snapshot.querySelectorAll("g[data-system]"));
+  if(systems.length!==3) return false;
+
+  const second=systems[1];
+  const third=systems[2];
+  const secondBody=Array.from(second.children).find(node=>
+    node.localName==="g" && node.getAttribute("pointer-events")!=="none"
+  );
+  const thirdBody=Array.from(third.children).find(node=>
+    node.localName==="g" && node.getAttribute("pointer-events")!=="none"
+  );
+  if(!secondBody || !thirdBody) return false;
+
+  // Review-only layout: keep measure 1 on the first system and place the
+  // short final whole-note measure after measure 2 on the second system.
+  // The editable score remains unchanged, so interaction geometry is safe.
+  secondBody.setAttribute("transform","translate(-600 180)");
+  thirdBody.setAttribute("transform","translate(-620 180)");
+  Array.from(second.children).forEach(node=>{
+    if(node.localName==="line") node.setAttribute("x2","740");
+  });
+  second.appendChild(thirdBody);
+  second.setAttribute("transform","translate(0 -30)");
+  third.remove();
+
+  snapshot.setAttribute("viewBox","0 0 750 430");
+  snapshot.classList.add("question-result-score-snapshot-compact");
+  return true;
+}
+
 function renderQuestionResultNotationSnapshot(){
   const container=document.getElementById("questionResultNotation");
   if(!container) return;
@@ -3349,6 +3380,7 @@ function renderQuestionResultNotationSnapshot(){
   snapshot.querySelectorAll('[fill="#9b6400"]').forEach(node=>node.setAttribute("fill","#111"));
   snapshot.querySelectorAll('[stroke="#9b6400"]').forEach(node=>node.setAttribute("stroke","#111"));
 
+  optimizeQuestionResultSnapshotLayout(snapshot);
   container.appendChild(snapshot);
 }
 

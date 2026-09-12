@@ -56,7 +56,8 @@ const restoreRenderer=require('./helpers/restore-renderer-foundation.cjs');
 const restoreStatic=require('./helpers/restore-renderer-static-signatures.cjs');
 const restoreNote=require('./helpers/restore-renderer-note-primitives.cjs');
 const restoreFeedback=require('./helpers/restore-feedback-answer-snapshot.cjs');
-let restored=require('./helpers/restore-notation-baseline.cjs')(restoreRenderer(restoreStatic(restoreNote(restoreFeedback(trainer,'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js');
+const restoreNarrow=require('./helpers/restore-narrow-notation-layout.cjs');
+let restored=require('./helpers/restore-notation-baseline.cjs')(restoreRenderer(restoreStatic(restoreNote(restoreFeedback(restoreNarrow(trainer,'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js'),'src/trainer.js');
 for(const {before,after,offset} of [...boundary.substitutions].reverse()){
   assert.equal(restored.slice(offset,offset+after.length),after,'extraction wrapper changed unexpectedly');
   restored=restored.slice(0,offset)+before+restored.slice(offset+after.length);

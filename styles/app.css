@@ -3635,3 +3635,32 @@ body{min-height:100dvh;}
 @media(prefers-reduced-motion:reduce){
   .question-result-overlay,.question-result-panel{transition:none !important;}
 }
+
+/* v0.8.1 feedback preview — narrow-screen notation readability */
+@media(max-width:815px){
+  .workspace-card .score-stage{
+    height:auto !important;
+    min-height:min(94vw,660px) !important;
+    overflow:visible !important;
+    align-items:stretch !important;
+  }
+  .workspace-card #scoreSvg{
+    width:100% !important;
+    height:min(94vw,660px) !important;
+    min-height:min(94vw,660px) !important;
+    max-height:none !important;
+    aspect-ratio:auto !important;
+    flex-shrink:0;
+  }
+  .question-result-notation{
+    overflow:auto;
+  }
+  .question-result-notation .question-result-score-snapshot{
+    max-height:none !important;
+  }
+  .question-result-notation .question-result-score-snapshot-compact{
+    width:100%;
+    height:auto !important;
+    max-height:none !important;
+  }
+}

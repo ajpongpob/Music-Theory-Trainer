@@ -7,9 +7,10 @@ const restoreRenderer=require('./helpers/restore-renderer-foundation.cjs');
 const restoreStatic=require('./helpers/restore-renderer-static-signatures.cjs');
 const restoreNote=require('./helpers/restore-renderer-note-primitives.cjs');
 const restoreFeedback=require('./helpers/restore-feedback-answer-snapshot.cjs');
-for(const file of Object.keys(boundary.files))restore(restoreRenderer(restoreStatic(restoreNote(restoreFeedback(read(file),file),file),file),file),file);
+const restoreNarrow=require('./helpers/restore-narrow-notation-layout.cjs');
+for(const file of Object.keys(boundary.files))restore(restoreRenderer(restoreStatic(restoreNote(restoreFeedback(restoreNarrow(read(file),file),file),file),file),file),file);
 for(const [file,hash] of Object.entries(boundary.protectedProduction)){
-  const source=restoreFeedback(read(file),file);
+  const source=restoreFeedback(restoreNarrow(read(file),file),file);
   assert.equal(crypto.createHash('sha256').update(source).digest('hex'),hash,'protected production changed: '+file);
 }
 const core=read('src/domain/notation/notation-core.js');
