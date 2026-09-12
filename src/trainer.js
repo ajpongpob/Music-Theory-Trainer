@@ -164,7 +164,7 @@ function drawExample(){
  const svg=exampleSvg, staff={x1:88,x2:1065,top:68,spacing:17,sigX:120};
  const stepToY=s=>staff.top+staff.spacing*4-s*(staff.spacing/2);
  svg.innerHTML="";svg.appendChild(el("rect",{x:0,y:0,width:1100,height:205,fill:"#fff"}));
- for(let i=0;i<5;i++){const y=staff.top+i*staff.spacing;svg.appendChild(el("line",{x1:staff.x1,y1:y,x2:staff.x2,y2:y,stroke:"#1d2939","stroke-width":1.55}))}
+ notationRenderer.drawStaffLines(svg,staff,{strokeWidth:1.55});
  svg.appendChild(el("text",{
    x:staff.x1,
    y:staff.top + staff.spacing*3,
@@ -219,9 +219,8 @@ function drawExample(){
    svg.appendChild(el("polygon",{points:`${x1},${beamY} ${x2},${beamY} ${x2},${beamY+(dir==="up"?t:-t)} ${x1},${beamY+(dir==="up"?t:-t)}`,fill:"#111"}));
  });
  // Measure barlines + final double barline
- [570,990].forEach(x=>svg.appendChild(el("line",{x1:x,y1:staff.top,x2:x,y2:staff.top+staff.spacing*4,stroke:"#111","stroke-width":1.7})));
- svg.appendChild(el("line",{x1:1050,y1:staff.top,x2:1050,y2:staff.top+staff.spacing*4,stroke:"#111","stroke-width":1.4}));
- svg.appendChild(el("line",{x1:1058,y1:staff.top,x2:1058,y2:staff.top+staff.spacing*4,stroke:"#111","stroke-width":3.2}));
+ [570,990].forEach(x=>notationRenderer.drawBarline(svg,x,staff,{strokeWidth:1.7}));
+ notationRenderer.drawDoubleBarline(svg,1050,1058,staff);
 
 }
 
@@ -323,137 +322,19 @@ function layoutMeasureWithinBounds(
   options={}
 ){
   if(!indices.length) return;
-
-  const leadingPad=options.leadingPad ?? sp(staff,0.35);
-  const trailingPad=options.trailingPad ?? sp(staff,0.55);
-  const preferredGap=options.preferredGap ?? sp(staff,0.40);
-  const minimumGap=options.minimumGap ?? sp(staff,0.12);
-
-  const innerLeft=leftBoundary+leadingPad;
-  const innerRight=rightBoundary-trailingPad;
-  const available=Math.max(0,innerRight-innerLeft);
-
   const leftExtents=indices.map(i=>slotLeftExtent(svg,i,staff));
   const rightExtents=indices.map(i=>slotRightExtent(svg,i,staff));
-
-  if(indices.length===1){
-    const i=indices[0];
-    const minX=innerLeft+leftExtents[0];
-    const maxX=innerRight-rightExtents[0];
-
-    noteXs[i]=Math.max(
-      minX,
-      Math.min(baseNoteXs[i],maxX)
-    );
-    return;
-  }
-
-  // Horizontal width occupied by glyphs alone, excluding gaps.
-  let glyphWidth=leftExtents[0]+rightExtents[rightExtents.length-1];
-
-  for(let p=1;p<indices.length;p++){
-    glyphWidth+=rightExtents[p-1]+leftExtents[p];
-  }
-
-  const gapCount=indices.length-1;
-
-  // Prefer conventional spacing, but shrink gaps gracefully if the measure
-  // contains wide accidentals. Never allow the layout to exceed the barline.
-  let gap=(available-glyphWidth)/gapCount;
-
-  if(Number.isFinite(gap)){
-    gap=Math.min(preferredGap,Math.max(minimumGap,gap));
-  }else{
-    gap=preferredGap;
-  }
-
-  let required=glyphWidth+gap*gapCount;
-
-  // Normally all current scale-writing combinations fit comfortably.
-  // If an extreme future glyph set does not, reduce the gap to the exact
-  // available value rather than allowing any note to cross a barline.
-  if(required>available){
-    gap=Math.max(
-      0,
-      (available-glyphWidth)/gapCount
-    );
-    required=glyphWidth+gap*gapCount;
-  }
-
-  // Remaining horizontal room is distributed according to the original
-  // slot-spacing proportions, retaining the established rhythmic layout.
-  const extra=Math.max(0,available-required);
-
-  const baseDistances=[];
-  let baseDistanceTotal=0;
-
-  for(let p=1;p<indices.length;p++){
-    const d=Math.max(
-      1,
-      baseNoteXs[indices[p]]-baseNoteXs[indices[p-1]]
-    );
-    baseDistances.push(d);
-    baseDistanceTotal+=d;
-  }
-
-  // Put a modest amount of surplus at both measure edges and distribute
-  // the rest through the note intervals.
-  const edgeShare=Math.min(
-    extra*0.18,
-    sp(staff,0.55)
-  );
-
-  const intervalExtra=Math.max(
-    0,
-    extra-edgeShare*2
-  );
-
-  let x=innerLeft+edgeShare+leftExtents[0];
-  noteXs[indices[0]]=x;
-
-  for(let p=1;p<indices.length;p++){
-    const proportionalExtra=
-      baseDistanceTotal>0
-        ? intervalExtra*(baseDistances[p-1]/baseDistanceTotal)
-        : intervalExtra/gapCount;
-
-    x+=
-      rightExtents[p-1]+
-      gap+
-      leftExtents[p]+
-      proportionalExtra;
-
-    noteXs[indices[p]]=x;
-  }
-
-  // Hard final clamp: the final rendered notehead can never pass the
-  // right boundary. Normally this correction is zero.
-  const lastIndex=indices[indices.length-1];
-  const renderedRight=
-    noteXs[lastIndex]+rightExtents[rightExtents.length-1];
-
-  const maxRight=rightBoundary-trailingPad;
-
-  if(renderedRight>maxRight){
-    const correction=renderedRight-maxRight;
-    indices.forEach(i=>{
-      noteXs[i]-=correction;
-    });
-  }
-
-  // Hard left-boundary clamp after any final correction.
-  const firstIndex=indices[0];
-  const renderedLeft=
-    noteXs[firstIndex]-leftExtents[0];
-
-  const minLeft=leftBoundary+leadingPad;
-
-  if(renderedLeft<minLeft){
-    const correction=minLeft-renderedLeft;
-    indices.forEach(i=>{
-      noteXs[i]+=correction;
-    });
-  }
+  return notationRenderer.layoutMeasureWithinBounds(indices,leftBoundary,rightBoundary,{
+    leadingPad:options.leadingPad ?? sp(staff,0.35),
+    trailingPad:options.trailingPad ?? sp(staff,0.55),
+    preferredGap:options.preferredGap ?? sp(staff,0.40),
+    minimumGap:options.minimumGap ?? sp(staff,0.12),
+    edgeShareMax:sp(staff,0.55),
+    leftExtents,
+    rightExtents,
+    basePositions:baseNoteXs,
+    positions:noteXs
+  });
 }
 
 function layoutAllMeasuresWithinBounds(svg){
@@ -553,7 +434,7 @@ function drawScore(){
  resetNoteLayout();
  svg.innerHTML="";
  svg.appendChild(el("rect",{x:0,y:0,width:1400,height:350,fill:"#fff"}));
- for(let i=0;i<5;i++){const y=staff.top+i*staff.spacing;svg.appendChild(el("line",{x1:staff.x1,y1:y,x2:staff.x2,y2:y,stroke:"#1d2939","stroke-width":1.7}))}
+ notationRenderer.drawStaffLines(svg,staff);
  svg.appendChild(el("text",{
    x:staff.x1,
    y:staff.top + staff.spacing*3,
@@ -575,9 +456,8 @@ function drawScore(){
  // All note centers are guaranteed to remain inside their own measure.
  layoutAllMeasuresWithinBounds(svg);
 
- [690,1225].forEach(x=>svg.appendChild(el("line",{x1:x,y1:staff.top,x2:x,y2:staff.top+staff.spacing*4,stroke:"#111","stroke-width":1.8})));
- svg.appendChild(el("line",{x1:1350,y1:staff.top,x2:1350,y2:staff.top+staff.spacing*4,stroke:"#111","stroke-width":1.4}));
- svg.appendChild(el("line",{x1:1358,y1:staff.top,x2:1358,y2:staff.top+staff.spacing*4,stroke:"#111","stroke-width":3.2}));
+ [690,1225].forEach(x=>notationRenderer.drawBarline(svg,x,staff));
+ notationRenderer.drawDoubleBarline(svg,1350,1358,staff);
 
  // Entry cursor: shows the current slot where a new note will be entered.
  if(state.cursorIndex>=0 && state.cursorIndex<15){
