@@ -33,37 +33,40 @@ function installEditorRegressionStyles(){
   document.head.appendChild(style);
 }
 
+function noteGroupIsHighlighted(group){
+  return !!group?.querySelector?.('[fill="#9b6400"],[stroke="#9b6400"]');
+}
+
 function highlightedEditableNoteGroups(){
-  return [...document.querySelectorAll('#scoreSvg g[data-note-id]')].filter(group=>
-    group.querySelector('[fill="#9b6400"],[stroke="#9b6400"]')
-  );
+  return [...document.querySelectorAll('#scoreSvg g[data-note-id]')].filter(noteGroupIsHighlighted);
 }
 
 function promoteSingleHighlightedNoteToExplicitSelection(){
   const groups=highlightedEditableNoteGroups();
-  if(groups.length!==1 || typeof window.PointerEvent!=='function') return false;
+  if(groups.length!==1) return false;
 
-  const group=groups[0];
-  const target=group.querySelector('.note-hit-target') || group;
-  const rect=target.getBoundingClientRect();
-  if(!rect || !Number.isFinite(rect.left) || !Number.isFinite(rect.top)) return false;
+  const noteId=groups[0].getAttribute('data-note-id');
+  const navPrev=document.getElementById('navPrev');
+  const navNext=document.getElementById('navNext');
+  if(!noteId || !navPrev || !navNext) return false;
 
-  const pointerId=2147483000;
-  const common={
-    bubbles:true,
-    cancelable:true,
-    composed:true,
-    pointerId,
-    pointerType:'mouse',
-    isPrimary:true,
-    button:0,
-    clientX:rect.left+Math.max(1,rect.width/2),
-    clientY:rect.top+Math.max(1,rect.height/2)
-  };
+  // The editor's own cursor navigation calls syncSelectionToCursor(), which is
+  // the authoritative path for converting a visible highlight into an explicit
+  // editable selection. Move left once; if the cursor is already at slot 0 the
+  // same note stays selected and the promotion is complete. Otherwise move
+  // right once to restore the exact original slot. This avoids synthetic pointer
+  // events and therefore does not interfere with pointer capture/drag behavior.
+  navPrev.click();
 
-  target.dispatchEvent(new PointerEvent('pointerdown',{...common,buttons:1}));
-  target.dispatchEvent(new PointerEvent('pointerup',{...common,buttons:0}));
-  return true;
+  const stillOnOriginal=highlightedEditableNoteGroups().some(group=>
+    group.getAttribute('data-note-id')===noteId
+  );
+  if(stillOnOriginal) return true;
+
+  navNext.click();
+  return highlightedEditableNoteGroups().some(group=>
+    group.getAttribute('data-note-id')===noteId
+  );
 }
 
 function isRhythmShortcut(event){
