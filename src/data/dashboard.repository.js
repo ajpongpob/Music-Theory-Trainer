@@ -22,6 +22,15 @@ const dashboardRepository = {
     });
   },
 
+  getStageEvidence({exerciseCode, stageCode}) {
+    return getClient().rpc('get_my_stage_evidence', {
+      p_exercise_code: exerciseCode,
+      p_stage_code: stageCode,
+      p_mode: 'practice',
+      p_latest_session_only: false
+    });
+  },
+
   getStudentProfile(userId) {
     return getClient()
       .from('profiles')
