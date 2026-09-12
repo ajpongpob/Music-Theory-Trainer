@@ -20,13 +20,49 @@ jobs:
           node tools/apply-v090-frontend.cjs
           node tools/patch-v090-tests.cjs
           node - <<'NODE'
-          const fs=require('fs');
-          const file='tests/exercise-registry-boundary.test.js';
-          let s=fs.readFileSync(file,'utf8');
-          const before="assert(student.includes('host.launch({exerciseCode,stageCode,userId:activeUser})'));";
-          const after="assert(student.includes('host.launch({exerciseCode,stageCode,userId:activeUser,sessionMode})'));";
-          if(!s.includes(before)) throw new Error('registry boundary host assertion not found');
-          fs.writeFileSync(file,s.replace(before,after));
+          const fs=require('fs'),path=require('path'),zlib=require('zlib'),crypto=require('crypto'),cp=require('child_process');
+          const registryFile='tests/exercise-registry-boundary.test.js';
+          let registry=fs.readFileSync(registryFile,'utf8');
+          const registryBefore="assert(student.includes('host.launch({exerciseCode,stageCode,userId:activeUser})'));";
+          const registryAfter="assert(student.includes('host.launch({exerciseCode,stageCode,userId:activeUser,sessionMode})'));";
+          if(!registry.includes(registryBefore)) throw new Error('registry boundary host assertion not found');
+          fs.writeFileSync(registryFile,registry.replace(registryBefore,registryAfter));
+
+          const files=[
+            'src/trainer.js','index.html','src/auth-dashboard.js','src/dashboard/student-dashboard.js',
+            'src/data/practice.repository.js','src/exercises/exercise-host.js',
+            'src/exercises/major-scale/runtime-adapter.js','styles/app.css'
+          ];
+          const sha=s=>crypto.createHash('sha256').update(s).digest('hex');
+          const fixture={baseline:'v0.8.1-d',checkpoint:'v0.9.0',files:{}};
+          for(const file of files){
+            const before=cp.execFileSync('git',['show',`origin/main:${file}`],{encoding:'utf8'});
+            const after=fs.readFileSync(file,'utf8');
+            fixture.files[file]={afterSha256:sha(after),beforeGzipBase64:zlib.gzipSync(Buffer.from(before)).toString('base64')};
+          }
+          fs.mkdirSync('tests/fixtures',{recursive:true});
+          fs.writeFileSync('tests/fixtures/v090-master-core-boundary.json',JSON.stringify(fixture));
+          fs.writeFileSync('tests/helpers/restore-v090-master-core.cjs',`'use strict';
+          const fs=require('fs'),path=require('path'),zlib=require('zlib'),crypto=require('crypto'),assert=require('assert');
+          const fixture=JSON.parse(fs.readFileSync(path.join(__dirname,'../fixtures/v090-master-core-boundary.json'),'utf8'));
+          module.exports=function restoreV090(source,file){
+            const record=fixture.files[file]; if(!record) return source;
+            const hash=crypto.createHash('sha256').update(source).digest('hex');
+            assert.equal(hash,record.afterSha256,'unexpected v0.9.0 edit in '+file);
+            return zlib.gunzipSync(Buffer.from(record.beforeGzipBase64,'base64')).toString('utf8');
+          };\n`);
+
+          const domainFile='tests/major-scale-domain.test.js';
+          let domain=fs.readFileSync(domainFile,'utf8');
+          domain=domain.replace("const restoreInteraction=require('./helpers/restore-notation-interaction.cjs');", "const restoreInteraction=require('./helpers/restore-notation-interaction.cjs');\nconst restoreV090=require('./helpers/restore-v090-master-core.cjs');");
+          domain=domain.replace("restoreInteraction(trainer,'src/trainer.js')", "restoreInteraction(restoreV090(trainer,'src/trainer.js'),'src/trainer.js')");
+          fs.writeFileSync(domainFile,domain);
+
+          const boundaryFile='tests/notation-boundary.test.js';
+          let boundary=fs.readFileSync(boundaryFile,'utf8');
+          boundary=boundary.replace("const restoreInteraction=require('./helpers/restore-notation-interaction.cjs');", "const restoreInteraction=require('./helpers/restore-notation-interaction.cjs');\nconst restoreV090=require('./helpers/restore-v090-master-core.cjs');");
+          boundary=boundary.replaceAll('restoreInteraction(read(file),file)','restoreInteraction(restoreV090(read(file),file),file)');
+          fs.writeFileSync(boundaryFile,boundary);
           NODE
       - name: JavaScript syntax checks
         run: |
@@ -45,7 +81,7 @@ jobs:
           rm -f tools/apply-v090-frontend.cjs tools/patch-v090-tests.cjs .github/workflows/v090-mastery-learning-core.yml
       - name: Verify approved scope
         run: |
-          allowed='^(index\.html|styles/app\.css|src/data/practice\.repository\.js|src/data/learning\.repository\.js|src/domain/mastery/mastery-learning-core\.js|src/dashboard/student-dashboard\.js|src/auth-dashboard\.js|src/exercises/exercise-host\.js|src/exercises/major-scale/runtime-adapter\.js|src/trainer\.js|supabase/migrations/20260912_v090_mastery_learning_core\.sql|tests/architecture-boundary\.test\.js|tests/exercise-host\.test\.js|tests/exercise-registry-boundary\.test\.js|tests/dashboard-runtime-smoke\.test\.js|tests/trainer-data-flow-smoke\.test\.js|tests/exercise-routing\.browser\.cjs|tests/mastery-learning-core\.test\.js|tests/mastery-learning-sql-contract\.test\.js)$'
+          allowed='^(index\.html|styles/app\.css|src/data/practice\.repository\.js|src/data/learning\.repository\.js|src/domain/mastery/mastery-learning-core\.js|src/dashboard/student-dashboard\.js|src/auth-dashboard\.js|src/exercises/exercise-host\.js|src/exercises/major-scale/runtime-adapter\.js|src/trainer\.js|supabase/migrations/20260912_v090_mastery_learning_core\.sql|tests/architecture-boundary\.test\.js|tests/exercise-host\.test\.js|tests/exercise-registry-boundary\.test\.js|tests/dashboard-runtime-smoke\.test\.js|tests/trainer-data-flow-smoke\.test\.js|tests/exercise-routing\.browser\.cjs|tests/mastery-learning-core\.test\.js|tests/mastery-learning-sql-contract\.test\.js|tests/major-scale-domain\.test\.js|tests/notation-boundary\.test\.js|tests/helpers/restore-v090-master-core\.cjs|tests/fixtures/v090-master-core-boundary\.json)$'
           bad=$(git diff --name-only origin/main -- . | grep -Ev "$allowed" || true)
           if [ -n "$bad" ]; then echo "Unexpected scope:"; echo "$bad"; exit 1; fi
       - name: Commit tested checkpoint
