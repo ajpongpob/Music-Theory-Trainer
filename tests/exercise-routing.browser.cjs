@@ -77,6 +77,10 @@ const server=http.createServer((req,res)=>{
     await page.locator('#checkAnswer').click();
     await page.waitForFunction(()=>document.getElementById('questionResultScore').textContent==='100%');
     await page.locator('#questionResultOverlay').waitFor({state:'visible'});
+    assert.equal(await page.locator('#questionResultNotation svg').count(),1,'feedback should show a submitted notation snapshot');
+    assert.equal(await page.locator('#questionResultNotation .entry-cursor').count(),0,'review snapshot should not show the editing cursor');
+    assert.equal(await page.locator('#questionResultNotation .note-hit-target').count(),0,'review snapshot should not contain interaction hit targets');
+    assert.equal(await page.locator('#questionResultFeedback').evaluate(el=>el.textContent.includes('คะแนนรวมแบบถ่วงน้ำหนัก')),false,'weighted-score wording should be removed from feedback');
     assert.equal(await page.locator('#questionResultContinue').evaluate(el=>!!el.closest('[inert]')),false,'feedback must not have an inert ancestor');
     assert.equal(await page.locator('.session-main').evaluate(el=>el.inert),true,'feedback background is inert');
     await page.waitForFunction(()=>__qaCalls.some(c=>c[0]==='practice.createAttempt'));
@@ -92,11 +96,20 @@ const server=http.createServer((req,res)=>{
     assert.equal(await page.evaluate(()=>__qa.state.notes.filter(Boolean).length),0,'reopen clears answer');
     await page.setViewportSize({width:390,height:844});
     await page.evaluate(()=>{__qa.state.notes=__qa.buildExpected(__qa.state.key).map((n,i)=>({...n,id:'mobile'+i}));__qa.render();});
+    const mobileScoreBox=await page.locator('#scoreSvg').boundingBox();
+    assert(mobileScoreBox && mobileScoreBox.height/mobileScoreBox.width>0.82,'narrow score should grow vertically instead of letterboxing tiny notation');
     await page.locator('#rangeSelectToggle').click();
     await page.locator('#scoreSvg g[data-note-id]').nth(1).click();
     await page.locator('#scoreSvg g[data-note-id]').nth(3).click();
     assert.equal(await page.evaluate(()=>__qa.state.selectedIds.size),3,'mobile range selection');
+    await page.evaluate(()=>{__qa.state.notes=__qa.buildExpected(__qa.state.key).map((n,i)=>({...n,id:'mobile-review'+i}));__qa.state.selectedIds.clear();__qa.render();});
+    await page.locator('#checkAnswer').click();
+    await page.locator('#questionResultOverlay').waitFor({state:'visible'});
+    assert.equal(await page.locator('#questionResultNotation svg.question-result-score-snapshot-compact').count(),1,'narrow review should use compact two-system snapshot');
+    assert.equal(await page.locator('#questionResultNotation svg g[data-system]').count(),2,'final whole-note measure should share the second review system');
+    const reviewBox=await page.locator('#questionResultNotation svg').boundingBox();
+    assert(reviewBox && reviewBox.width>320,'narrow review notation should use the available popup width');
     assert.deepEqual(errors,[]);assert.deepEqual(badAssets,[]);
-    console.log('PASS browser: HTTP subpath, Dashboard double click → Host → legacy runtime, A-G, click, drag, Shift/mobile selection, accidentals, durations, stems, beams/remove, 100% answer, popup, attempt save, return/reopen');
+    console.log('PASS browser: HTTP subpath, Dashboard double click → Host → legacy runtime, A-G, click, drag, Shift/mobile selection, accidentals, durations, stems, beams/remove, 100% answer, popup, narrow score sizing + compact review, attempt save, return/reopen');
   }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(()=>server.close());

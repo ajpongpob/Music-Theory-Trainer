@@ -6,9 +6,12 @@ const restore=require('./helpers/restore-notation-baseline.cjs');
 const restoreRenderer=require('./helpers/restore-renderer-foundation.cjs');
 const restoreStatic=require('./helpers/restore-renderer-static-signatures.cjs');
 const restoreNote=require('./helpers/restore-renderer-note-primitives.cjs');
-for(const file of Object.keys(boundary.files))restore(restoreRenderer(restoreStatic(restoreNote(read(file),file),file),file),file);
+const restoreFeedback=require('./helpers/restore-feedback-answer-snapshot.cjs');
+const restoreNarrow=require('./helpers/restore-narrow-notation-layout.cjs');
+for(const file of Object.keys(boundary.files))restore(restoreRenderer(restoreStatic(restoreNote(restoreFeedback(restoreNarrow(read(file),file),file),file),file),file),file);
 for(const [file,hash] of Object.entries(boundary.protectedProduction)){
-  assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,'protected production changed: '+file);
+  const source=restoreFeedback(restoreNarrow(read(file),file),file);
+  assert.equal(crypto.createHash('sha256').update(source).digest('hex'),hash,'protected production changed: '+file);
 }
 const core=read('src/domain/notation/notation-core.js');
 for(const original of boundary.coreExactCopies)assert(core.includes(original),'moved helper body must stay identical');

@@ -1754,7 +1754,6 @@ function questionFeedback(result){
 
   return `
     <div class="feedback-scoreline"><span>ผลคะแนนข้อ ${state.questionIndex+1}</span><b>${result.score}%</b></div>
-    <div>คะแนนรวมแบบถ่วงน้ำหนัก • Pitch 30% • Stem 10% • Duration 15% • Beam 15% • Accidental 30%</div>
     <div class="feedback-lo-grid" aria-label="คะแนนแยกตามผลลัพธ์การเรียนรู้">${loScores}</div>
     ${detail}
     <div class="feedback-history"><b>คะแนนรายข้อ</b><div class="feedback-question-strip">${questionScores}</div></div>
@@ -3325,6 +3324,66 @@ function setTrainerInertForQuestionResult(active){
   }
 }
 
+function optimizeQuestionResultSnapshotLayout(snapshot){
+  const systems=Array.from(snapshot.querySelectorAll("g[data-system]"));
+  if(systems.length!==3) return false;
+
+  const second=systems[1];
+  const third=systems[2];
+  const secondBody=Array.from(second.children).find(node=>
+    node.localName==="g" && node.getAttribute("pointer-events")!=="none"
+  );
+  const thirdBody=Array.from(third.children).find(node=>
+    node.localName==="g" && node.getAttribute("pointer-events")!=="none"
+  );
+  if(!secondBody || !thirdBody) return false;
+
+  // Review-only layout: keep measure 1 on the first system and place the
+  // short final whole-note measure after measure 2 on the second system.
+  // The editable score remains unchanged, so interaction geometry is safe.
+  secondBody.setAttribute("transform","translate(-600 180)");
+  thirdBody.setAttribute("transform","translate(-620 180)");
+  Array.from(second.children).forEach(node=>{
+    if(node.localName==="line") node.setAttribute("x2","740");
+  });
+  second.appendChild(thirdBody);
+  second.setAttribute("transform","translate(0 -30)");
+  third.remove();
+
+  snapshot.setAttribute("viewBox","0 0 750 430");
+  snapshot.classList.add("question-result-score-snapshot-compact");
+  return true;
+}
+
+function renderQuestionResultNotationSnapshot(){
+  const container=document.getElementById("questionResultNotation");
+  if(!container) return;
+
+  container.innerHTML="";
+  if(!scoreSvg || typeof scoreSvg.cloneNode!=="function") return;
+
+  const snapshot=scoreSvg.cloneNode(true);
+  snapshot.removeAttribute("id");
+  snapshot.removeAttribute("tabindex");
+  snapshot.setAttribute("aria-label","คำตอบของผู้เรียนข้อนี้");
+  snapshot.setAttribute("focusable","false");
+  snapshot.classList.add("question-result-score-snapshot");
+
+  // The review image is evidence of the submitted notation, not an editor.
+  // Remove cursor/hit geometry and neutralize selection highlighting so amber
+  // does not look like an error marker inside the feedback dialog.
+  snapshot.querySelectorAll(".entry-cursor,.note-hit-target").forEach(node=>node.remove());
+  snapshot.querySelectorAll("[data-note-id]").forEach(node=>{
+    node.removeAttribute("data-note-id");
+    node.removeAttribute("style");
+  });
+  snapshot.querySelectorAll('[fill="#9b6400"]').forEach(node=>node.setAttribute("fill","#111"));
+  snapshot.querySelectorAll('[stroke="#9b6400"]').forEach(node=>node.setAttribute("stroke","#111"));
+
+  optimizeQuestionResultSnapshotLayout(snapshot);
+  container.appendChild(snapshot);
+}
+
 function showQuestionResultTransition(result){
   const overlay=document.getElementById("questionResultOverlay");
   const panel=document.getElementById("questionResultPanel");
@@ -3350,6 +3409,7 @@ function showQuestionResultTransition(result){
     : "ตรวจสอบ feedback เพื่อดูจุดที่ควรพัฒนาก่อนทำข้อต่อไป";
   score.textContent=`${result.score}%`;
   feedback.innerHTML=questionFeedback(result);
+  renderQuestionResultNotationSnapshot();
 
   setQuestionResultAction({
     disabled:true,
