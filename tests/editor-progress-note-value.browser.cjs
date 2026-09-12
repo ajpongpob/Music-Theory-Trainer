@@ -45,12 +45,19 @@ const server=http.createServer((req,res)=>{
 
     // Regression 1: a CSS width set by the mastery renderer must become a
     // visible fill, not just a percentage label on an inline span.
-    const progress=await page.evaluate(()=>{
-      const track=document.querySelector('.mastery-power-track');
+    await page.evaluate(()=>{
       const fill=document.getElementById('masteryPowerFill');
       const text=document.getElementById('masteryPowerText');
       fill.style.width='63%';
       text.textContent='63%';
+    });
+    // The production bar intentionally animates width for 350 ms. Measure
+    // after the transition so the test verifies the settled visual state.
+    await page.waitForTimeout(450);
+    const progress=await page.evaluate(()=>{
+      const track=document.querySelector('.mastery-power-track');
+      const fill=document.getElementById('masteryPowerFill');
+      const text=document.getElementById('masteryPowerText');
       const trackRect=track.getBoundingClientRect();
       const fillRect=fill.getBoundingClientRect();
       return {
