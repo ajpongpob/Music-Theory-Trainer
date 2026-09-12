@@ -128,7 +128,7 @@ begin
           format('แบบประเมินก่อนเรียนครั้งก่อนยังไม่ครบ (%s/%s ข้อ) กรุณาเริ่มใหม่และทำให้ครบทุกข้อ',coalesce(v_latest_pretest_completed,0),v_latest_pretest_planned)
         else 'แบบประเมินก่อนเรียนครั้งก่อนยังไม่ครบ กรุณาเริ่มใหม่และทำให้ครบทุกข้อ'
       end,
-      v_diag.overall_score,v_diag.overall_threshold,coalesce(v_diag.attempts_found,0),0;
+      v_diag.overall_score,v_diag.overall_threshold,coalesce(v_diag.attempts_found,0),coalesce(v_diag.attempts_found,0);
     return;
   end if;
 
@@ -149,7 +149,7 @@ begin
         then format('ผลประเมินก่อนเรียนได้ %s%% ยังไม่ถึงเกณฑ์ %s%% จึงแนะนำให้ฝึกขั้นนี้ก่อน',to_char(v_diag.overall_score,'FM999990.##'),to_char(v_diag.overall_threshold,'FM999990.##'))
         else 'ผลประเมินก่อนเรียนบอกว่าควรฝึกขั้นนี้ก่อน แล้วระบบจะประเมินอีกครั้งจากผลการฝึก'
       end,
-      v_diag.overall_score,v_diag.overall_threshold,coalesce(v_diag.attempts_found,0),0;
+      v_diag.overall_score,v_diag.overall_threshold,coalesce(v_diag.attempts_found,0),coalesce(v_diag.attempts_found,0);
     return;
   end if;
 
