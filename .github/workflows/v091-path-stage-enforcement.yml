@@ -1,0 +1,43 @@
+name: v091-path-stage-enforcement
+on:
+  push:
+    branches: [dev/v0.9.1-path-stage-enforcement]
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev/v0.9.1-path-stage-enforcement
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply v0.9.1 patch
+        run: node tools/apply-v091-stage-enforcement.cjs
+      - name: JavaScript syntax checks
+        run: find src tests -type f \( -name '*.js' -o -name '*.cjs' \) -print0 | xargs -0 -n1 node --check
+      - name: Full Node regression suite
+        run: for f in tests/*.test.js; do node "$f"; done
+      - name: Real Chrome E2E
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright >/dev/null 2>&1
+          BROWSER_CHANNEL=chrome node tests/exercise-routing.browser.cjs
+          rm -rf node_modules package-lock.json package.json
+      - name: Verify approved scope
+        run: |
+          allowed='^(index\.html|src/trainer\.js|src/exercises/major-scale/runtime-adapter\.js|supabase/migrations/20260912_v091_path_stage_enforcement\.sql|tests/trainer-data-flow-smoke\.test\.js|tests/exercise-routing\.browser\.cjs|tests/path-stage-enforcement\.test\.js|tests/package-static-integrity\.test\.js|tests/major-scale-domain\.test\.js|tests/notation-boundary\.test\.js|tests/helpers/restore-v091-path-stage\.cjs|tests/fixtures/v091-path-stage-boundary\.json|tools/apply-v091-stage-enforcement\.cjs|\.github/workflows/v091-path-stage-enforcement\.yml)$'
+          bad=$(git diff --name-only origin/main -- . | grep -Ev "$allowed" || true)
+          if [ -n "$bad" ]; then echo "Unexpected scope:"; echo "$bad"; exit 1; fi
+      - name: Remove temporary QA machinery
+        run: rm -f tools/apply-v091-stage-enforcement.cjs .github/workflows/v091-path-stage-enforcement.yml
+      - name: Commit tested checkpoint
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "v0.9.1 — Path Stage Enforcement"
+          git push origin HEAD:dev/v0.9.1-path-stage-enforcement
