@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - 'fix/**'
+      - 'feat/**'
   pull_request:
 
 permissions:
@@ -46,6 +47,12 @@ jobs:
           PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
           BROWSER_CHANNEL: chrome
         run: node tests/editor-progress-note-value.browser.cjs
+
+      - name: Run wrong-note feedback regression E2E
+        env:
+          PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
+          BROWSER_CHANNEL: chrome
+        run: node tests/feedback-notation-errors.browser.cjs
 
       - name: Run mobile touch and compact-score E2E
         env:
