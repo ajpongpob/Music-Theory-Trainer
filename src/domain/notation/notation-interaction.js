@@ -57,6 +57,18 @@ function noteTargetFromEvent(ev,notes){
     : null;
 }
 
+function selectedNoteIdsInRange(notes,anchorIndex,currentIndex){
+  if(anchorIndex<0 || currentIndex<0) return null;
+  const start=Math.min(anchorIndex,currentIndex);
+  const end=Math.max(anchorIndex,currentIndex);
+  const ids=[];
+  for(let i=start;i<=end;i++){
+    const note=notes[i];
+    if(note) ids.push(note.id);
+  }
+  return ids;
+}
+
 function eventPointInSvg(svg,ev){
   const ctm=svg.getScreenCTM();
   if(!ctm) return null;
@@ -95,6 +107,7 @@ app.notationInteraction=Object.freeze({
   nearestSlotIndexToX,
   nearestOccupiedIndexToX,
   noteTargetFromEvent,
+  selectedNoteIdsInRange,
   eventPointInSvg,
   mapCompactScorePoint
 });

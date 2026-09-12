@@ -10,6 +10,11 @@ function replaceExact(source,after,before,label){
 
 const trainerPairs=[
   {
+    label:'selection range helper',
+    before:"function selectNoteRange(anchorIndex,currentIndex){\n  if(anchorIndex<0 || currentIndex<0) return;\n  state.selectionIsExplicit=true;\n\n  const start=Math.min(anchorIndex,currentIndex);\n  const end=Math.max(anchorIndex,currentIndex);\n\n  state.selectedIds.clear();\n\n  for(let i=start;i<=end;i++){\n    const note=state.notes[i];\n    if(note){\n      state.selectedIds.add(note.id);\n    }\n  }\n\n  state.cursorIndex=currentIndex;\n\n  const current=state.notes[currentIndex];\n  if(current){\n    state.cursorStaffStep=pitchToStep(\n      current.letter,\n      current.octave\n    );\n  }\n}\n",
+    after:"function selectNoteRange(anchorIndex,currentIndex){\n  const selectedIds=notationInteraction.selectedNoteIdsInRange(\n    state.notes,\n    anchorIndex,\n    currentIndex\n  );\n  if(!selectedIds) return;\n  state.selectionIsExplicit=true;\n\n  state.selectedIds.clear();\n  selectedIds.forEach(id=>state.selectedIds.add(id));\n\n  state.cursorIndex=currentIndex;\n\n  const current=state.notes[currentIndex];\n  if(current){\n    state.cursorStaffStep=pitchToStep(\n      current.letter,\n      current.octave\n    );\n  }\n}\n"
+  },
+  {
     label:'interaction module binding',
     before:'const notationRenderer=window.MajorScaleApp.notationRenderer;\nconst majorScaleModule=',
     after:'const notationRenderer=window.MajorScaleApp.notationRenderer;\nconst notationInteraction=window.MajorScaleApp.notationInteraction;\nconst majorScaleModule='

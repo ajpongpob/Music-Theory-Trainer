@@ -27,6 +27,12 @@ assert.equal(hit.element,noteNode);assert.equal(hit.id,'b');assert.equal(hit.ind
 assert.equal(api.noteTargetFromEvent({target:{closest(){return null;}}},notes),null);
 assert.equal(api.noteTargetFromEvent({target:{}},notes),null);
 
+assert.equal(api.selectedNoteIdsInRange(notes,-1,2),null);
+assert.equal(api.selectedNoteIdsInRange(notes,1,-1),null);
+assert.deepStrictEqual(JSON.parse(JSON.stringify(api.selectedNoteIdsInRange(notes,1,3))),['b','d']);
+assert.deepStrictEqual(JSON.parse(JSON.stringify(api.selectedNoteIdsInRange(notes,3,1))),['b','d'],'reverse ranges preserve score order');
+assert.deepStrictEqual(JSON.parse(JSON.stringify(api.selectedNoteIdsInRange([null,null],0,1))),[],'empty range returns empty selection');
+
 const svg={
   getScreenCTM(){return{inverse(){return{kind:'inverse'};}};},
   createSVGPoint(){return{x:0,y:0,matrixTransform(matrix){assert.equal(matrix.kind,'inverse');return{x:this.x-10,y:this.y-20};}};}
@@ -49,8 +55,10 @@ for(const wrapper of [
   'notationInteraction.nearestSlotIndexToX(x,noteXs)',
   'notationInteraction.nearestOccupiedIndexToX(x,noteXs,state.notes)',
   'notationInteraction.noteTargetFromEvent(ev,state.notes)',
+  'notationInteraction.selectedNoteIdsInRange(',
   'notationInteraction.eventPointInSvg(scoreSvg,ev)',
   'notationInteraction.mapCompactScorePoint(point'
 ]) assert(trainer.includes(wrapper),'Trainer must delegate coordinate primitive: '+wrapper);
 for(const legacyRuntime of ['scoreSvg.addEventListener("pointerdown"','scoreSvg.addEventListener("pointermove"','scoreSvg.addEventListener("pointerup"','function selectNoteRange(','function drawBeams(){'])assert(trainer.includes(legacyRuntime),'event/selection/beaming runtime must remain in Trainer: '+legacyRuntime);
-console.log('PASS notation interaction foundation: staff coordinates, nearest-slot hit testing, note targets, SVG mapping, compact-system mapping, and Trainer event boundaries');
+assert(!trainer.includes('const start=Math.min(anchorIndex,currentIndex);'),'range membership calculation must leave Trainer');
+console.log('PASS notation interaction c2: coordinate primitives, pure selection-range membership, and Trainer event boundaries');
