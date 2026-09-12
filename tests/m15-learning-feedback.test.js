@@ -7,8 +7,8 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 
 const ui=read('src/m15-learning-feedback.js');
 const repo=read('src/data/dashboard.repository.js');
-const migration=read('supabase/migrations/20260912164000_m15_learning_feedback.sql');
-const teacherFold=read('supabase/migrations/20260912164500_m15_teacher_feedback_fold_in.sql');
+const migration=read('supabase/migrations/20260912162713_m15_learning_feedback.sql');
+const teacherFold=read('supabase/migrations/20260912163116_m15_teacher_feedback_fold_in.sql');
 
 assert(ui.includes('const SET_SIZE=5'),'practice UX must use five-question sets');
 assert(ui.includes("b.dataset.m15='set'"),'fifth checked answer must route to the set summary');
