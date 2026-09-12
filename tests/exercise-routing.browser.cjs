@@ -114,8 +114,20 @@ const server=http.createServer((req,res)=>{
       await page.locator('#checkAnswer').click();
       await page.locator('#questionResultOverlay').waitFor({state:'visible'});
       await page.waitForFunction(()=>!document.getElementById('questionResultContinue').disabled);
-      await page.locator('#questionResultContinue').click();
-      if(q===0) await page.waitForFunction(()=>document.getElementById('questionResultOverlay').hidden && __qa.state.questionIndex===1);
+      if(q===0){
+        await page.locator('#questionResultContinue').click();
+        await page.waitForFunction(()=>document.getElementById('questionResultOverlay').hidden && __qa.state.questionIndex===1);
+      }else{
+        // M1.5 intentionally inserts a diagnostic feedback/placement summary
+        // before returning to the Dashboard.
+        await page.waitForFunction(()=>document.getElementById('questionResultContinue').dataset.m15==='diagnostic');
+        assert.equal(await page.locator('#questionResultContinue').textContent(),'ดูผลประเมินก่อนเรียน');
+        await page.locator('#questionResultContinue').click();
+        await page.locator('#sessionSummary').waitFor({state:'visible'});
+        assert.equal(await page.locator('#summaryTitle').textContent(),'ผลประเมินก่อนเรียน');
+        assert(await page.locator('#summaryMasteryStatus').evaluate(el=>el.textContent.includes('จุดเริ่มต้น') || el.textContent.includes('กำหนดจุดเริ่มต้น')),'diagnostic feedback must explain placement purpose');
+        await page.locator('#m15Dashboard').click();
+      }
     }
     await page.waitForFunction(()=>!document.getElementById('studentDashboard').hidden);
     assert(await page.evaluate(()=>__qaCalls.some(c=>c[0]==='learning.applyDiagnosticPlacement')),'diagnostic placement persisted after final pretest item');
@@ -139,6 +151,6 @@ const server=http.createServer((req,res)=>{
     const reviewBox=await page.locator('#questionResultNotation svg').boundingBox();
     assert(reviewBox && reviewBox.width>320,'narrow review notation should use the available popup width');
     assert.deepEqual(errors,[]);assert.deepEqual(badAssets,[]);
-    console.log('PASS browser: HTTP subpath, Dashboard recommendation → diagnostic persistence/placement, double click → Host → legacy runtime, A-G, click, drag, Shift/mobile selection, accidentals, durations, stems, beams/remove, 100% answer, popup, narrow score sizing + compact review, attempt save, return/reopen');
+    console.log('PASS browser: HTTP subpath, Dashboard recommendation → diagnostic feedback/placement → Dashboard, double click → Host → legacy runtime, A-G, click, drag, Shift/mobile selection, accidentals, durations, stems, beams/remove, 100% answer, popup, narrow score sizing + compact review, attempt save, return/reopen');
   }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(()=>server.close());
