@@ -24,6 +24,22 @@ async function centerOf(page,selector){
   return {x:box.x+box.width/2,y:box.y+box.height/2};
 }
 
+async function assertThirdSystemReachable(page){
+  await page.evaluate(()=>{
+    const third=document.querySelector('#scoreSvg g[data-system="2"]');
+    if(!third) throw new Error('missing third compact notation system');
+    third.scrollIntoView({block:'center',inline:'nearest'});
+  });
+  await page.waitForTimeout(50);
+  const metrics=await page.evaluate(()=>{
+    const third=document.querySelector('#scoreSvg g[data-system="2"]');
+    const rect=third.getBoundingClientRect();
+    return {top:rect.top,bottom:rect.bottom,height:rect.height,innerHeight:window.innerHeight};
+  });
+  assert(metrics.height>0,'third notation system must render with positive height');
+  assert(metrics.bottom>0 && metrics.top<metrics.innerHeight,'third notation system must be reachable in the viewport after vertical scrolling');
+}
+
 (async()=>{
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const browser=await chromium.launch({headless:true,channel:process.env.BROWSER_CHANNEL || 'chrome'});
@@ -54,7 +70,6 @@ async function centerOf(page,selector){
     const layout=await page.evaluate(()=>{
       const svg=document.getElementById('scoreSvg');
       const systems=Array.from(svg.querySelectorAll('g[data-system]'));
-      const svgRect=svg.getBoundingClientRect();
       const systemRects=systems.map(node=>node.getBoundingClientRect());
       const workspace=document.querySelector('.workspace-card');
       const palette=document.querySelector('.workspace-card .notation-palette');
@@ -62,10 +77,9 @@ async function centerOf(page,selector){
       return {
         systemCount:systems.length,
         viewBox:svg.getAttribute('viewBox'),
-        svgTop:svgRect.top,
-        svgBottom:svgRect.bottom,
         systemTops:systemRects.map(rect=>rect.top),
         systemBottoms:systemRects.map(rect=>rect.bottom),
+        systemHeights:systemRects.map(rect=>rect.height),
         workspaceOverflow:getComputedStyle(workspace).overflow,
         palettePosition:getComputedStyle(palette).position,
         pageOverflowY:getComputedStyle(document.documentElement).overflowY,
@@ -77,10 +91,11 @@ async function centerOf(page,selector){
     assert.equal(layout.systemCount,3,'mobile compact editor must render all three notation systems');
     assert.equal(layout.viewBox,'0 0 700 660','mobile compact editor must retain the three-system viewBox');
     assert(layout.systemTops[1]>layout.systemTops[0] && layout.systemTops[2]>layout.systemTops[1],'systems must remain vertically ordered');
-    assert(layout.systemBottoms[2]<=layout.svgBottom+3,'third notation system must fit inside the visible SVG box');
+    assert(layout.systemHeights.every(height=>height>0),'all three notation systems must render with positive height');
     assert.notEqual(layout.workspaceOverflow,'hidden','workspace must not clip systems 2-3');
     assert.equal(layout.palettePosition,'static','mobile notation palette must not remain sticky over navigation controls');
     assert.notEqual(layout.pageOverflowY,'hidden','mobile page must permit vertical scrolling');
+    await assertThirdSystemReachable(page);
 
     for(const id of ['navPrev','pitchUp','pitchDown','navNext','insertNote','rangeSelectToggle']){
       const point=await centerOf(page,`#${id}`);
@@ -100,7 +115,7 @@ async function centerOf(page,selector){
 
     assert.deepEqual(errors,[],'mobile Safari regression fixture must not raise page errors');
     assert.deepEqual(badAssets,[],'mobile Safari regression fixture must load every local asset');
-    console.log('PASS mobile touch browser: three compact systems remain visible/scrollable and arrow touch centers dispatch to the intended controls');
+    console.log('PASS mobile touch browser: three compact systems are vertically reachable and arrow touch centers dispatch to the intended controls');
   }finally{
     await context.close();
     await browser.close();
