@@ -80,7 +80,7 @@ assert.equal(session.questionCount,5);
 assert.equal(session.skillResults.find(x=>x.skillCode==='BN01_TREBLE_PITCH').status,'mastered');
 assert.equal(session.skillResults.find(x=>x.skillCode==='GR02_PRIMARY_BEAM').status,'developing');
 assert.equal(session.skillResults.find(x=>x.skillCode==='MS03_SCALE_ACCIDENTAL').status,'needs-practice');
-assert.deepStrictEqual(session.weakSkills.map(x=>x.skillCode),['MS03_SCALE_ACCIDENTAL','GR02_PRIMARY_BEAM']);
+assert.equal(session.weakSkills.map(x=>x.skillCode).join(','),'MS03_SCALE_ACCIDENTAL,GR02_PRIMARY_BEAM');
 assert.equal(session.recommendation.skillCode,'MS03_SCALE_ACCIDENTAL');
 assert.equal(session.recommendation.stageCode,'STAGE_2');
 assert.equal(session.previousSessionScore,null,'no mock previous-session comparison');
