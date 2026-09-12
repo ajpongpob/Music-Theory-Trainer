@@ -28,6 +28,7 @@ jobs:
       - name: Apply diagnostic feedback patch
         run: |
           python scripts/apply-diagnostic-feedback.py
+          python scripts/fix-diagnostic-labels.py
           python scripts/update-diagnostic-contracts.py
 
       - name: Run Node regression suites
@@ -56,7 +57,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm .github/workflows/diagnostic-feedback-implementation.yml scripts/apply-diagnostic-feedback.py scripts/update-diagnostic-contracts.py
+          git rm .github/workflows/diagnostic-feedback-implementation.yml scripts/apply-diagnostic-feedback.py scripts/fix-diagnostic-labels.py scripts/update-diagnostic-contracts.py
           git add src/trainer.js src/m15-learning-feedback.js src/diagnostic-feedback.js tests/diagnostic-feedback.test.js tests/answer-feedback-transition.test.js
           git commit -m "Add mastery-first diagnostic feedback and session results"
           git push
