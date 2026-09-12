@@ -1,39 +1,51 @@
-# Major Scale Notation Trainer v0.7.0
+# Major Scale Notation Trainer v0.7.1
 
-This is the first multi-file mechanical split of the v0.6.26 stable baseline.
+## Checkpoint goal
 
-## Purpose of this checkpoint
+v0.7.1 is the first architecture refactor after the verified v0.7.0 multi-file baseline.
 
-- Separate HTML, CSS, and JavaScript without redesigning application logic.
-- Preserve DOM ids, event flow, global bridges, Supabase RPC calls, notation/scoring algorithms, and CSS cascade order.
-- Establish a safer baseline for later modular refactoring.
+This checkpoint extracts the Supabase client and authentication data-access operations from `src/auth-dashboard.js` while intentionally leaving Student Dashboard, Teacher Dashboard, Trainer, Notation, scoring, state, DOM IDs, RPC names, and event flow unchanged.
 
-## Files
+## Structure
 
-- `index.html` — application markup and external asset references.
-- `styles/app.css` — all 59 original style blocks, retained in source order. The two Google Fonts `@import` rules were moved to the top because CSS requires imports before ordinary rules.
-- `src/auth-dashboard.js` — original Auth + Student/Teacher Dashboard script.
-- `src/trainer.js` — original Trainer/Notation/Practice/Mastery script.
-- `src/keyboard.js` — original Sibelius-style keyboard shortcut script.
-
-## Intentional changes from v0.6.26
-
-Only version metadata changed from `0.6.26` to `0.7.0`, including the practice-session `app_version`. No functional algorithm was intentionally changed.
-
-## Local test
-
-Run a static server from this directory, for example:
-
-```bash
-python3 -m http.server 8000
+```text
+index.html
+styles/app.css
+src/
+  data/
+    supabase-client.js
+    auth.repository.js
+  auth-dashboard.js
+  trainer.js
+  keyboard.js
 ```
 
-Then open `http://localhost:8000/`.
+## Responsibilities
 
-## Deployment
+- `src/data/supabase-client.js`
+  - owns Supabase URL + publishable key
+  - creates the single browser Supabase client
+  - temporarily exposes `window.majorScaleSupabase` for compatibility with the existing trainer
+- `src/data/auth.repository.js`
+  - owns direct Supabase Auth calls
+  - owns the profile-role query used by authentication routing
+- `src/auth-dashboard.js`
+  - retains Auth UI/controller behavior plus Student/Teacher Dashboard behavior for this checkpoint
+  - consumes the client/repository instead of constructing the Supabase client itself
+- `src/trainer.js`
+  - unchanged except `app_version` -> `0.7.1`
+- `src/keyboard.js`
+  - unchanged
 
-For the current static GitHub Pages architecture, deploy the contents of this directory while preserving the relative folders `styles/` and `src/`.
+## Intentionally deferred
 
-## Next checkpoint
+- ES Modules / import-export
+- npm Supabase package
+- Vite build pipeline
+- Student Dashboard module split
+- Teacher Dashboard module split
+- Practice/Mastery repository extraction
+- Notation engine modularization
+- Removal of the `window.majorScaleSupabase` compatibility bridge
 
-Do not modularize notation logic until this v0.7.0 baseline has passed regression testing against v0.6.26.
+These changes are deferred so that each architectural checkpoint remains independently testable.

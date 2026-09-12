@@ -3,7 +3,10 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const screen = $('authScreen'), dashboard = $('studentDashboard'), teacherDashboard = $('teacherDashboard'), trainer = $('trainerApp');
-let client, busy = false, ready = false, revision = 0, activeUser = null;
+const app = window.MajorScaleApp || {};
+const authRepository = app.authRepository;
+const client = app.supabaseClient;
+let busy = false, ready = false, revision = 0, activeUser = null;
 const PASSWORD_RESET_REDIRECT = 'https://ajpongpob.github.io/Music-Theory-Trainer/?mode=reset-password';
 const passwordRecoveryIntentFromUrl = (() => {
   try{
@@ -355,7 +358,7 @@ async function loadStudentDashboard() {
   content.hidden=true;
 
   try{
-    const {data:{user},error:userError}=await client.auth.getUser();
+    const {data:{user},error:userError}=await authRepository.getUser();
     if(userError) throw userError;
     if(!user) throw new Error('Authentication required');
 
@@ -605,7 +608,7 @@ async function loadTeacherDashboard({preferredClassId=null}={}) {
   content.hidden=true;
 
   try{
-    const {data:{user},error:userError}=await client.auth.getUser();
+    const {data:{user},error:userError}=await authRepository.getUser();
     if(userError) throw userError;
     if(!user) throw new Error('Authentication required');
 
@@ -649,7 +652,7 @@ async function loadTeacherDashboard({preferredClassId=null}={}) {
 }
 async function resolveAuthenticatedRole() {
   if(!client || !activeUser) return 'student';
-  const {data,error}=await client.from('profiles').select('role').eq('id',activeUser).maybeSingle();
+  const {data,error}=await authRepository.getUserRole(activeUser);
   if(error) throw error;
   return data?.role || 'student';
 }
@@ -794,9 +797,7 @@ async function sendPasswordResetEmail(){
   busy=true; controls();
   message('forgotMessage','กำลังส่งลิงก์ตั้งรหัสผ่านใหม่...');
   try{
-    const {error}=await client.auth.resetPasswordForEmail(email,{
-      redirectTo:PASSWORD_RESET_REDIRECT
-    });
+    const {error}=await authRepository.resetPasswordForEmail(email,PASSWORD_RESET_REDIRECT);
     if(error) throw error;
     message('forgotMessage','หากอีเมลนี้มีบัญชี ระบบได้ส่งลิงก์สำหรับตั้งรหัสผ่านใหม่แล้ว กรุณาตรวจสอบกล่องจดหมายและโฟลเดอร์สแปม');
   }catch(error){
@@ -816,7 +817,7 @@ async function saveRecoveredPassword(){
   busy=true; controls();
   message('resetPasswordMessage','กำลังบันทึกรหัสผ่านใหม่...');
   try{
-    const {error}=await client.auth.updateUser({password});
+    const {error}=await authRepository.updatePassword(password);
     if(error) throw error;
 
     $('resetPassword').value='';
@@ -825,7 +826,7 @@ async function saveRecoveredPassword(){
       window.history.replaceState({},document.title,window.location.pathname);
     }
 
-    const {error:signOutError}=await client.auth.signOut({scope:'local'});
+    const {error:signOutError}=await authRepository.signOutLocal();
     if(signOutError) throw signOutError;
 
     passwordRecoveryMode=false;
@@ -845,7 +846,7 @@ $('cancelResetPasswordButton').addEventListener('click', async()=>{
   if(busy || !ready) return;
   busy=true; controls();
   try{
-    await client.auth.signOut({scope:'local'});
+    await authRepository.signOutLocal();
   }finally{
     passwordRecoveryMode=false;
     if(window.history?.replaceState){
@@ -867,8 +868,8 @@ async function submit(register) {
   busy = true; controls(); message(prefix+'Message', register ? 'กำลังสมัครสมาชิก...' : 'กำลังเข้าสู่ระบบ...');
   try {
     const {data, error} = register
-      ? await client.auth.signUp({email,password,options:{data:{full_name:name}}})
-      : await client.auth.signInWithPassword({email,password});
+      ? await authRepository.signUp({email,password,fullName:name})
+      : await authRepository.signInWithPassword({email,password});
     if (error) throw error;
     if (data.session?.user) sessionView(data.session);
     else if (register) {
@@ -932,7 +933,7 @@ $('logoutButton').addEventListener('click', async () => {
       await closeTrainerSession();
     }
 
-    const {error} = await client.auth.signOut({scope:'local'});
+    const {error} = await authRepository.signOutLocal();
     if (error) throw error;
     sessionView(null);
   } catch (error) { alert('ออกจากระบบไม่สำเร็จ: '+(error.message || 'กรุณาลองใหม่')); }
@@ -941,10 +942,10 @@ $('logoutButton').addEventListener('click', async () => {
 async function initializeAuth() {
   controls(); message('loginMessage','กำลังตรวจสอบการเข้าสู่ระบบ...');
   try {
-    if (!window.supabase?.createClient) throw new Error('โหลดระบบเข้าสู่ระบบไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วรีเฟรชหน้า');
-    client = window.supabase.createClient('https://ptksuomvpuiesbwrzzif.supabase.co','sb_publishable_Ws7zEY3M5Pa1J9pF8-8XZQ_rBtC9X_Y');
-   window.majorScaleSupabase = client;
-    client.auth.onAuthStateChange((event, session) => {
+    if (!client || !authRepository) {
+      throw app.supabaseClientError || new Error('โหลดระบบเข้าสู่ระบบไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วรีเฟรชหน้า');
+    }
+    authRepository.onAuthStateChange((event, session) => {
       revision++;
       if(event==='PASSWORD_RECOVERY') passwordRecoveryMode=true;
       if(passwordRecoveryMode){
@@ -960,7 +961,7 @@ async function initializeAuth() {
       sessionView(session);
     });
     const start = revision;
-    const {data,error} = await client.auth.getSession();
+    const {data,error} = await authRepository.getSession();
     if (error) throw error;
     if(passwordRecoveryMode){
       activeUser=data.session?.user?.id || activeUser;

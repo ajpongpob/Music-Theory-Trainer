@@ -1,49 +1,60 @@
-# v0.7.0 Manual Regression Checklist
+# v0.7.1 Manual Regression Checklist
 
-Compare this build directly with the stable v0.6.26 baseline.
+Compare all behavior against the accepted v0.7.0 baseline.
 
-## A. Load / Auth
-- [ ] Page loads without missing CSS/JS files.
-- [ ] Login screen looks the same as v0.6.26.
-- [ ] Register works as before.
-- [ ] Forgot Password works as before.
-- [ ] Reset Password flow works as before.
-- [ ] Logout works.
+## A. Loading
+- [ ] GitHub Pages loads without blank screen
+- [ ] Browser console has no new uncaught JavaScript errors
+- [ ] CSS/layout looks the same as v0.7.0
 
-## B. Role routing
-- [ ] Student account opens Student Dashboard.
-- [ ] Teacher account opens Teacher Dashboard.
-- [ ] Teacher Dashboard shows `MT-TEST-01` and assigned Learning Path.
-- [ ] Teacher class detail shows student `test2` and its current progress.
+## B. Authentication
+- [ ] Existing student can log in
+- [ ] Existing teacher can log in
+- [ ] Registration still works
+- [ ] Email verification flow is unchanged
+- [ ] Forgot Password sends recovery email
+- [ ] Recovery URL opens reset-password panel
+- [ ] New password can be saved
+- [ ] Logout works from trainer
+- [ ] Logout works from Student Dashboard
+- [ ] Logout works from Teacher Dashboard
 
-## C. Student Dashboard
-- [ ] Learning Path status is correct.
-- [ ] Exercise status is correct.
-- [ ] Stage statuses and mastery scores are correct.
-- [ ] Continue/Review opens the same exercise/stage as v0.6.26.
+## C. Role routing
+- [ ] Student login opens Student Dashboard
+- [ ] Teacher login opens Teacher Dashboard
+- [ ] Student cannot see Teacher Dashboard
 
-## D. Trainer / notation interaction
-- [ ] Note click/tap inserts/selects correctly.
-- [ ] Mobile drag changes pitch correctly.
-- [ ] Range selection works.
-- [ ] Pitch cursor/navigation works.
-- [ ] Whole / half / quarter / eighth / sixteenth values work.
-- [ ] Sharp / flat / double sharp / double flat work.
-- [ ] Stem direction works.
-- [ ] Primary beam add/remove works.
-- [ ] 2+4 beaming remains correct.
-- [ ] 8th + 16th terminal secondary beam hook points inward correctly.
-- [ ] 16th + 8th secondary-beam behavior remains correct.
-- [ ] Delete and selection controls work on desktop and mobile.
+## D. Student Dashboard
+- [ ] Learning Path loads
+- [ ] Exercise status loads
+- [ ] Stage statuses load
+- [ ] Continue/Review opens the correct exercise/stage
 
-## E. Scoring / session
-- [ ] Major-scale pitch spelling scoring matches v0.6.26.
-- [ ] Octave acceptance matches v0.6.26.
-- [ ] Stem/beaming/rhythm scoring matches v0.6.26.
-- [ ] Five-question session completes normally.
-- [ ] Session summary matches v0.6.26.
-- [ ] Attempts save once only (no duplicates).
-- [ ] Stage mastery/progression still updates correctly.
+## E. Teacher Dashboard
+- [ ] Class list loads
+- [ ] Class selector works
+- [ ] Assigned Learning Path displays
+- [ ] Student list displays
+- [ ] Student progression / stage totals / mastery score display
+- [ ] Refresh works
 
-## Acceptance
-If all items pass, mark v0.7.0 as the new stable multi-file baseline. Only then proceed to v0.7.1 architecture refactoring.
+## F. Trainer / notation regression
+- [ ] Exercise opens normally
+- [ ] Mouse note input works
+- [ ] Mobile/touch input works if available
+- [ ] Pitch drag works
+- [ ] Single and range selection work
+- [ ] Sharp / flat / double sharp / double flat work
+- [ ] Whole / half / quarter / eighth / sixteenth work
+- [ ] Stem direction works
+- [ ] Primary beaming works
+- [ ] 2+4 grouping works
+- [ ] Secondary beam hooks still point inward, especially terminal 8th + 16th cases
+- [ ] Delete / beam removal works
+- [ ] Answer checking behaves the same
+- [ ] Five-question session completes
+- [ ] Attempt data saves
+- [ ] Stage progression / mastery works
+- [ ] Dashboard return works after practice
+
+If all items pass, v0.7.1 can become the Auth/Data-layer baseline before v0.7.2 Dashboard modularization.

@@ -1,20 +1,50 @@
 {
-  "baseline": "Major-Scale-Notation-Trainer-v0.6.26-teacher-dashboard.html",
-  "target_version": "0.7.0",
-  "source_size_bytes": 287212,
-  "source_lines": 9262,
-  "source_style_blocks": 59,
-  "source_script_tags": 4,
-  "extracted_inline_scripts": [
-    "auth-dashboard.js",
-    "trainer.js",
-    "keyboard.js"
+  "source_version": "0.7.0",
+  "target_version": "0.7.1",
+  "checkpoint": "Supabase/Auth data-layer extraction",
+  "new_files": [
+    "src/data/supabase-client.js",
+    "src/data/auth.repository.js",
+    "CODEX-REVIEW-PROMPT.md"
+  ],
+  "modified_files": [
+    "index.html",
+    "src/auth-dashboard.js",
+    "src/trainer.js",
+    "README.md",
+    "REGRESSION-CHECKLIST.md",
+    "VALIDATION.md",
+    "MIGRATION-MANIFEST.json"
+  ],
+  "unchanged_functional_areas": [
+    "Student Dashboard queries and rendering",
+    "Teacher Dashboard queries and rendering",
+    "notation engine",
+    "note input",
+    "selection",
+    "accidentals",
+    "rhythm values",
+    "stem logic",
+    "primary beaming",
+    "secondary beaming",
+    "answer checking",
+    "scoring algorithms",
+    "mastery rules and RPC names"
   ],
   "intentional_changes": [
-    "title version 0.6.26 -> 0.7.0",
-    "visible pill version 0.6.26 -> 0.7.0",
-    "practice_sessions app_version 0.6.26 -> 0.7.0",
-    "Google Font @import rules moved to top of external CSS"
+    "Supabase client creation moved from auth-dashboard.js to src/data/supabase-client.js",
+    "Supabase URL and publishable key centralized in src/data/supabase-client.js",
+    "Auth calls used by auth-dashboard.js moved behind src/data/auth.repository.js",
+    "profile role lookup used by login routing moved behind auth.repository.js",
+    "script load order updated for the new data layer",
+    "visible/app version 0.7.0 -> 0.7.1"
   ],
-  "baseline_sha256": "39255c09c4ae20ca8ed41ea1d8be9c78d4ecc5c36b2dcf9974b3359fbd0ff054"
+  "deferred": [
+    "ES Modules",
+    "Vite/npm migration",
+    "Dashboard controller/view split",
+    "Practice repository extraction",
+    "removal of window.majorScaleSupabase compatibility bridge",
+    "Notation engine modularization"
+  ]
 }
