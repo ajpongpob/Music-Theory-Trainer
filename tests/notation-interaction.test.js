@@ -33,6 +33,10 @@ assert.deepStrictEqual(JSON.parse(JSON.stringify(api.selectedNoteIdsInRange(note
 assert.deepStrictEqual(JSON.parse(JSON.stringify(api.selectedNoteIdsInRange(notes,3,1))),['b','d'],'reverse ranges preserve score order');
 assert.deepStrictEqual(JSON.parse(JSON.stringify(api.selectedNoteIdsInRange([null,null],0,1))),[],'empty range returns empty selection');
 
+assert.equal(api.dragDeltaSteps(100,82,18),2);
+const completion=api.rangeGestureCompletion({moved:false,rangeLastIndex:4},2);assert.equal(completion.completedBySecondTap,true);assert.equal(completion.complete,true);
+const pointer={active:true,pointerId:7,noteId:'x',noteIndex:3,moved:true,dragSelectionPrepared:true,mode:'range',rangeAnchorIndex:1,rangeLastIndex:3};api.resetPointerInteraction(pointer);assert.deepStrictEqual(JSON.parse(JSON.stringify(pointer)),{active:false,pointerId:null,noteId:null,noteIndex:-1,moved:false,dragSelectionPrepared:false,mode:'note',rangeAnchorIndex:-1,rangeLastIndex:-1});
+
 const svg={
   getScreenCTM(){return{inverse(){return{kind:'inverse'};}};},
   createSVGPoint(){return{x:0,y:0,matrixTransform(matrix){assert.equal(matrix.kind,'inverse');return{x:this.x-10,y:this.y-20};}};}
