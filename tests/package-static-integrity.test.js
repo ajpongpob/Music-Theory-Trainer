@@ -39,13 +39,15 @@ function walk(dir) {
 walk(path.join(ROOT, 'src'));
 
 const idSet = new Set(ids);
-// Additive UI layers may construct nodes at runtime. Count an id as valid only
-// when source explicitly assigns it to a created element; this preserves typo
-// detection for ordinary getElementById/$ references while supporting dynamic UI.
+// Additive UI layers may construct nodes at runtime. Count an id as valid when
+// source explicitly assigns element.id OR emits an id attribute in a runtime
+// HTML template. Literal getElementById/$ references that match neither remain
+// protected by this typo guard.
 const dynamicIds = new Set();
 for (const file of sourceFiles) {
   const source = fs.readFileSync(file, 'utf8');
   for (const m of source.matchAll(/\.id\s*=\s*['"]([^'"]+)['"]/g)) dynamicIds.add(m[1]);
+  for (const m of source.matchAll(/\bid=["']([^"']+)["']/g)) dynamicIds.add(m[1]);
 }
 const missingRefs = new Set();
 for (const file of sourceFiles) {
