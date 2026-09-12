@@ -1,0 +1,21 @@
+name: v092-pitch-stem-rules
+on:
+  push:
+    branches: [dev/v0.9.2-pitch-octave-stem-rules]
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: JavaScript syntax
+        run: find src tests -type f \( -name '*.js' -o -name '*.cjs' \) -print0 | xargs -0 -n1 node --check
+      - name: Full Node regression
+        run: for f in tests/*.test.js; do node "$f"; done
+      - name: Real Chrome E2E
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright >/dev/null 2>&1
+          BROWSER_CHANNEL=chrome node tests/exercise-routing.browser.cjs
