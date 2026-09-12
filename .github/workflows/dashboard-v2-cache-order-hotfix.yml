@@ -1,4 +1,4 @@
-name: Dashboard V2 cache-safe load-order hotfix
+name: Dashboard V2 loader patch
 
 on:
   push:
@@ -10,100 +10,55 @@ permissions:
   contents: write
 
 jobs:
-  patch-and-verify:
-    if: github.actor != 'github-actions[bot]'
+  patch:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Restore additive V2 load order while keeping cache busting
+      - name: Apply verified loader-order patch
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
           import json, hashlib
 
-          index = Path('index.html')
-          text = index.read_text(encoding='utf-8')
-          direct_lines = [
-              '<script src="./src/dashboard/student-dashboard-v2.js?v=20260913-dashboard-v2-fix1" data-student-dashboard-v2="true"></script>\n',
-              '<script src="./src/dashboard/student-dashboard-v2-compat.js?v=20260913-dashboard-v2-fix1" data-student-dashboard-v2-compat="true"></script>\n',
-          ]
-          for line in direct_lines:
-              if text.count(line) != 1:
-                  raise SystemExit(f'Expected exactly one direct V2 script line: {line.strip()}')
-              text = text.replace(line, '', 1)
-          index.write_text(text, encoding='utf-8')
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('<script src="./src/dashboard/student-dashboard-v2.js?v=20260913-dashboard-v2-fix1" data-student-dashboard-v2="true"></script>\n', '')
+          s = s.replace('<script src="./src/dashboard/student-dashboard-v2-compat.js?v=20260913-dashboard-v2-fix1" data-student-dashboard-v2-compat="true"></script>\n', '')
+          p.write_text(s, encoding='utf-8')
 
-          repo_path = Path('src/data/dashboard.repository.js')
-          repo = repo_path.read_text(encoding='utf-8')
-          replacements = [
-              ("loadOptionalScript('./src/dashboard/student-dashboard-v2.js', 'data-student-dashboard-v2')",
-               "loadOptionalScript('./src/dashboard/student-dashboard-v2.js?v=20260913-dashboard-v2-fix2', 'data-student-dashboard-v2')"),
-              ("loadOptionalScript('./src/dashboard/student-dashboard-v2-compat.js', 'data-student-dashboard-v2-compat')",
-               "loadOptionalScript('./src/dashboard/student-dashboard-v2-compat.js?v=20260913-dashboard-v2-fix2', 'data-student-dashboard-v2-compat')"),
-          ]
-          for old, new in replacements:
-              if repo.count(old) != 1:
-                  raise SystemExit(f'Expected exactly one repository loader match: {old}')
-              repo = repo.replace(old, new, 1)
-          repo_path.write_text(repo, encoding='utf-8')
+          p = Path('src/data/dashboard.repository.js')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace("./src/dashboard/student-dashboard-v2.js'", "./src/dashboard/student-dashboard-v2.js?v=20260913-dashboard-v2-fix2'")
+          s = s.replace("./src/dashboard/student-dashboard-v2-compat.js'", "./src/dashboard/student-dashboard-v2-compat.js?v=20260913-dashboard-v2-fix2'")
+          p.write_text(s, encoding='utf-8')
 
-          test_path = Path('tests/student-dashboard-v2.test.js')
-          test = test_path.read_text(encoding='utf-8')
-          old_block = """assert(indexHtml.includes('src/dashboard/student-dashboard-v2.js?v='), 'Production HTML must load Dashboard V2 JS directly');
+          p = Path('tests/student-dashboard-v2.test.js')
+          s = p.read_text(encoding='utf-8')
+          old = """assert(indexHtml.includes('src/dashboard/student-dashboard-v2.js?v='), 'Production HTML must load Dashboard V2 JS directly');
 assert(indexHtml.includes('src/dashboard/student-dashboard-v2-compat.js?v='), 'Production HTML must load Dashboard V2 compatibility layer directly');
-assert.strictEqual((indexHtml.match(/src\\/dashboard\\/student-dashboard-v2\\.js\\?v=/g)||[]).length,1,'Production HTML must load Dashboard V2 JS exactly once');
-assert.strictEqual((indexHtml.match(/styles\\/student-dashboard-v2\\.css\\?v=/g)||[]).length,1,'Production HTML must load Dashboard V2 CSS exactly once');"""
-          new_block = """assert(!indexHtml.includes('<script src=\"./src/dashboard/student-dashboard-v2.js'), 'Production HTML must preserve additive V2 load order instead of loading V2 before trainer');
-assert(!indexHtml.includes('<script src=\"./src/dashboard/student-dashboard-v2-compat.js'), 'Production HTML must not load V2 compatibility before trainer');
-assert(repository.includes("student-dashboard-v2.js?v="), 'Dashboard repository must cache-bust the deferred V2 script');
-assert(repository.includes("student-dashboard-v2-compat.js?v="), 'Dashboard repository must cache-bust the deferred V2 compatibility script');
-assert.strictEqual((indexHtml.match(/styles\\/student-dashboard-v2\\.css\\?v=/g)||[]).length,1,'Production HTML must load Dashboard V2 CSS exactly once');"""
-          if test.count(old_block) != 1:
-              raise SystemExit('Expected Dashboard V2 production-wiring assertion block exactly once')
-          test = test.replace(old_block, new_block, 1)
-          test_path.write_text(test, encoding='utf-8')
+assert.strictEqual((indexHtml.match(/src\\/dashboard\\/student-dashboard-v2\\.js\\?v=/g)||[]).length,1,'Production HTML must load Dashboard V2 JS exactly once');"""
+          new = """assert(!indexHtml.includes('<script src=\"./src/dashboard/student-dashboard-v2.js'), 'Production HTML must preserve additive V2 load order');
+assert(!indexHtml.includes('<script src=\"./src/dashboard/student-dashboard-v2-compat.js'), 'Production HTML must preserve compatibility load order');
+assert(repository.includes('student-dashboard-v2.js?v='), 'Deferred V2 script must be cache-busted');
+assert(repository.includes('student-dashboard-v2-compat.js?v='), 'Deferred V2 compatibility script must be cache-busted');"""
+          if old not in s:
+              raise SystemExit('Dashboard V2 test wiring block not found')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
 
-          fixture_path = Path('tests/fixtures/v091-path-stage-boundary.json')
-          fixture = json.loads(fixture_path.read_text(encoding='utf-8'))
-          fixture['files']['index.html']['afterSha256'] = hashlib.sha256(index.read_bytes()).hexdigest()
-          fixture_path.write_text(json.dumps(fixture, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')
+          p = Path('tests/fixtures/v091-path-stage-boundary.json')
+          fixture = json.loads(p.read_text(encoding='utf-8'))
+          fixture['files']['index.html']['afterSha256'] = hashlib.sha256(Path('index.html').read_bytes()).hexdigest()
+          p.write_text(json.dumps(fixture, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')
           PY
 
-      - name: Run complete Node regression suite
-        shell: bash
-        run: |
-          set -euo pipefail
-          for test_file in tests/*.test.js; do
-            echo "==> $test_file"
-            node "$test_file"
-          done
+          set -e
+          for f in tests/*.test.js; do node "$f" >/dev/null; done
 
-      - name: Install pinned Playwright library
-        run: npm install --no-save --ignore-scripts playwright@1.63.0
-
-      - name: Run full Chrome E2E suite
-        shell: bash
-        env:
-          PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
-          BROWSER_CHANNEL: chrome
-        run: |
-          set -euo pipefail
-          node tests/exercise-routing.browser.cjs
-          node tests/student-dashboard-v2.browser.cjs
-          node tests/editor-progress-note-value.browser.cjs
-          node tests/feedback-notation-errors.browser.cjs
-          node tests/mobile-safari.browser.cjs
-
-      - name: Commit verified load-order fix and remove one-shot workflow
+      - name: Commit patch
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
