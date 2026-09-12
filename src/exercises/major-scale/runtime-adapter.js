@@ -14,7 +14,7 @@ app.majorScaleRuntimeAdapter = Object.freeze({
     $('teacherDashboard').hidden = true; $('teacherDashboard').inert = true;
     $('trainerApp').hidden = false; $('trainerApp').inert = false;
     try {
-      await start(level);
+      await start(level, context.sessionMode || 'practice');
       requestAnimationFrame(() => {
         window.dispatchEvent(new Event('resize'));
         window.dispatchEvent(new Event('major-scale-trainer-visible'));
