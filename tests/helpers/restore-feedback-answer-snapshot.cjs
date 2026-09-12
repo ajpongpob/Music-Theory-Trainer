@@ -39,6 +39,37 @@ function replaceExact(source,after,before,label){
 }
 
 module.exports=function restoreFeedbackAnswerSnapshot(source,file){
+  if(file==='index.html'){
+    return replaceExact(
+      source,
+      '    <div class="question-result-notation-block">\n      <div class="question-result-notation-label">คำตอบของคุณ</div>\n      <div class="question-result-notation" id="questionResultNotation" aria-label="คำตอบที่ผู้เรียนเขียน"></div>\n    </div>\n\n    <div class="question-result-feedback" id="questionResultFeedback"></div>\n',
+      '    <div class="question-result-feedback" id="questionResultFeedback"></div>\n',
+      'popup notation markup'
+    );
+  }
+
+  if(file==='styles/app.css'){
+    source=replaceExact(
+      source,
+      '.question-result-panel{\n  box-sizing:border-box;\n  width:min(980px,96vw);\n  max-height:min(92dvh,900px);\n',
+      '.question-result-panel{\n  box-sizing:border-box;\n  width:min(760px,96vw);\n  max-height:min(88dvh,760px);\n',
+      'popup panel size'
+    );
+    source=replaceExact(
+      source,
+      '.question-result-notation-block{\n  padding-top:14px;\n}\n.question-result-notation-label{\n  margin-bottom:6px;\n  color:#62635c;\n  font-size:.72rem;\n  font-weight:800;\n}\n.question-result-notation{\n  padding:8px;\n  overflow:hidden;\n  border:1px solid #e5e3dc;\n  border-radius:14px;\n  background:#fff;\n}\n.question-result-notation .question-result-score-snapshot{\n  display:block;\n  width:100%;\n  height:auto;\n  max-height:34dvh;\n  margin:0 auto;\n  object-fit:contain;\n  pointer-events:none;\n  user-select:none;\n}\n.question-result-feedback{\n  padding-top:12px;\n  color:#2f302c;\n}\n',
+      '.question-result-feedback{\n  padding-top:14px;\n  color:#2f302c;\n}\n',
+      'popup notation styles'
+    );
+    source=replaceExact(
+      source,
+      '  .question-result-score{min-width:76px;padding:9px 10px;}\n  .question-result-notation{padding:4px;border-radius:10px;}\n  .question-result-notation .question-result-score-snapshot{max-height:38dvh;}\n  .question-result-feedback .feedback-lo-grid{grid-template-columns:repeat(2,minmax(0,1fr));}\n',
+      '  .question-result-score{min-width:76px;padding:9px 10px;}\n  .question-result-feedback .feedback-lo-grid{grid-template-columns:repeat(2,minmax(0,1fr));}\n',
+      'popup mobile notation styles'
+    );
+    return source;
+  }
+
   if(file!=='src/trainer.js') return source;
 
   source=replaceExact(
