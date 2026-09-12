@@ -58,6 +58,7 @@ async function centerOf(page,selector){
       const systemRects=systems.map(node=>node.getBoundingClientRect());
       const workspace=document.querySelector('.workspace-card');
       const palette=document.querySelector('.workspace-card .notation-palette');
+      const scroller=document.scrollingElement || document.documentElement || document.body;
       return {
         systemCount:systems.length,
         viewBox:svg.getAttribute('viewBox'),
@@ -68,7 +69,7 @@ async function centerOf(page,selector){
         workspaceOverflow:getComputedStyle(workspace).overflow,
         palettePosition:getComputedStyle(palette).position,
         pageOverflowY:getComputedStyle(document.documentElement).overflowY,
-        scrollHeight:document.scrollingElement.scrollHeight,
+        scrollHeight:scroller?.scrollHeight ?? 0,
         innerHeight:window.innerHeight
       };
     });
