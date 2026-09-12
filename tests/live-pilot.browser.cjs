@@ -39,6 +39,13 @@ async function waitForStudentDashboard(page){
   },{timeout:30000});
 }
 
+async function waitForLearningPathStageLock(page){
+  await page.waitForFunction(()=>{
+    const select=document.getElementById('levelSelect');
+    return !!select && select.disabled===true;
+  },{timeout:30000});
+}
+
 async function loginStudent(page){
   await page.goto(APP_URL,{waitUntil:'domcontentloaded',timeout:30000});
   await page.locator('#loginEmail').fill(STUDENT_EMAIL);
@@ -103,6 +110,7 @@ async function exerciseRoutingSmoke(page,context){
     const trainer=document.getElementById('trainerApp');
     return trainer && !trainer.hidden && window.MajorScaleApp?.exerciseHost?.getCurrentContext?.();
   },{timeout:30000});
+  await waitForLearningPathStageLock(page);
   assert.equal(await page.locator('#levelSelect').isDisabled(),true,'Learning Path launch must lock Stage/Level');
   const hostContext=await page.evaluate(()=>window.MajorScaleApp.exerciseHost.getCurrentContext());
   assert.equal(hostContext.exerciseCode,context.exerciseCode,'Exercise Host must preserve live exercise code');
