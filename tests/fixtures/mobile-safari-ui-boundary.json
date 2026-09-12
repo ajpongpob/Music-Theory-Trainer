@@ -1,10 +1,10 @@
 {
   "checkpoint": "M1-iPhone-Safari",
   "files": {
-    "src/exercises/major-scale/exercise.definition.js": {
-      "afterSha256": "e42f7f7fa6264c9047cb5861ec4c31d5680d46739c31b16b1178084bf5a02705",
-      "offset": 270,
-      "inserted": "function ensureMobileSafariFixStylesheet(){\n  if(\n    typeof document==='undefined' ||\n    typeof document.querySelector!=='function' ||\n    typeof document.createElement!=='function' ||\n    !document.head\n  ) return;\n  if(document.querySelector('link[data-major-scale-mobile-safari-fix]')) return;\n  const link=document.createElement('link');\n  link.rel='stylesheet';\n  link.href='./styles/mobile-safari-fix.css';\n  link.setAttribute('data-major-scale-mobile-safari-fix','true');\n  document.head.appendChild(link);\n}\nensureMobileSafariFixStylesheet();\n\n"
+    "src/auth-dashboard.js": {
+      "beforeSha256": "8c87cebf7bcb2824b9f2d0213e548a8f927d13b392489c96aba87cb6652f562c",
+      "offset": 24,
+      "inserted": "function ensureMobileSafariFixStylesheet(){\n  if(\n    typeof document==='undefined' ||\n    typeof document.querySelector!=='function' ||\n    typeof document.createElement!=='function' ||\n    !document.head\n  ) return;\n  if(document.querySelector('link[data-mobile-safari-fix]')) return;\n  const link=document.createElement('link');\n  link.rel='stylesheet';\n  link.href='./styles/mobile-safari-fix.css';\n  link.setAttribute('data-mobile-safari-fix','true');\n  document.head.appendChild(link);\n}\nensureMobileSafariFixStylesheet();\n\n"
     }
   }
 }
