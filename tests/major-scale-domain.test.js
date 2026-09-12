@@ -33,9 +33,12 @@ const rules=ctx.window.rules;
 const TEST_LETTERS=['C','D','E','F','G','A','B'];
 const testPitchToStep=(letter,octave)=>octave*7+TEST_LETTERS.indexOf(letter)-(4*7+TEST_LETTERS.indexOf('E'));
 const makeEvidence=flags=>{
-  const applicable=flags.filter(flag=>flag!==null);
+  // `expected` originates in the VM realm. Normalize flags into this test's
+  // realm so deepStrictEqual tests values rather than cross-realm prototypes.
+  const normalized=[...flags];
+  const applicable=normalized.filter(flag=>flag!==null);
   const correct=applicable.filter(Boolean).length;
-  return {flags,correct,total:applicable.length,score:applicable.length?Math.round(correct/applicable.length*100):null};
+  return {flags:normalized,correct,total:applicable.length,score:applicable.length?Math.round(correct/applicable.length*100):null};
 };
 const expectedV092Evidence=(legacyResult,expected,notes)=>{
   const bn01=makeEvidence(expected.map((x,i)=>!!notes[i]&&notes[i].letter===x.letter));
