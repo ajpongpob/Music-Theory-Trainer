@@ -1,11 +1,11 @@
 {
-  "source_version": "0.7.0",
-  "target_version": "0.7.1",
-  "checkpoint": "Supabase/Auth data-layer extraction",
+  "version": "0.7.2",
+  "baseline": "0.7.1",
+  "checkpoint": "dashboard-modularization",
   "new_files": [
-    "src/data/supabase-client.js",
-    "src/data/auth.repository.js",
-    "CODEX-REVIEW-PROMPT.md"
+    "src/dashboard/dashboard-utils.js",
+    "src/dashboard/student-dashboard.js",
+    "src/dashboard/teacher-dashboard.js"
   ],
   "modified_files": [
     "index.html",
@@ -13,38 +13,13 @@
     "src/trainer.js",
     "README.md",
     "REGRESSION-CHECKLIST.md",
-    "VALIDATION.md",
-    "MIGRATION-MANIFEST.json"
+    "CODEX-REVIEW-PROMPT.md"
   ],
-  "unchanged_functional_areas": [
-    "Student Dashboard queries and rendering",
-    "Teacher Dashboard queries and rendering",
-    "notation engine",
-    "note input",
-    "selection",
-    "accidentals",
-    "rhythm values",
-    "stem logic",
-    "primary beaming",
-    "secondary beaming",
-    "answer checking",
-    "scoring algorithms",
-    "mastery rules and RPC names"
+  "intentionally_unchanged": [
+    "styles/app.css",
+    "src/keyboard.js",
+    "src/data/supabase-client.js",
+    "src/data/auth.repository.js"
   ],
-  "intentional_changes": [
-    "Supabase client creation moved from auth-dashboard.js to src/data/supabase-client.js",
-    "Supabase URL and publishable key centralized in src/data/supabase-client.js",
-    "Auth calls used by auth-dashboard.js moved behind src/data/auth.repository.js",
-    "profile role lookup used by login routing moved behind auth.repository.js",
-    "script load order updated for the new data layer",
-    "visible/app version 0.7.0 -> 0.7.1"
-  ],
-  "deferred": [
-    "ES Modules",
-    "Vite/npm migration",
-    "Dashboard controller/view split",
-    "Practice repository extraction",
-    "removal of window.majorScaleSupabase compatibility bridge",
-    "Notation engine modularization"
-  ]
+  "behavior_change_intended": false
 }

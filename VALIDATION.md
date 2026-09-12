@@ -1,35 +1,29 @@
-# v0.7.1 Validation Report
+# Validation — v0.7.2
 
-## Automated checks completed
+## Automated structural checks passed
 
-- JavaScript syntax (`node --check`) passes for:
-  - `src/data/supabase-client.js`
-  - `src/data/auth.repository.js`
-  - `src/auth-dashboard.js`
-  - `src/trainer.js`
-  - `src/keyboard.js`
-- Script load order is explicit and correct:
-  1. Supabase CDN
-  2. `supabase-client.js`
-  3. `auth.repository.js`
-  4. `auth-dashboard.js`
-  5. `trainer.js`
-  6. `keyboard.js`
-- `createClient()` now occurs in one file only: `src/data/supabase-client.js`.
-- The Supabase publishable key occurs in the client configuration file only.
-- No service-role credential is present in application JavaScript.
-- Authentication operations used by `auth-dashboard.js` are routed through `auth.repository.js`.
-- Student/Teacher Dashboard RPC calls remain unchanged.
-- `trainer.js` is unchanged from v0.7.0 except `app_version` -> `0.7.1`.
-- `keyboard.js` and `styles/app.css` are unchanged from v0.7.0.
-- Static HTTP path checks return successfully for `index.html`, CSS, and all JavaScript files.
+- JavaScript syntax (`node --check`) passed for every `.js` file.
+- All local files referenced by the app returned HTTP 200 from a local static server.
+- 97 HTML IDs remain unique.
+- 106 literal `$("id")` / `$('id')` JavaScript references were checked; none point to a missing HTML ID.
+- `styles/app.css` is byte-for-byte identical to tested v0.7.1.
+- `src/keyboard.js` is byte-for-byte identical to tested v0.7.1.
+- `src/data/supabase-client.js` is byte-for-byte identical to tested v0.7.1.
+- `src/data/auth.repository.js` is byte-for-byte identical to tested v0.7.1.
+- `src/trainer.js` differs from v0.7.1 only in `app_version: "0.7.1"` -> `"0.7.2"`.
+- No stale references to the moved dashboard-local state/functions remain in `src/auth-dashboard.js`.
+- No `service_role` string/key is present in runtime frontend files.
+- Dashboard RPC calls are now located in their respective dashboard modules.
 
-## Deliberately retained compatibility
+## Intentional structural changes
 
-`window.majorScaleSupabase` remains as a temporary compatibility bridge because the existing trainer still consumes the shared Supabase client. Removing it is deferred until the Practice/Data layer is refactored.
+- Shared dashboard presentation helpers moved to `src/dashboard/dashboard-utils.js`.
+- Student Dashboard functions/state moved to `src/dashboard/student-dashboard.js`.
+- Teacher Dashboard functions/state moved to `src/dashboard/teacher-dashboard.js`.
+- `src/auth-dashboard.js` delegates dashboard loading/actions to those modules.
+- Sign-out invalidates both dashboard modules' in-flight load tokens.
+- Teacher class refresh/change remain protected by the teacher dashboard load token.
 
-The trainer still contains several direct `client.auth.getUser()` calls used to identify the authenticated user while saving/loading practice data. Those calls are deliberately untouched in v0.7.1 and will be moved with the Practice repository checkpoint rather than mixed into this Auth UI refactor.
+## Not automatically verified here
 
-## Manual verification still required
-
-Automated structural checks cannot prove browser behavior. Use `REGRESSION-CHECKLIST.md` on the deployed GitHub Pages build before accepting v0.7.1 as the next stable baseline.
+A complete browser end-to-end test against the live Supabase project was not performed in this build environment. Use `REGRESSION-CHECKLIST.md` on the deployed GitHub Pages site before declaring v0.7.2 the new baseline.

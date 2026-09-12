@@ -1,51 +1,33 @@
-# Major Scale Notation Trainer v0.7.1
+# Major Scale Notation Trainer v0.7.2
 
 ## Checkpoint goal
+Dashboard modularization with no intended behavior change.
 
-v0.7.1 is the first architecture refactor after the verified v0.7.0 multi-file baseline.
+### New dashboard modules
+- `src/dashboard/dashboard-utils.js` — shared presentation helpers only.
+- `src/dashboard/student-dashboard.js` — Student Dashboard data loading, rendering, mastery display, and exercise launch bridge.
+- `src/dashboard/teacher-dashboard.js` — Teacher Dashboard summary/detail loading and rendering.
 
-This checkpoint extracts the Supabase client and authentication data-access operations from `src/auth-dashboard.js` while intentionally leaving Student Dashboard, Teacher Dashboard, Trainer, Notation, scoring, state, DOM IDs, RPC names, and event flow unchanged.
+### `src/auth-dashboard.js` now owns
+- login/register/password recovery UI
+- authentication lifecycle
+- role resolution
+- top-level screen routing
+- logout
+- delegation to Student/Teacher Dashboard modules
 
-## Structure
+## Deliberately unchanged
+- Notation algorithms
+- Note input / selection / dragging
+- Accidentals
+- Stem and beam logic
+- Scoring and answer checking
+- Practice/mastery database logic
+- Supabase RPC names
+- DOM IDs
+- CSS
 
-```text
-index.html
-styles/app.css
-src/
-  data/
-    supabase-client.js
-    auth.repository.js
-  auth-dashboard.js
-  trainer.js
-  keyboard.js
-```
+## Architecture checkpoint
+This is still classic-script JavaScript. ES Modules/Vite conversion is intentionally deferred. Dashboard Supabase access is intentionally left inside dashboard modules until the data/repository extraction checkpoint, so UI modularization and data-layer refactoring are not mixed in one version.
 
-## Responsibilities
-
-- `src/data/supabase-client.js`
-  - owns Supabase URL + publishable key
-  - creates the single browser Supabase client
-  - temporarily exposes `window.majorScaleSupabase` for compatibility with the existing trainer
-- `src/data/auth.repository.js`
-  - owns direct Supabase Auth calls
-  - owns the profile-role query used by authentication routing
-- `src/auth-dashboard.js`
-  - retains Auth UI/controller behavior plus Student/Teacher Dashboard behavior for this checkpoint
-  - consumes the client/repository instead of constructing the Supabase client itself
-- `src/trainer.js`
-  - unchanged except `app_version` -> `0.7.1`
-- `src/keyboard.js`
-  - unchanged
-
-## Intentionally deferred
-
-- ES Modules / import-export
-- npm Supabase package
-- Vite build pipeline
-- Student Dashboard module split
-- Teacher Dashboard module split
-- Practice/Mastery repository extraction
-- Notation engine modularization
-- Removal of the `window.majorScaleSupabase` compatibility bridge
-
-These changes are deferred so that each architectural checkpoint remains independently testable.
+Test this version against `REGRESSION-CHECKLIST.md` before using it as the next baseline.
