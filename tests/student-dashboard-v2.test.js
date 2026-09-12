@@ -31,9 +31,9 @@ assert(source.includes('buildDashboardViewModel'), 'Dashboard calculation should
 assert(source.includes('buildHistoryModel'), 'History transformation should be separated from rendering');
 assert(source.includes('renderTrendChart'), 'Trend rendering should be isolated');
 assert(source.includes('dashboard-continue sd2-continue-action'), 'Primary CTA must preserve existing Exercise Host delegation contract');
-assert(source.includes('data-sd2-nav="practice"'), 'Navigation must include Practice');
-assert(source.includes('data-sd2-nav="progress"'), 'Navigation must include Progress');
-assert(source.includes('data-sd2-nav="profile"'), 'Navigation must include Profile');
+assert(source.includes("'Practice','practice'"), 'Navigation must include Practice');
+assert(source.includes("'Progress','progress'"), 'Navigation must include Progress');
+assert(source.includes("'Profile','profile'"), 'Navigation must include Profile');
 assert(!/Stage 3 — Major Scale Accidentals/.test(source), 'Example content must not be hard-coded as production data');
 assert(!/Progress 68%/.test(source), 'Example mastery percentage must not be hard-coded');
 
