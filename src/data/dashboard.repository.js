@@ -173,12 +173,24 @@ function loadOptionalScript(src, dataAttribute) {
   return script;
 }
 
+function loadOptionalStylesheet(href, dataAttribute) {
+  if (typeof document === 'undefined' || !document.head) return null;
+  if (document.querySelector(`link[${dataAttribute}]`)) return null;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = href;
+  link.setAttribute(dataAttribute, 'true');
+  document.head.appendChild(link);
+  return link;
+}
+
 // Additive presentation layers are loaded after the original dashboard/trainer
 // scripts so notation, scoring and the authenticated exercise host stay frozen.
 if (typeof window.addEventListener === 'function' && typeof document !== 'undefined') {
   window.addEventListener('load', () => {
-    const dashboardV2 = loadOptionalScript('./src/dashboard/student-dashboard-v2.js', 'data-student-dashboard-v2');
-    const loadDashboardCompat = () => loadOptionalScript('./src/dashboard/student-dashboard-v2-compat.js', 'data-student-dashboard-v2-compat');
+    loadOptionalStylesheet('./styles/student-dashboard-v2.css?v=20260913-dashboard-v2-fix2', 'data-student-dashboard-v2-style');
+    const dashboardV2 = loadOptionalScript('./src/dashboard/student-dashboard-v2.js?v=20260913-dashboard-v2-fix2', 'data-student-dashboard-v2');
+    const loadDashboardCompat = () => loadOptionalScript('./src/dashboard/student-dashboard-v2-compat.js?v=20260913-dashboard-v2-fix2', 'data-student-dashboard-v2-compat');
     if (dashboardV2) dashboardV2.addEventListener('load', loadDashboardCompat, {once:true});
     else loadDashboardCompat();
 
