@@ -36,17 +36,18 @@ for(const file of Object.keys(boundary.files)){
   restore(restoreApprovedDeltas(read(file),file),file);
 }
 
-// v0.9.3 intentionally changes only these protected data-infrastructure files
-// to move scoring authority out of the browser. They are covered by dedicated
-// repository/security contract tests instead of being falsely treated as a
-// notation regression. Every renderer, interaction, exercise and keyboard
-// protected hash remains frozen here.
-const intentionalV093DataBoundaryChanges=new Set([
-  'src/data/practice.repository.js',
-  'src/data/supabase-client.js'
+// Protected data-infrastructure files can change when their own repository /
+// security contract tests explicitly cover the change. They remain outside
+// notation rendering and scoring semantics, so treating them as notation
+// hashes would create false regressions. Renderer, interaction, exercise,
+// keyboard and Trainer notation boundaries remain frozen below.
+const intentionalDataBoundaryChanges=new Set([
+  'src/data/practice.repository.js',       // v0.9.3 trusted server scoring
+  'src/data/supabase-client.js',           // v0.9.3 publishable client setup
+  'src/data/dashboard.repository.js'       // M1.5 feedback/read-model adapters
 ]);
 for(const [file,hash] of Object.entries(boundary.protectedProduction)){
-  if(intentionalV093DataBoundaryChanges.has(file)) continue;
+  if(intentionalDataBoundaryChanges.has(file)) continue;
   const source=restoreApprovedDeltas(read(file),file);
   assert.equal(crypto.createHash('sha256').update(source).digest('hex'),hash,'protected production changed: '+file);
 }
@@ -62,4 +63,4 @@ assert(at('src/domain/notation/notation-interaction.js')<at('src/domain/notation
 assert(at('src/domain/notation/notation-beaming.js')<at('src/exercises/major-scale/major-scale.domain.js'));
 assert(at('src/domain/notation/notation-beaming.js')<at('src/trainer.js'));
 assert(at('src/trainer.js')<at('src/keyboard.js'));
-console.log('PASS notation boundary: exact v0.8.0-c reconstruction, approved v0.9.2 scoring delta, v0.9.3 data-layer exception, exact mobile Safari UI delta, protected notation/interaction hashes and script order');
+console.log('PASS notation boundary: exact v0.8.0-c reconstruction, approved v0.9.2 scoring delta, explicit data-layer exceptions, exact mobile Safari UI delta, protected notation/interaction hashes and script order');
