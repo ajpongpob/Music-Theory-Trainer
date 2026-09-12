@@ -23,7 +23,7 @@ let sessionContext={};
 let questionResults=[];
 
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-const finite=value=>Number.isFinite(Number(value));
+const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
 const numberOrNull=value=>finite(value)?Number(value):null;
 const clamp=value=>Math.max(0,Math.min(100,Number(value)||0));
 const pct=value=>finite(value)?`${Number(value).toFixed(1).replace(/\.0$/,'')}%`:'—';

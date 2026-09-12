@@ -38,6 +38,7 @@ assert.equal(api.statusForSkill({score:92,threshold:90,passed:true}),'mastered')
 assert.equal(api.statusForSkill({score:82,threshold:85,passed:false}),'strong');
 assert.equal(api.statusForSkill({score:70,threshold:85,passed:false}),'developing');
 assert.equal(api.statusForSkill({score:40,threshold:85,passed:false}),'needs-practice');
+assert.equal(api.statusForSkill({score:null,threshold:85,passed:false}),'not-assessed','missing score must never be coerced to zero');
 
 api.resetSession({stageCode:'STAGE_2',exerciseCode:'MAJOR_SCALE_NOTATION',plannedQuestions:5});
 const makeQuestion=(questionNumber,keyLabel,score,skillScores)=>({
