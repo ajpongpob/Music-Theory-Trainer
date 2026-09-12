@@ -628,20 +628,16 @@ function nearestOccupiedIndexToX(x){
 }
 
 function selectNoteRange(anchorIndex,currentIndex){
-  if(anchorIndex<0 || currentIndex<0) return;
+  const selectedIds=notationInteraction.selectedNoteIdsInRange(
+    state.notes,
+    anchorIndex,
+    currentIndex
+  );
+  if(!selectedIds) return;
   state.selectionIsExplicit=true;
 
-  const start=Math.min(anchorIndex,currentIndex);
-  const end=Math.max(anchorIndex,currentIndex);
-
   state.selectedIds.clear();
-
-  for(let i=start;i<=end;i++){
-    const note=state.notes[i];
-    if(note){
-      state.selectedIds.add(note.id);
-    }
-  }
+  selectedIds.forEach(id=>state.selectedIds.add(id));
 
   state.cursorIndex=currentIndex;
 
