@@ -56,6 +56,18 @@ const applyV092PolicyDelta=(legacyResult,expected,notes)=>{
   result.score=active?Math.round(weighted/active):null;
   return result;
 };
+const diffValues=(actual,expected,path='')=>{
+  if(Object.is(actual,expected)) return [];
+  const aObject=actual!==null&&typeof actual==='object';
+  const eObject=expected!==null&&typeof expected==='object';
+  if(!aObject||!eObject||Array.isArray(actual)!==Array.isArray(expected)) return [{path,actual,expected}];
+  const keys=new Set([...Object.keys(actual),...Object.keys(expected)]),out=[];
+  for(const key of keys){
+    out.push(...diffValues(actual[key],expected[key],path?`${path}.${key}`:String(key)));
+    if(out.length>=24) break;
+  }
+  return out;
+};
 for(const fixture of golden.scales){
   assert.deepStrictEqual(plain(moduleApi.buildMajorScale(fixture.key)),fixture.scale,'spelling: '+fixture.key.tonic);
   assert.deepStrictEqual(plain(rules.buildExpected(fixture.key)),fixture.expected,'expected answer: '+fixture.key.tonic);
@@ -64,7 +76,12 @@ for(const fixture of golden.evaluations){
   const key=golden.scales.find(item=>item.key.tonic===fixture.tonic).key;
   const before=JSON.stringify(fixture.notes),expected=rules.buildExpected(key);
   const policyExpected=applyV092PolicyDelta(fixture.result,expected,fixture.notes);
-  assert.deepStrictEqual(plain(rules.evaluateAnswer(expected,fixture.notes)),policyExpected,fixture.tonic+' '+fixture.variant);
+  const actual=plain(rules.evaluateAnswer(expected,fixture.notes));
+  const differences=diffValues(actual,policyExpected);
+  if(differences.length){
+    console.error('V092_GOLDEN_DIFF '+JSON.stringify({tonic:fixture.tonic,variant:fixture.variant,differences},null,2));
+  }
+  assert.deepStrictEqual(actual,policyExpected,fixture.tonic+' '+fixture.variant);
   assert.equal(JSON.stringify(fixture.notes),before,'evaluation must not mutate response');
 }
 for(const sequence of golden.generations){
