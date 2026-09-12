@@ -31,6 +31,12 @@ const dashboardRepository = {
     });
   },
 
+  getPretestJourney(exerciseCode) {
+    return getClient().rpc('get_my_pretest_journey', {
+      p_exercise_code: exerciseCode
+    });
+  },
+
   finalizePracticeSet({sessionId, expectedQuestions = 5}) {
     return getClient().rpc('finalize_my_practice_set', {
       p_session_id: sessionId,
@@ -94,7 +100,7 @@ const dashboardRepository = {
 
 app.dashboardRepository = Object.freeze(dashboardRepository);
 
-// M1.5 is intentionally an additive presentation layer. Load it after the
+// M1.5/M1.6 are additive presentation/orchestration layers loaded after the
 // original dashboard/trainer scripts so notation and scoring remain frozen.
 if (typeof window.addEventListener === 'function' && typeof document !== 'undefined') {
   window.addEventListener('load', () => {
@@ -107,6 +113,13 @@ if (typeof window.addEventListener === 'function' && typeof document !== 'undefi
       const hardening = document.createElement('script');
       hardening.src = './src/m15-learning-feedback-hardening.js';
       hardening.dataset.m15FeedbackHardening = 'true';
+      hardening.addEventListener('load', () => {
+        if (document.querySelector('script[data-m16-pretest-flow]')) return;
+        const pretest = document.createElement('script');
+        pretest.src = './src/m16-pretest-flow.js';
+        pretest.dataset.m16PretestFlow = 'true';
+        document.body.appendChild(pretest);
+      }, {once:true});
       document.body.appendChild(hardening);
     }, {once:true});
     document.body.appendChild(feedback);
