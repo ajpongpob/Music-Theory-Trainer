@@ -77,10 +77,18 @@ const dashboardRepository = {
     });
   },
 
-  getTeacherClassLearningFeedback(classId) {
-    return getClient().rpc('get_my_teacher_class_learning_feedback', {
-      p_class_id: classId
-    });
+  async getTeacherClassLearningFeedback(classId) {
+    const result = await this.getTeacherClassDashboard(classId);
+    if (result.error) return result;
+    return {
+      data: (result.data || []).map(row => ({
+        student_id: row.student_id,
+        exercise_code: row.exercise_code,
+        current_stage_code: row.current_stage_code,
+        ...(row.learning_feedback || {})
+      })),
+      error: null
+    };
   }
 };
 
