@@ -99,10 +99,17 @@ app.dashboardRepository = Object.freeze(dashboardRepository);
 if (typeof window.addEventListener === 'function' && typeof document !== 'undefined') {
   window.addEventListener('load', () => {
     if (document.querySelector('script[data-m15-learning-feedback]')) return;
-    const script = document.createElement('script');
-    script.src = './src/m15-learning-feedback.js';
-    script.dataset.m15LearningFeedback = 'true';
-    document.body.appendChild(script);
+    const feedback = document.createElement('script');
+    feedback.src = './src/m15-learning-feedback.js';
+    feedback.dataset.m15LearningFeedback = 'true';
+    feedback.addEventListener('load', () => {
+      if (document.querySelector('script[data-m15-feedback-hardening]')) return;
+      const hardening = document.createElement('script');
+      hardening.src = './src/m15-learning-feedback-hardening.js';
+      hardening.dataset.m15FeedbackHardening = 'true';
+      document.body.appendChild(hardening);
+    }, {once:true});
+    document.body.appendChild(feedback);
   }, {once:true});
 }
 })();
