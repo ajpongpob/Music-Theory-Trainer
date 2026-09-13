@@ -135,6 +135,7 @@ function openDrawer(source){
   if(open) return;
   opener=source || document.activeElement || menuButton();
   syncNow();
+  syncAccount();
   setOpenState(true);
   requestAnimationFrame(()=>{
     const current=drawer()?.querySelector('[aria-current="page"]');
@@ -207,7 +208,8 @@ function renderMenuItems(){
 function setSurfaceLabel(){
   const label=$('appNavigationSurfaceLabel');
   if(!label) return;
-  label.textContent=surface==='teacher'?'Teacher Dashboard':surface==='trainer'?'Practice':surface==='student'?'Student Dashboard':surface==='onboarding'?'Profile Setup':'Account';
+  const nextLabel=surface==='teacher'?'Teacher Dashboard':surface==='trainer'?'Practice':surface==='student'?'Student Dashboard':surface==='onboarding'?'Profile Setup':'Account';
+  if(label.textContent!==nextLabel) label.textContent=nextLabel;
 }
 
 function accountFallbackName(){
@@ -248,11 +250,15 @@ async function syncAccount(){
   if(key===lastAccountKey) return;
   lastAccountKey=key;
   const name=$('appNavigationUserName'),detail=$('appNavigationUserMeta'),avatar=$('appNavigationAvatar');
-  if(name) name.textContent=fullName || 'ผู้ใช้งาน';
-  if(detail) detail.textContent=email || (surface==='teacher'?'ผู้สอน':'ผู้เรียน');
+  const nextName=fullName || 'ผู้ใช้งาน';
+  const nextDetail=email || (surface==='teacher'?'ผู้สอน':'ผู้เรียน');
+  if(name && name.textContent!==nextName) name.textContent=nextName;
+  if(detail && detail.textContent!==nextDetail) detail.textContent=nextDetail;
   if(avatar){
-    avatar.textContent=avatarUrl?'':'♪';
-    avatar.style.backgroundImage=avatarUrl?`url("${String(avatarUrl).replace(/["\\]/g,'')}")`:'';
+    const nextText=avatarUrl?'':'♪';
+    const nextImage=avatarUrl?`url("${String(avatarUrl).replace(/["\\]/g,'')}")`:'';
+    if(avatar.textContent!==nextText) avatar.textContent=nextText;
+    if(avatar.style.backgroundImage!==nextImage) avatar.style.backgroundImage=nextImage;
     avatar.classList.toggle('has-image',!!avatarUrl);
   }
 }
@@ -428,7 +434,8 @@ function attachMenuToHost(){
 function syncNow(){
   ensureShell();
   const next=currentSurface();
-  if(next!==surface && open) closeDrawer({restoreFocus:false});
+  const surfaceChanged=next!==surface;
+  if(surfaceChanged && open) closeDrawer({restoreFocus:false});
   surface=next;
   attachMenuToHost();
   ensureStudentProfileButton();
@@ -436,7 +443,7 @@ function syncNow(){
   ensureTrainerProfileButton();
   renderMenuItems();
   setSurfaceLabel();
-  syncAccount();
+  if(surfaceChanged || !lastAccountKey) syncAccount();
 }
 
 function queueSync(){
@@ -446,6 +453,20 @@ function queueSync(){
     syncQueued=false;
     syncNow();
   });
+}
+
+function navigationOwnedNode(node){
+  const element=node?.nodeType===1 ? node : node?.parentElement;
+  if(!element) return false;
+  if(element.id==='appNavigationMenuButton' || element.id==='appNavigationDrawer' || element.id==='appNavigationScrim') return true;
+  return !!element.closest?.('#appNavigationDrawer,#appNavigationScrim,#appNavigationMenuButton');
+}
+
+function mutationNeedsSync(mutation){
+  if(navigationOwnedNode(mutation.target)) return false;
+  if(mutation.type!=='childList') return true;
+  const changedNodes=[...mutation.addedNodes,...mutation.removedNodes];
+  return changedNodes.length===0 || changedNodes.some(node=>!navigationOwnedNode(node));
 }
 
 function onKeydown(event){
@@ -470,7 +491,9 @@ window.addEventListener('pageshow',queueSync);
 function start(){
   ensureShell();
   syncNow();
-  const observer=new MutationObserver(queueSync);
+  const observer=new MutationObserver(mutations=>{
+    if(mutations.some(mutationNeedsSync)) queueSync();
+  });
   observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['hidden','inert']});
   app.navigationDrawer=Object.freeze({open:()=>openDrawer(menuButton()),close:()=>closeDrawer(),sync:syncNow,currentSurface:()=>surface});
 }
