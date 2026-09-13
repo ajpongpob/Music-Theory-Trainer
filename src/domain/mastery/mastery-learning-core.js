@@ -2,11 +2,12 @@
 'use strict';
 const app=window.MajorScaleApp=window.MajorScaleApp || {};
 
-const MODES=Object.freeze(['practice','pretest','mastery_test']);
+const MODES=Object.freeze(['practice','pretest','mastery_test','teacher_demo']);
 
 function normalizeSessionMode(value,{allowMasteryTest=false}={}){
   const mode=String(value || 'practice').trim().toLowerCase();
   if(mode==='pretest') return 'pretest';
+  if(mode==='teacher_demo') return 'teacher_demo';
   if(allowMasteryTest && mode==='mastery_test') return 'mastery_test';
   return 'practice';
 }
