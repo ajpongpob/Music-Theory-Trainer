@@ -67,4 +67,15 @@
 
     // Arrow navigation
   });
+
+  // Load the shared UI language layer after the core application scripts.
+  // It translates existing and future-rendered UI without touching notation,
+  // scoring, authentication, or database behavior.
+  if(!document.querySelector('script[data-major-scale-i18n]')){
+    const script=document.createElement('script');
+    script.src='./src/i18n.js?v=20260913-1';
+    script.async=false;
+    script.setAttribute('data-major-scale-i18n','true');
+    document.head.appendChild(script);
+  }
 })();
