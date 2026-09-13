@@ -92,7 +92,7 @@ assert(Object.isFrozen(repo), 'dashboardRepository should be frozen');
     args: {p_exercise_code: 'EXERCISE_X', p_stage_code: 'STAGE_X'}
   });
   assert.deepStrictEqual(normalize(calls[2]), {
-    type: 'from', table: 'profiles', select: 'full_name', selectOptions: null, eq: [['id', 'student-1']], in: [], order: [], limit: null, maybeSingle: true
+    type: 'from', table: 'profiles', select: 'first_name,last_name,full_name', selectOptions: null, eq: [['id', 'student-1']], in: [], order: [], limit: null, maybeSingle: true
   });
   assert.deepStrictEqual(normalize(calls[3]), {
     type: 'from', table: 'skills', select: 'code,short_name,name_th', selectOptions: null, eq: [['active', true]], in: [], order: [], limit: null, maybeSingle: false
@@ -101,7 +101,7 @@ assert(Object.isFrozen(repo), 'dashboardRepository should be frozen');
     type: 'rpc', name: 'get_my_teacher_dashboard', args: null
   });
   assert.deepStrictEqual(normalize(calls[5]), {
-    type: 'from', table: 'profiles', select: 'full_name,role', selectOptions: null, eq: [['id', 'teacher-1']], in: [], order: [], limit: null, maybeSingle: true
+    type: 'from', table: 'profiles', select: 'first_name,last_name,full_name,role', selectOptions: null, eq: [['id', 'teacher-1']], in: [], order: [], limit: null, maybeSingle: true
   });
   assert.deepStrictEqual(normalize(calls[6]), {
     type: 'rpc', name: 'get_my_teacher_class_dashboard', args: {p_class_id: 'class-1'}
@@ -144,7 +144,7 @@ assert(Object.isFrozen(repo), 'dashboardRepository should be frozen');
   });
   assert.equal(teacherCalls.filter(call=>call.name==='get_my_teacher_class_dashboard').length,2,'All Classes aggregation should use authorized class dashboard RPC once per class');
 
-  console.log('PASS dashboard repository contract + RLS-safe student learning history reads + Teacher Dashboard V2 operations');
+  console.log('PASS dashboard repository contract + structured profile reads + RLS-safe student learning history reads + Teacher Dashboard V2 operations');
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;
