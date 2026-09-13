@@ -69,9 +69,14 @@
   });
 
   // Load the shared UI language layer after the core application scripts.
-  // It translates existing and future-rendered UI without touching notation,
-  // scoring, authentication, or database behavior.
-  if(!document.querySelector('script[data-major-scale-i18n]')){
+  // Guard DOM APIs because keyboard.js is also evaluated by Node regression
+  // harnesses with a deliberately minimal document stub.
+  if(
+    typeof document?.querySelector==='function' &&
+    typeof document?.createElement==='function' &&
+    document.head &&
+    !document.querySelector('script[data-major-scale-i18n]')
+  ){
     const script=document.createElement('script');
     script.src='./src/i18n.js?v=20260913-1';
     script.async=false;
