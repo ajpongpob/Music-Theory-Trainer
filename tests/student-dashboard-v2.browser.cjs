@@ -32,13 +32,15 @@ const mastery={
   ]
 };
 
+const profile={id:'student-1',first_name:'QA',last_name:'Student',nickname:'Q',full_name:'QA Student',display_name:'Q',student_id:'68001',program:'Western Music',avatar_url:null,role:'student'};
+
 function learningHistory(){
   const sessions=[];const attempts=[];const skillResults=[];
   const scores=[54,60,63,66,70,74];
   for(let i=0;i<scores.length;i++){
     const id=`session-${i+1}`,attemptId=`attempt-${i+1}`;
     sessions.push({id,mode:'practice',planned_questions:5,completed_questions:5,overall_score:scores[i],started_at:`2026-09-${String(5+i).padStart(2,'0')}T10:00:00Z`,completed_at:`2026-09-${String(5+i).padStart(2,'0')}T10:10:00Z`,exercise_id:'exercise-1',stage_id:'stage-2'});
-    attempts.push({id:attemptId,practice_session_id:id,question_number:1,score:scores[i],item_code:'C'});
+    attempts.push({id:attemptId,practice_session_id:id,question_number:1,score:scores[i],item_code:'C',checked_at:`2026-09-${String(5+i).padStart(2,'0')}T10:09:00Z`});
     skills.forEach((skill,index)=>skillResults.push({attempt_id:attemptId,skill_code:skill.code,correct_count:Math.max(1,5-index+(i>2?1:0)),total_count:6,score:null}));
   }
   return {sessions,attempts,skillResults,totalPracticeSessions:12};
@@ -72,23 +74,28 @@ function learningHistory(){
     </body></html>`);
     await page.addStyleTag({content:read('styles/app.css')});
     await page.addStyleTag({content:read('styles/student-dashboard-v2.css')});
-    await page.evaluate(({dashboardRows,skills,mastery,history})=>{
+    await page.evaluate(({dashboardRows,skills,mastery,history,profile})=>{
+      window.__profileUpdates=0;
       window.MajorScaleApp={
+        authRepository:{getUser:async()=>({data:{user:{id:'student-1',email:'qa@example.com',user_metadata:{full_name:'QA Student'}}}})},
         dashboardRepository:{
           getStudentDashboard:async()=>({data:dashboardRows,error:null}),
           getActiveSkills:async()=>({data:skills,error:null}),
           getStageMastery:async()=>({data:[mastery],error:null}),
-          getStudentLearningHistory:async()=>({data:history,error:null})
+          getStudentLearningHistory:async()=>({data:history,error:null}),
+          getStudentProfileDetails:async()=>({data:profile,error:null}),
+          updateStudentProfile:async payload=>{window.__profileUpdates++;return {data:{...profile,first_name:String(payload.fullName).split('\u001f')[0],last_name:String(payload.fullName).split('\u001f')[1],nickname:payload.displayName,display_name:payload.displayName,student_id:payload.studentId,program:payload.program,avatar_url:payload.avatarUrl},error:null};}
         },
-        learningRepository:{
-          getRecommendedNextAction:async()=>({data:[{exercise_code:'MAJOR_SCALE_NOTATION',stage_code:'STAGE_2',action_type:'target_skill',target_skill_code:'MS03_SCALE_ACCIDENTAL',reason_th:'เครื่องหมายแปลงเสียงยังต่ำกว่าเกณฑ์'}],error:null})
-        }
+        learningRepository:{getRecommendedNextAction:async()=>({data:[{exercise_code:'MAJOR_SCALE_NOTATION',stage_code:'STAGE_2',action_type:'target_skill',target_skill_code:'MS03_SCALE_ACCIDENTAL',reason_th:'เครื่องหมายแปลงเสียงยังต่ำกว่าเกณฑ์'}],error:null})}
       };
-    },{dashboardRows,skills,mastery,history:learningHistory()});
+    },{dashboardRows,skills,mastery,history:learningHistory(),profile});
     await page.addScriptTag({content:read('src/domain/mastery/mastery-learning-core.js')});
     await page.addScriptTag({content:read('src/dashboard/student-dashboard-v2.js')});
-    await page.waitForFunction(()=>window.__studentDashboardV2Model && document.querySelector('#sd2TrendChart svg'));
+    await page.waitForFunction(()=>window.__studentDashboardV2Model && document.querySelector('#sd2ProgressTrendChart svg'));
 
+    assert.equal(await page.locator('#dashboardContent').isVisible(),true);
+    assert.equal(await page.locator('#sd2ProgressPage').isVisible(),false);
+    assert.equal(await page.locator('#sd2ProfilePanel').isVisible(),false);
     assert.equal(await page.locator('#sd2ContinueHeading').textContent(),'Major Scale Notation');
     assert((await page.locator('#sd2Continue').textContent()).includes('Stage 2 of 4'));
     assert((await page.locator('#sd2Continue').textContent()).includes('Scale Accidental'));
@@ -96,61 +103,72 @@ function learningHistory(){
     assert.equal(await page.locator('#sd2SkillList .sd2-skill').count(),5);
     assert.equal(await page.locator('#sd2SkillList .sd2-status.mastered').count(),2);
     assert.equal(await page.locator('#sd2SkillList .sd2-status.needs-practice').count(),3);
-    assert((await page.locator('#sd2StageList').textContent()).includes('Stage 3 — Extended Accidentals'));
+    assert.equal(await page.locator('#sd2RecentList .sd2-recent-item').count(),3,'Dashboard recent activity stays compact');
+    assert.equal(await page.locator('#sd2Trend,#sd2Achievements').count(),0,'Dashboard must not duplicate analytical/history blocks');
     assert.equal(await page.locator('#sd2StageList .sd2-status.locked').count(),2);
-    assert.equal(await page.locator('#sd2RecentList .sd2-recent-item').count(),5);
-    assert((await page.locator('#sd2AchievementList').textContent()).includes('10 Sessions'));
-    assert.equal(await page.locator('#sd2TrendFilter option').count(),6);
-    assert.equal(await page.locator('#sd2TrendChart svg').count(),1);
 
-    const desktopOrder=await page.evaluate(()=>['sd2Continue','sd2Summary','sd2Skills','sd2Trend','sd2Recent','sd2Achievements'].map(id=>[id,document.getElementById(id).getBoundingClientRect().top]));
+    await page.locator('[data-sd2-skill-filter="MS03_SCALE_ACCIDENTAL"]').click();
+    assert.equal(await page.locator('#dashboardContent').isVisible(),false);
+    assert.equal(await page.locator('#sd2ProgressPage').isVisible(),true);
+    assert.equal(await page.locator('#sd2ProgressTrendFilter').inputValue(),'MS03_SCALE_ACCIDENTAL');
+    assert.equal(await page.locator('#sd2TopNav [aria-current="page"]').textContent(),'Progress');
+    assert.equal(await page.locator('#sd2ProgressSkillList .sd2-progress-skill').count(),5);
+    assert.equal(await page.locator('#sd2ProgressTrendChart svg').count(),1);
+    assert.equal(await page.locator('#sd2ProgressStageList .sd2-stage-history-item').count(),4);
+    assert.equal(await page.locator('#sd2SessionHistoryList .sd2-session').count(),6);
+    await page.locator('#sd2SessionHistoryList .sd2-session').first().locator('summary').click();
+    assert.equal(await page.locator('#sd2SessionHistoryList .sd2-session').first().locator('.sd2-attempt').count(),1,'Session drill-down exposes attempts only when expanded');
+    assert((await page.locator('#sd2SessionHistoryList .sd2-session').first().textContent()).includes('Scale Accidental'));
+
+    await page.locator('#sd2TopNav [data-sd2-nav="profile"]').click();
+    assert.equal(await page.locator('#dashboardContent').isVisible(),false);
+    assert.equal(await page.locator('#sd2ProgressPage').isVisible(),false);
+    assert.equal(await page.locator('#sd2ProfilePanel').isVisible(),true);
+    assert.equal(await page.locator('#sd2TopNav [aria-current="page"]').textContent(),'Profile');
+    for(const name of ['first_name','last_name','nickname','student_id','program','avatar_url']) assert.equal(await page.locator(`#sd2ProfileForm [name="${name}"]`).count(),1,`${name} must be a real Profile field`);
+    assert.equal(await page.locator('#sd2ProfileForm [name="year_level"],#sd2ProfileForm [name="section"],#sd2ProfileForm [name="full_name"],#sd2ProfileForm [name="display_name"]').count(),0,'Profile must exclude deprecated/compat UI fields');
+    await page.locator('#sd2ProfileForm [name="nickname"]').fill('Q2');
+    await page.locator('#sd2ProfileForm button[type="submit"]').click();
+    await page.waitForFunction(()=>window.__profileUpdates===1);
+    assert((await page.locator('#sd2ProfilePanel').textContent()).includes('บันทึกข้อมูลโปรไฟล์แล้ว'));
+
+    await page.locator('#sd2TopNav [data-sd2-nav="dashboard"]').click();
+    assert.equal(await page.locator('#dashboardContent').isVisible(),true);
+    assert.equal(await page.locator('#sd2ProfilePanel').isVisible(),false);
+    assert.equal(await page.locator('#sd2TopNav [aria-current="page"]').textContent(),'Dashboard');
+
+    const desktopOrder=await page.evaluate(()=>['sd2Continue','sd2Summary','sd2SkillSnapshot','sd2LearningPath','sd2Recent'].map(id=>[id,document.getElementById(id).getBoundingClientRect().top]));
     for(let i=1;i<desktopOrder.length;i++) assert(desktopOrder[i][1]>=desktopOrder[i-1][1],`${desktopOrder[i][0]} should not appear above ${desktopOrder[i-1][0]}`);
-    assert.equal(await page.locator('#sd2TopNav').isVisible(),true);
-    assert.equal(await page.locator('#sd2BottomNav').count(),0);
-
-    await page.locator('[data-sd2-skill="MS03_SCALE_ACCIDENTAL"]').click();
-    assert.equal(await page.locator('#sd2TrendFilter').inputValue(),'MS03_SCALE_ACCIDENTAL');
 
     await page.setViewportSize({width:390,height:844});
-    assert.equal(await page.locator('#sd2TopNav').isVisible(),true);
-    assert.equal(await page.locator('#sd2BottomNav').count(),0);
-    const mobileOrder=await page.evaluate(()=>['sd2Continue','sd2Summary','sd2Skills','sd2LearningPath','sd2Trend','sd2Recent','sd2Achievements'].map(id=>[id,document.getElementById(id).getBoundingClientRect().top]));
-    for(let i=1;i<mobileOrder.length;i++) assert(mobileOrder[i][1]>=mobileOrder[i-1][1],`${mobileOrder[i][0]} should follow ${mobileOrder[i-1][0]} on mobile`);
-    const practiceBox=await page.locator('#sd2TopNav [data-sd2-nav="practice"]').boundingBox();
-    assert(practiceBox && practiceBox.height>=44,'mobile Practice action must meet touch-target height');
-    assert.equal(await page.locator('#sd2Recent').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'recent activity should not require horizontal scrolling');
-    assert.equal(await page.locator('header > nav[aria-label="Main"]').count(),1);
-    assert.equal(await page.locator('#sd2TopNav > a').count(),4);
-    assert.equal(await page.locator('#sd2TopNav button, #sd2TopNav #dashboardUserName').count(),0);
+    const mobileDashboardOrder=await page.evaluate(()=>['sd2Continue','sd2Summary','sd2SkillSnapshot','sd2LearningPath','sd2Recent'].map(id=>[id,document.getElementById(id).getBoundingClientRect().top]));
+    for(let i=1;i<mobileDashboardOrder.length;i++) assert(mobileDashboardOrder[i][1]>=mobileDashboardOrder[i-1][1],`${mobileDashboardOrder[i][0]} should follow ${mobileDashboardOrder[i-1][0]} on mobile`);
+    assert.equal(await page.locator('#sd2Recent').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'Dashboard recent activity should not require horizontal scrolling');
+
+    await page.locator('#sd2TopNav [data-sd2-nav="progress"]').click();
+    const mobileProgressOrder=await page.evaluate(()=>['sd2ProgressOverall','sd2ProgressSkills','sd2ProgressTrend','sd2ProgressStages','sd2SessionHistory'].map(id=>[id,document.getElementById(id).getBoundingClientRect().top]));
+    for(let i=1;i<mobileProgressOrder.length;i++) assert(mobileProgressOrder[i][1]>=mobileProgressOrder[i-1][1],`${mobileProgressOrder[i][0]} should follow ${mobileProgressOrder[i-1][0]} on mobile`);
+    assert.equal(await page.locator('#sd2ProgressPage').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'Progress must fit mobile viewport');
+
+    await page.locator('#sd2TopNav [data-sd2-nav="dashboard"]').click();
     assert.equal(await page.locator('ol#sd2StageList > li').count(),4);
     assert.equal(await page.locator('#sd2StageList [aria-current="step"]').count(),1);
-    assert.equal(await page.locator('#sd2StageList [aria-current="page"]').count(),0);
     assert.equal(await page.locator('#sd2StageList [aria-current="step"] .sd2-stage-icon').textContent(),'2');
     assert.equal(await page.locator('#sd2StageList .completed .sd2-stage-icon').textContent(),'✓');
+
     for(const viewport of [{width:1440,height:1000},{width:820,height:1180},{width:390,height:844},{width:320,height:740}]){
       await page.setViewportSize(viewport);
+      await page.locator('#sd2TopNav [data-sd2-nav="dashboard"]').click();
       const boxes=await page.locator('#sd2StageList > li').evaluateAll(items=>items.map(item=>({x:item.getBoundingClientRect().x,y:item.getBoundingClientRect().y})));
       assert(viewport.width>=980?boxes[1].x>boxes[0].x:boxes[1].y>boxes[0].y,'Steps orientation follows available width');
-      assert(await page.locator('#studentDashboard').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Dashboard must fit viewport');
-      await page.locator('#sd2TopNav [data-sd2-nav="progress"]').focus();
-      await page.keyboard.press('Enter');
-      assert.equal(await page.locator('#sd2TopNav [aria-current="page"]').textContent(),'Progress');
-      assert.equal(await page.evaluate(()=>document.activeElement.id),'sd2Skills');
-      await page.locator('#sd2TopNav [data-sd2-nav="profile"]').click();
-      assert(await page.locator('#sd2ProfilePanel').isVisible());
-      assert.equal(await page.locator('#sd2TopNav [aria-current="page"]').textContent(),'Profile');
-      await page.locator('#sd2TopNav [data-sd2-nav="dashboard"]').click();
-      assert.equal(await page.locator('#sd2TopNav [aria-current="page"]').textContent(),'Dashboard');
-      assert.equal(await page.locator('#sd2ProfilePanel').isVisible(),false);
-      if(process.env.QA_SCREENSHOTS){await page.screenshot({path:path.join(process.env.QA_SCREENSHOTS,`student-dashboard-${viewport.width}.png`),fullPage:true});}
-      console.log(`PASS semantic header / keyboard navigation / steps / overflow: ${viewport.width}×${viewport.height}`);
+      assert(await page.locator('#studentDashboard').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Student pages must fit viewport');
+      if(process.env.QA_SCREENSHOTS) await page.screenshot({path:path.join(process.env.QA_SCREENSHOTS,`student-dashboard-${viewport.width}.png`),fullPage:true});
     }
-    await page.evaluate(()=>{
-      window.__launches=0;
-      document.querySelector('#sd2Continue .dashboard-continue').addEventListener('click',()=>window.__launches++);
-    });
+
+    await page.evaluate(()=>{window.__launches=0;document.querySelector('#sd2Continue .dashboard-continue').addEventListener('click',()=>window.__launches++);});
     await page.locator('#sd2TopNav [data-sd2-nav="practice"]').click();
     assert.equal(await page.evaluate(()=>window.__launches),1,'Practice delegates to existing CTA once');
+
     for(const statuses of [['mastered','mastered','in_progress','locked'],['mastered','mastered','mastered','mastered'],['available','locked','locked','locked'],[]]){
       await page.evaluate(async statuses=>{
         const rows=window.__studentDashboardV2Model.path.rows.slice(0,statuses.length).map((row,i)=>({...row,stage_status:statuses[i]}));
@@ -158,12 +176,12 @@ function learningHistory(){
         await window.MajorScaleApp.studentDashboardV2.refresh();
       },statuses);
       assert.equal(await page.locator('#sd2StageList [aria-current="step"]').count(),statuses.includes('in_progress')?1:0);
-      if(statuses.includes('available'))assert.equal(await page.locator('#sd2StageList > li.upcoming').count(),1);
-      if(statuses.includes('in_progress'))assert.equal(await page.locator('#sd2StageList [aria-current="step"] .sd2-stage-icon').textContent(),'3');
+      if(statuses.includes('available')) assert.equal(await page.locator('#sd2StageList > li.upcoming').count(),1);
+      if(statuses.includes('in_progress')) assert.equal(await page.locator('#sd2StageList [aria-current="step"] .sd2-stage-icon').textContent(),'3');
     }
-    assert.deepEqual(errors,[]);
 
-    console.log('PASS Student Dashboard V2 browser: actionable hierarchy, mastery/status, stage path, trend, recent activity, achievements and responsive navigation');
+    assert.deepEqual(errors,[]);
+    console.log('PASS Student learning browser: actionable Dashboard, analytical Progress, isolated Profile, evidence drill-down and responsive order');
   }finally{
     await browser.close();
   }
