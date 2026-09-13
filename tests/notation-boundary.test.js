@@ -44,7 +44,8 @@ for(const file of Object.keys(boundary.files)){
 const intentionalDataBoundaryChanges=new Set([
   'src/data/practice.repository.js',       // v0.9.3 trusted server scoring
   'src/data/supabase-client.js',           // v0.9.3 publishable client setup
-  'src/data/dashboard.repository.js'       // M1.5 feedback/read-model adapters
+  'src/data/dashboard.repository.js',      // M1.5 feedback/read-model adapters
+  'src/dashboard/teacher-dashboard.js'      // Teacher Dashboard V2 UI/data orchestration
 ]);
 for(const [file,hash] of Object.entries(boundary.protectedProduction)){
   if(intentionalDataBoundaryChanges.has(file)) continue;
