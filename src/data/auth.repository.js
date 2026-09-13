@@ -126,6 +126,21 @@ const authRepository = {
 
 app.authRepository = Object.freeze(authRepository);
 
+function loadI18n() {
+  if (
+    typeof document === 'undefined' ||
+    typeof document.querySelector !== 'function' ||
+    typeof document.createElement !== 'function' ||
+    !document.head
+  ) return;
+  if (document.querySelector('script[data-major-scale-i18n]')) return;
+  const script = document.createElement('script');
+  script.src = './src/i18n.js?v=20260913-1';
+  script.async = false;
+  script.dataset.majorScaleI18n = 'true';
+  document.head.appendChild(script);
+}
+
 function loadProfileOnboardingV2() {
   if (typeof document === 'undefined' || !document.head) return;
   if (document.querySelector('script[data-profile-onboarding-v2]')) return;
@@ -152,6 +167,7 @@ function loadNavigationDrawer() {
   }
 }
 
+loadI18n();
 loadProfileOnboardingV2();
 loadNavigationDrawer();
 })();
