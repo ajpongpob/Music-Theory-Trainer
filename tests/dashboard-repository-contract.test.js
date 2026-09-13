@@ -127,7 +127,24 @@ assert(Object.isFrozen(repo), 'dashboardRepository should be frozen');
   assert(attemptRead && attemptRead.in[0][0]==='practice_session_id', 'history should read attempts by visible session ids');
   assert(skillRead && skillRead.in[0][0]==='attempt_id', 'history should read skill evidence by visible attempt ids');
 
-  console.log('PASS dashboard repository contract + RLS-safe student learning history reads');
+  const beforeTeacherWrites=calls.length;
+  await repo.createTeacherClass({code:'MUS101-01',name:'Music Theory I',academicYear:'2569',term:'1'});
+  await repo.addStudentToTeacherClass({classId:'class-1',email:'student@example.com'});
+  const multi=await repo.getTeacherClassDashboards(['class-1','class-2','class-1']);
+  assert.ifError(multi.error);
+  assert.equal(multi.data.length,2,'multi-class read should de-duplicate class ids');
+  const teacherCalls=normalize(calls.slice(beforeTeacherWrites));
+  assert.deepStrictEqual(teacherCalls[0],{
+    type:'rpc',name:'create_my_class',
+    args:{p_code:'MUS101-01',p_name:'Music Theory I',p_academic_year:'2569',p_term:'1'}
+  });
+  assert.deepStrictEqual(teacherCalls[1],{
+    type:'rpc',name:'add_student_to_my_class',
+    args:{p_class_id:'class-1',p_student_email:'student@example.com'}
+  });
+  assert.equal(teacherCalls.filter(call=>call.name==='get_my_teacher_class_dashboard').length,2,'All Classes aggregation should use authorized class dashboard RPC once per class');
+
+  console.log('PASS dashboard repository contract + RLS-safe student learning history reads + Teacher Dashboard V2 operations');
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;
