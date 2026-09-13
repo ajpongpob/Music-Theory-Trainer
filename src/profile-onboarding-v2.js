@@ -34,9 +34,9 @@ function splitName(value){
   };
 }
 
-function makeField({labelText,id,name,placeholder,maxlength,autocomplete}){
+function makeField({labelText,id,name,placeholder,maxlength,autocomplete,className='auth-field'}){
   const field=document.createElement('div');
-  field.className='auth-field';
+  field.className=className;
   const label=document.createElement('label');
   label.htmlFor=id;
   label.textContent=labelText;
@@ -67,7 +67,7 @@ function syncVisibleNamesFromLegacy(form){
   compat.value=`${firstInput.value.trim()}${PROFILE_NAME_SEPARATOR}${lastInput.value.trim()}`;
 }
 
-function enhanceForm(){
+function enhanceOnboardingForm(){
   const form=$('profileOnboardingForm');
   if(!form) return false;
   if(form.dataset.profileV2==='true') return true;
@@ -123,8 +123,7 @@ function enhanceForm(){
     yearInput.appendChild(option);
   }
 
-  const sectionField=sectionInput.closest('.auth-field');
-  sectionField?.classList.add('profile-v2-hidden');
+  sectionInput.closest('.auth-field')?.classList.add('profile-v2-hidden');
 
   const split=splitName(initialName);
   fullInput.value=split.firstName;
@@ -142,7 +141,82 @@ function enhanceForm(){
   return true;
 }
 
-function resyncWhenShown(){
+function enhanceStudentDashboardProfile(){
+  const form=$('sd2ProfileForm');
+  if(!form || form.dataset.profileV2==='true') return false;
+  const fullInput=form.querySelector('input[name="full_name"]');
+  const nicknameInput=form.querySelector('input[name="display_name"]');
+  if(!fullInput||!nicknameInput) return false;
+
+  form.dataset.profileV2='true';
+  const originalFullName=fullInput.value;
+  const split=splitName(originalFullName);
+  const fullLabel=fullInput.closest('label');
+  if(fullLabel){
+    for(const node of [...fullLabel.childNodes]){
+      if(node.nodeType===Node.TEXT_NODE) node.textContent='ชื่อ';
+    }
+  }
+  fullInput.name='first_name';
+  fullInput.value=split.firstName;
+  fullInput.autocomplete='given-name';
+  fullInput.placeholder='ชื่อ';
+
+  const lastLabel=document.createElement('label');
+  lastLabel.append('นามสกุล');
+  const lastInput=document.createElement('input');
+  lastInput.name='last_name';
+  lastInput.maxLength=100;
+  lastInput.required=true;
+  lastInput.autocomplete='family-name';
+  lastInput.placeholder='นามสกุล';
+  lastInput.value=split.lastName;
+  lastLabel.appendChild(lastInput);
+  fullLabel?.insertAdjacentElement('afterend',lastLabel);
+
+  const compat=document.createElement('input');
+  compat.type='hidden';
+  compat.name='full_name';
+  compat.dataset.profileNameCompat='true';
+  compat.value=`${split.firstName}${PROFILE_NAME_SEPARATOR}${split.lastName}`;
+  form.appendChild(compat);
+
+  const nicknameLabel=nicknameInput.closest('label');
+  if(nicknameLabel){
+    for(const node of [...nicknameLabel.childNodes]){
+      if(node.nodeType===Node.TEXT_NODE) node.textContent='ชื่อเล่น';
+    }
+  }
+
+  for(const obsoleteName of ['year_level','section']){
+    const obsolete=form.querySelector(`[name="${obsoleteName}"]`);
+    obsolete?.closest('label')?.classList.add('profile-v2-hidden');
+  }
+
+  const header=$('sd2ProfileName');
+  if(header) header.textContent=originalFullName || 'ผู้เรียน';
+
+  form.addEventListener('submit',()=>{
+    compat.value=`${String(fullInput.value||'').trim()}${PROFILE_NAME_SEPARATOR}${String(lastInput.value||'').trim()}`;
+  },true);
+  return true;
+}
+
+function enhanceTeacherProfileSummary(){
+  for(const card of document.querySelectorAll('.teacher-profile-summary')){
+    const rows=[...card.querySelectorAll('.teacher-profile-list > div')];
+    for(const row of rows){
+      const dt=row.querySelector('dt');
+      if(!dt) continue;
+      const label=dt.textContent.trim();
+      if(label==='ชื่อที่แสดง') dt.textContent='ชื่อเล่น';
+      if(label==='หลักสูตร / ชั้นปี') dt.textContent='หลักสูตร / สาขาวิชา';
+      if(label==='Section') row.remove();
+    }
+  }
+}
+
+function resyncOnboardingWhenShown(){
   const panel=$('profileOnboardingPanel');
   const form=$('profileOnboardingForm');
   if(!panel||!form||panel.hidden) return;
@@ -150,7 +224,9 @@ function resyncWhenShown(){
 }
 
 function refresh(){
-  if(enhanceForm()) resyncWhenShown();
+  if(enhanceOnboardingForm()) resyncOnboardingWhenShown();
+  enhanceStudentDashboardProfile();
+  enhanceTeacherProfileSummary();
 }
 
 if(document.readyState==='loading'){
