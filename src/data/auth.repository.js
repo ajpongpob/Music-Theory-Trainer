@@ -10,7 +10,27 @@ function getClient() {
   return app.supabaseClient;
 }
 
-const PROFILE_ONBOARDING_SELECT = 'id,full_name,display_name,student_id,program,year_level,section,avatar_url,role,onboarding_completed_at,created_at,updated_at';
+const PROFILE_ONBOARDING_SELECT = 'id,first_name,last_name,nickname,full_name,display_name,student_id,program,avatar_url,role,onboarding_completed_at,created_at,updated_at';
+const PROFILE_NAME_SEPARATOR = '\u001f';
+
+function decodeProfileName(fullName) {
+  const raw = String(fullName || '').trim();
+  if (!raw) return {firstName: null, lastName: null};
+
+  if (raw.includes(PROFILE_NAME_SEPARATOR)) {
+    const [firstName, ...lastParts] = raw.split(PROFILE_NAME_SEPARATOR);
+    return {
+      firstName: firstName.trim() || null,
+      lastName: lastParts.join(PROFILE_NAME_SEPARATOR).trim() || null
+    };
+  }
+
+  const match = raw.match(/^(\S+)(?:\s+(.+))?$/u);
+  return {
+    firstName: match?.[1]?.trim() || raw,
+    lastName: match?.[2]?.trim() || null
+  };
+}
 
 const authRepository = {
   getClient,
@@ -86,16 +106,16 @@ const authRepository = {
     return result;
   },
 
-  updateRegistrationProfile({userId, fullName, displayName, studentId, program, yearLevel, section, avatarUrl}) {
+  updateRegistrationProfile({userId, fullName, displayName, studentId, program, avatarUrl}) {
+    const {firstName, lastName} = decodeProfileName(fullName);
     return getClient()
       .from('profiles')
       .update({
-        full_name: fullName,
-        display_name: displayName,
+        first_name: firstName,
+        last_name: lastName,
+        nickname: displayName || null,
         student_id: studentId,
         program,
-        year_level: yearLevel,
-        section,
         avatar_url: avatarUrl
       })
       .eq('id', userId)
@@ -105,4 +125,15 @@ const authRepository = {
 };
 
 app.authRepository = Object.freeze(authRepository);
+
+function loadProfileOnboardingV2() {
+  if (typeof document === 'undefined' || !document.head) return;
+  if (document.querySelector('script[data-profile-onboarding-v2]')) return;
+  const script = document.createElement('script');
+  script.src = './src/profile-onboarding-v2.js?v=20260913-profile-v2';
+  script.dataset.profileOnboardingV2 = 'true';
+  document.head.appendChild(script);
+}
+
+loadProfileOnboardingV2();
 })();
