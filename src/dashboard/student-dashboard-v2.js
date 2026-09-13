@@ -7,6 +7,7 @@ const learningRepo=app.learningRepository;
 const authRepo=app.authRepository;
 const masteryCore=app.masteryLearningCore;
 const $=id=>document.getElementById(id);
+const PROFILE_NAME_SEPARATOR='\u001f';
 
 const SKILL_ORDER=['BN01_TREBLE_PITCH','BN06_STEM_DIRECTION','RH01_DURATION_VALUE','GR02_PRIMARY_BEAM','MS03_SCALE_ACCIDENTAL'];
 const SKILL_LABELS=Object.freeze({
@@ -17,35 +18,48 @@ const SKILL_LABELS=Object.freeze({
   MS03_SCALE_ACCIDENTAL:'Scale Accidental'
 });
 
-let revision=0,initialized=false,showAllRecent=false,trendSkill='ALL',refreshTimer=null,profileOpen=false,legacyObserver=null,profileState={data:null,user:null,message:'',error:false,busy:false};
+const NAV_TARGETS=Object.freeze({dashboard:'dashboardContent',practice:'sd2Continue',progress:'sd2ProgressPage',profile:'sd2ProfilePanel'});
+let revision=0,initialized=false,trendSkill='ALL',refreshTimer=null,legacyObserver=null;
+let profileState={data:null,user:null,message:'',error:false,busy:false};
+
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const first=data=>Array.isArray(data)?(data[0]||null):(data||null);
 const clampPercent=value=>Number.isFinite(Number(value))?Math.max(0,Math.min(100,Number(value))):0;
 const percentText=value=>Number.isFinite(Number(value))?`${Number(value).toFixed(1).replace(/\.0$/,'')}%`:'—';
+const average=values=>{const nums=values.map(Number).filter(Number.isFinite);return nums.length?nums.reduce((sum,value)=>sum+value,0)/nums.length:null;};
 
 function ensureStylesheet(){
   if(document.querySelector('link[data-student-dashboard-v2-style]')) return;
   const link=document.createElement('link');
   link.rel='stylesheet';
-  link.href='./styles/student-dashboard-v2.css';
+  link.href='./styles/student-dashboard-v2.css?v=20260913-ia';
   link.setAttribute('data-student-dashboard-v2-style','true');
   document.head.appendChild(link);
 }
 
-// These are destinations within the existing single-page dashboard, not new routes.
-const NAV_TARGETS={dashboard:'dashboardContent',practice:'sd2Continue',progress:'sd2Skills',profile:'sd2ProfilePanel'};
 function navLinks(){
   const link=(label,action)=>`<a class="sd2-nav-button" href="#${NAV_TARGETS[action]}" data-sd2-nav="${action}">${label}</a>`;
   return [link('Dashboard','dashboard'),link('Practice','practice'),link('Progress','progress'),link('Profile','profile')].join('');
 }
+
+function currentAction(){
+  const hash=window.location.hash;
+  if(hash==='#sd2ProgressPage') return 'progress';
+  if(hash==='#sd2ProfilePanel') return 'profile';
+  return 'dashboard';
+}
+
 function syncNavigation(){
-  const action=Object.keys(NAV_TARGETS).find(key=>`#${NAV_TARGETS[key]}`===window.location.hash)||'dashboard';
+  const action=currentAction();
   document.querySelectorAll('#sd2TopNav a').forEach(link=>{
-    if(link.dataset.sd2Nav===action)link.setAttribute('aria-current','page');
+    if(link.dataset.sd2Nav===action) link.setAttribute('aria-current','page');
     else link.removeAttribute('aria-current');
   });
-  profileOpen=action==='profile';
-  $('sd2ProfilePanel')?.classList.toggle('is-open',profileOpen);
+  const dashboard=$('dashboardContent'),progress=$('sd2ProgressPage'),profile=$('sd2ProfilePanel');
+  if(dashboard) dashboard.hidden=action!=='dashboard';
+  if(progress) progress.hidden=action!=='progress';
+  if(profile) profile.hidden=action!=='profile';
+  app.navigationDrawer?.sync?.();
 }
 
 function syncLegacyFallbackAction(){
@@ -53,15 +67,7 @@ function syncLegacyFallbackAction(){
   const legacy=$('dashboardRecommendation')?.querySelector('.dashboard-continue[data-exercise-code]');
   if(!body || !legacy || body.querySelector('.dashboard-continue')) return false;
   body.className='sd2-continue-layout';
-  body.innerHTML=`
-    <div class="sd2-continue-main">
-      <div class="sd2-eyebrow">Continue Learning · Next Recommended Activity</div>
-      <h2 id="sd2ContinueHeading">${escapeHtml($('dashboardFocusTitle')?.textContent || 'เรียนต่อจาก Stage ปัจจุบัน')}</h2>
-      <div class="sd2-subtle">${escapeHtml($('dashboardFocusExercise')?.textContent || 'ระบบกำลังเตรียมรายละเอียด Mastery เพิ่มเติม')}</div>
-    </div>
-    <div class="sd2-continue-side">
-      <button type="button" class="dashboard-continue sd2-continue-action" data-exercise-code="${escapeHtml(legacy.dataset.exerciseCode||'')}" data-stage-code="${escapeHtml(legacy.dataset.stageCode||'')}" data-session-mode="${escapeHtml(legacy.dataset.sessionMode||'practice')}">${escapeHtml(legacy.textContent?.trim() || 'ฝึกต่อ')}</button>
-    </div>`;
+  body.innerHTML=`<div class="sd2-continue-main"><div class="sd2-eyebrow">Continue Learning · Next Recommended Activity</div><h2 id="sd2ContinueHeading">${escapeHtml($('dashboardFocusTitle')?.textContent||'เรียนต่อจาก Stage ปัจจุบัน')}</h2><div class="sd2-subtle">${escapeHtml($('dashboardFocusExercise')?.textContent||'ระบบกำลังเตรียมรายละเอียด Mastery เพิ่มเติม')}</div></div><div class="sd2-continue-side"><button type="button" class="dashboard-continue sd2-continue-action" data-exercise-code="${escapeHtml(legacy.dataset.exerciseCode||'')}" data-stage-code="${escapeHtml(legacy.dataset.stageCode||'')}" data-session-mode="${escapeHtml(legacy.dataset.sessionMode||'practice')}">${escapeHtml(legacy.textContent?.trim()||'ฝึกต่อ')}</button></div>`;
   return true;
 }
 
@@ -75,58 +81,67 @@ function ensureStructure(){
     const kicker=brand.querySelector('.student-dashboard-kicker'),title=brand.querySelector('h1'),description=brand.querySelector('p');
     if(kicker) kicker.textContent='Student Dashboard';
     if(title) title.textContent='Major Scale Notation Trainer';
-    if(description) description.textContent='ติดตาม Stage, Mastery รายทักษะ และกิจกรรมที่ควรทำต่อจากหลักฐานการฝึกของคุณ';
+    if(description) description.textContent='เรียนต่อจากจุดที่เหมาะสม และตรวจหลักฐานพัฒนาการเมื่อคุณต้องการ';
   }
 
   if(!$('sd2TopNav')){
     const nav=document.createElement('nav');
-    nav.id='sd2TopNav';nav.className='sd2-top-nav';nav.setAttribute('aria-label','Main');nav.innerHTML=navLinks();
+    nav.id='sd2TopNav';
+    nav.className='sd2-top-nav';
+    nav.setAttribute('aria-label','Main');
+    nav.innerHTML=navLinks();
     brand?.insertAdjacentElement('afterend',nav);
-  }
-  if(!$('sd2ProfilePanel')){
-    const panel=document.createElement('section');
-    panel.id='sd2ProfilePanel';panel.className='sd2-profile-panel';panel.setAttribute('aria-label','โปรไฟล์ผู้เรียน');
-    panel.innerHTML='<div id="sd2ProfileBody" class="sd2-profile-body"></div>';
-    shell.querySelector('.student-dashboard-header')?.insertAdjacentElement('afterend',panel);
-    panel.tabIndex=-1;
   }
 
   if(!content.classList.contains('sd2-dashboard')){
-    // Preserve the exact legacy nodes because the original controller keeps
-    // references to them. Recreating matching ids would break later refreshes.
     const legacyPath=$('dashboardPathList');
     const legacyFocus=$('dashboardCurrentFocus');
-    const legacyAction=legacyFocus?.querySelector('.dashboard-continue[data-exercise-code]') || null;
+    const legacyAction=legacyFocus?.querySelector('.dashboard-continue[data-exercise-code]')||null;
     const legacySnapshot=legacyAction?{
-      exerciseCode:legacyAction.dataset.exerciseCode||'',
-      stageCode:legacyAction.dataset.stageCode||'',
-      sessionMode:legacyAction.dataset.sessionMode||'practice',
-      text:legacyAction.textContent?.trim()||'ฝึกต่อ',
-      title:$('dashboardFocusTitle')?.textContent||'',
-      exercise:$('dashboardFocusExercise')?.textContent||''
+      exerciseCode:legacyAction.dataset.exerciseCode||'',stageCode:legacyAction.dataset.stageCode||'',sessionMode:legacyAction.dataset.sessionMode||'practice',text:legacyAction.textContent?.trim()||'ฝึกต่อ',title:$('dashboardFocusTitle')?.textContent||'',exercise:$('dashboardFocusExercise')?.textContent||''
     }:null;
 
-    content.className='sd2-dashboard';
+    content.className='sd2-dashboard sd2-page';
     content.innerHTML=`
       <section id="sd2Continue" class="sd2-card sd2-continue" aria-labelledby="sd2ContinueHeading"><div id="sd2ContinueBody" class="sd2-empty">กำลังเตรียมกิจกรรมถัดไป...</div></section>
-      <section id="sd2Summary" class="sd2-summary-grid" aria-label="ภาพรวมความก้าวหน้า"></section>
-      <div class="sd2-primary-grid">
-        <section id="sd2Skills" class="sd2-card" aria-labelledby="sd2SkillsHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Skill Mastery</div><h2 id="sd2SkillsHeading">ทักษะที่ทำได้ดีและทักษะที่ควรพัฒนา</h2></div></div><div id="sd2SkillList" class="sd2-skill-list"></div></section>
-        <section id="sd2LearningPath" class="sd2-card" aria-labelledby="sd2PathHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Learning Path Steps</div><h2 id="sd2PathHeading">ตำแหน่งปัจจุบันในเส้นทางการเรียน</h2></div></div><ol id="sd2StageList" class="sd2-stage-list" role="list" aria-labelledby="sd2PathHeading"></ol></section>
-      </div>
-      <section id="sd2Trend" class="sd2-card" aria-labelledby="sd2TrendHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Learning Trend</div><h2 id="sd2TrendHeading">แนวโน้มผลการฝึกล่าสุด</h2></div><select id="sd2TrendFilter" class="sd2-filter" aria-label="เลือกทักษะสำหรับกราฟ"></select></div><div id="sd2TrendChart" class="sd2-chart-wrap"></div></section>
-      <section id="sd2Recent" class="sd2-card" aria-labelledby="sd2RecentHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Recent Activity</div><h2 id="sd2RecentHeading">กิจกรรมการฝึกล่าสุด</h2></div><button id="sd2ViewAll" type="button" class="sd2-view-all">ดูทั้งหมด</button></div><div id="sd2RecentList" class="sd2-recent-list"></div></section>
-      <section id="sd2Achievements" class="sd2-card" aria-labelledby="sd2AchievementsHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Achievements</div><h2 id="sd2AchievementsHeading">ความสำเร็จระหว่างการเรียน</h2></div></div><div id="sd2AchievementList" class="sd2-achievement-list"></div></section>
+      <section id="sd2Summary" class="sd2-summary-grid" aria-label="Overall Progress Summary"></section>
+      <section id="sd2SkillSnapshot" class="sd2-card" aria-labelledby="sd2SkillSnapshotHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Skill Snapshot</div><h2 id="sd2SkillSnapshotHeading">ภาพรวม 5 ทักษะปัจจุบัน</h2></div><button type="button" class="sd2-link-button" data-sd2-nav="progress">View Progress</button></div><div id="sd2SkillList" class="sd2-skill-list"></div></section>
+      <section id="sd2LearningPath" class="sd2-card" aria-labelledby="sd2PathHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Learning Path</div><h2 id="sd2PathHeading">ตำแหน่งปัจจุบันในเส้นทางการเรียน</h2></div></div><ol id="sd2StageList" class="sd2-stage-list" role="list" aria-labelledby="sd2PathHeading"></ol></section>
+      <section id="sd2Recent" class="sd2-card" aria-labelledby="sd2RecentHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Recent Activity</div><h2 id="sd2RecentHeading">กิจกรรมล่าสุด</h2></div><button type="button" class="sd2-link-button" data-sd2-nav="progress">View Progress</button></div><div id="sd2RecentList" class="sd2-recent-list"></div></section>
       <div id="sd2Compat" class="sd2-compat" aria-hidden="true"></div>`;
 
     const compat=$('sd2Compat');
     if(legacyPath) compat?.appendChild(legacyPath);
     if(legacyFocus) compat?.appendChild(legacyFocus);
-
     if(legacySnapshot && !$('sd2ContinueBody')?.querySelector('.dashboard-continue')){
       $('sd2ContinueBody').className='sd2-continue-layout';
       $('sd2ContinueBody').innerHTML=`<div class="sd2-continue-main"><div class="sd2-eyebrow">Continue Learning · Next Recommended Activity</div><h2 id="sd2ContinueHeading">${escapeHtml(legacySnapshot.title||'เรียนต่อ')}</h2><div class="sd2-subtle">${escapeHtml(legacySnapshot.exercise||'กำลังโหลดรายละเอียด Mastery')}</div></div><div class="sd2-continue-side"><button type="button" class="dashboard-continue sd2-continue-action" data-exercise-code="${escapeHtml(legacySnapshot.exerciseCode)}" data-stage-code="${escapeHtml(legacySnapshot.stageCode)}" data-session-mode="${escapeHtml(legacySnapshot.sessionMode)}">${escapeHtml(legacySnapshot.text)}</button></div>`;
     }
+  }
+
+  if(!$('sd2ProgressPage')){
+    const progress=document.createElement('main');
+    progress.id='sd2ProgressPage';
+    progress.className='sd2-progress-page sd2-page';
+    progress.hidden=true;
+    progress.tabIndex=-1;
+    progress.innerHTML=`
+      <section id="sd2ProgressOverall" class="sd2-card" aria-labelledby="sd2ProgressOverallHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Overall Learning Progress</div><h2 id="sd2ProgressOverallHeading">ภาพรวมความก้าวหน้าทั้งระบบ</h2></div></div><div id="sd2ProgressOverallBody" class="sd2-summary-grid"></div></section>
+      <section id="sd2ProgressSkills" class="sd2-card" aria-labelledby="sd2ProgressSkillsHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Skill Mastery Detail</div><h2 id="sd2ProgressSkillsHeading">หลักฐานรายทักษะ</h2></div></div><div id="sd2ProgressSkillList" class="sd2-progress-skill-list"></div></section>
+      <section id="sd2ProgressTrend" class="sd2-card" aria-labelledby="sd2ProgressTrendHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Learning Trend</div><h2 id="sd2ProgressTrendHeading">แนวโน้มตามเวลา</h2></div><select id="sd2ProgressTrendFilter" class="sd2-filter" aria-label="เลือกทักษะสำหรับกราฟ"></select></div><div id="sd2ProgressTrendChart" class="sd2-chart-wrap"></div></section>
+      <section id="sd2ProgressStages" class="sd2-card" aria-labelledby="sd2ProgressStagesHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Stage Progress / History</div><h2 id="sd2ProgressStagesHeading">สถานะและหลักฐานของแต่ละ Stage</h2></div></div><div id="sd2ProgressStageList" class="sd2-stage-history"></div></section>
+      <section id="sd2SessionHistory" class="sd2-card" aria-labelledby="sd2SessionHistoryHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Session History</div><h2 id="sd2SessionHistoryHeading">ประวัติ Practice Session</h2></div></div><div id="sd2SessionHistoryList" class="sd2-session-history"></div></section>`;
+    content.insertAdjacentElement('afterend',progress);
+  }
+
+  if(!$('sd2ProfilePanel')){
+    const panel=document.createElement('main');
+    panel.id='sd2ProfilePanel';
+    panel.className='sd2-profile-panel sd2-page';
+    panel.setAttribute('aria-label','โปรไฟล์ผู้เรียน');
+    panel.hidden=true;
+    panel.tabIndex=-1;
+    $('sd2ProgressPage')?.insertAdjacentElement('afterend',panel);
   }
 
   syncNavigation();
@@ -134,9 +149,31 @@ function ensureStructure(){
 }
 
 function renderProfile(profile,user){
-  const panel=$('sd2ProfilePanel');if(!panel)return;
-  const p=profile||{},email=user?.email||'—',status=profileState.message?`<div class="sd2-profile-message ${profileState.error?'is-error':'is-success'}" role="status">${escapeHtml(profileState.message)}</div>`:'';
-  panel.innerHTML=`<div class="sd2-profile-head"><div><div class="sd2-eyebrow">Profile</div><h2 id="sd2ProfileName">${escapeHtml(p.display_name||p.full_name||user?.user_metadata?.full_name||'ผู้เรียน')}</h2><p>ข้อมูลบัญชีและข้อมูลการเรียนของคุณ</p></div><button type="button" class="btn" data-sd2-nav="logout">ออกจากระบบ</button></div>${status}<form id="sd2ProfileForm" class="sd2-profile-form"><div class="sd2-profile-grid"><label>ชื่อเต็ม<input name="full_name" maxlength="120" value="${escapeHtml(p.full_name||'')}" required></label><label>ชื่อที่แสดง<input name="display_name" maxlength="80" value="${escapeHtml(p.display_name||'')}"></label><label>รหัสนักเรียน<input name="student_id" maxlength="60" value="${escapeHtml(p.student_id||'')}"></label><label>หลักสูตร<input name="program" maxlength="120" value="${escapeHtml(p.program||'')}"></label><label>ชั้นปี<input name="year_level" maxlength="30" value="${escapeHtml(p.year_level||'')}"></label><label>Section<input name="section" maxlength="40" value="${escapeHtml(p.section||'')}"></label><label class="sd2-profile-wide">Avatar URL<input type="url" name="avatar_url" maxlength="500" value="${escapeHtml(p.avatar_url||'')}" placeholder="https://..."></label></div><dl class="sd2-profile-meta"><div><dt>Email</dt><dd>${escapeHtml(email)}</dd></div><div><dt>Role</dt><dd>${escapeHtml(p.role||'student')}</dd></div><div><dt>สร้างบัญชี</dt><dd>${escapeHtml(dateTime(p.created_at))}</dd></div><div><dt>เข้าสู่ระบบล่าสุด</dt><dd>${escapeHtml(dateTime(user?.last_sign_in_at))}</dd></div></dl><div class="sd2-profile-actions"><button type="button" class="btn" data-sd2-profile-cancel>ยกเลิก</button><button type="submit" class="btn primary" ${profileState.busy?'disabled':''}>${profileState.busy?'กำลังบันทึก…':'บันทึกข้อมูล'}</button></div></form>`;
+  const panel=$('sd2ProfilePanel');
+  if(!panel) return;
+  const p=profile||{};
+  const firstName=p.first_name||'';
+  const lastName=p.last_name||'';
+  const nickname=p.nickname||p.display_name||'';
+  const fullName=[firstName,lastName].filter(Boolean).join(' ').trim()||p.full_name||user?.user_metadata?.full_name||'ผู้เรียน';
+  const status=profileState.message?`<div class="sd2-profile-message ${profileState.error?'is-error':'is-success'}" role="status">${escapeHtml(profileState.message)}</div>`:'';
+  const avatar=p.avatar_url?`<img class="sd2-profile-avatar" src="${escapeHtml(p.avatar_url)}" alt="Avatar ของ ${escapeHtml(fullName)}">`:'<div class="sd2-profile-avatar is-placeholder" aria-hidden="true">♪</div>';
+  panel.innerHTML=`
+    <section class="sd2-card sd2-profile-card">
+      <div class="sd2-profile-head"><div class="sd2-profile-identity">${avatar}<div><div class="sd2-eyebrow">Profile</div><h2 id="sd2ProfileName">${escapeHtml(fullName)}</h2>${nickname?`<p>ชื่อเล่น: ${escapeHtml(nickname)}</p>`:''}</div></div><button type="button" class="btn" data-sd2-nav="logout">ออกจากระบบ</button></div>
+      ${status}
+      <form id="sd2ProfileForm" class="sd2-profile-form">
+        <div class="sd2-profile-grid">
+          <label>ชื่อ *<input name="first_name" maxlength="80" autocomplete="given-name" value="${escapeHtml(firstName)}" required></label>
+          <label>นามสกุล *<input name="last_name" maxlength="100" autocomplete="family-name" value="${escapeHtml(lastName)}" required></label>
+          <label>ชื่อเล่น<input name="nickname" maxlength="80" value="${escapeHtml(nickname)}" placeholder="เช่น ปิง"></label>
+          <label>รหัสนักศึกษา<input name="student_id" maxlength="60" value="${escapeHtml(p.student_id||'')}"></label>
+          <label class="sd2-profile-wide">หลักสูตร / สาขาวิชา<input name="program" maxlength="120" value="${escapeHtml(p.program||'')}"></label>
+          <label class="sd2-profile-wide">Avatar URL<input type="url" name="avatar_url" maxlength="500" value="${escapeHtml(p.avatar_url||'')}" placeholder="https://..."></label>
+        </div>
+        <div class="sd2-profile-actions"><button type="button" class="btn" data-sd2-profile-cancel>ยกเลิก</button><button type="submit" class="btn primary" ${profileState.busy?'disabled':''}>${profileState.busy?'กำลังบันทึก…':'บันทึกข้อมูล'}</button></div>
+      </form>
+    </section>`;
 }
 
 function normalizeRecommendation(raw){
@@ -153,7 +190,9 @@ function buildPathModel(rows){
   const unique=[],seen=new Set();
   ordered.filter(row=>row.stage_id||row.stage_code).forEach(row=>{
     const key=row.stage_id||`${row.exercise_code}:${row.stage_code}`;
-    if(seen.has(key)) return;seen.add(key);unique.push({...row,ordinal:unique.length+1});
+    if(seen.has(key)) return;
+    seen.add(key);
+    unique.push({...row,ordinal:unique.length+1});
   });
   const current=unique.find(row=>row.stage_status==='in_progress')||null;
   const mastered=unique.filter(row=>row.stage_status==='mastered');
@@ -163,180 +202,317 @@ function buildPathModel(rows){
 }
 
 function buildHistoryModel(history,pathModel){
-  const source=history||{},sessions=Array.isArray(source.sessions)?source.sessions:[],attempts=Array.isArray(source.attempts)?source.attempts:[],skillResults=Array.isArray(source.skillResults)?source.skillResults:[];
+  const source=history||{};
+  const sessions=Array.isArray(source.sessions)?source.sessions:[];
+  const attempts=Array.isArray(source.attempts)?source.attempts:[];
+  const skillResults=Array.isArray(source.skillResults)?source.skillResults:[];
   const stageById=new Map(pathModel.stages.map(row=>[String(row.stage_id||''),row]));
   const exerciseById=new Map(pathModel.rows.map(row=>[String(row.exercise_id||''),row]));
   const attemptsBySession=new Map(),skillByAttempt=new Map();
   attempts.forEach(attempt=>{const key=String(attempt.practice_session_id||'');if(!attemptsBySession.has(key)) attemptsBySession.set(key,[]);attemptsBySession.get(key).push(attempt);});
   skillResults.forEach(skill=>{const key=String(skill.attempt_id||'');if(!skillByAttempt.has(key)) skillByAttempt.set(key,[]);skillByAttempt.get(key).push(skill);});
+
   const enriched=sessions.map(session=>{
-    const sessionAttempts=attemptsBySession.get(String(session.id||''))||[];
+    const rawAttempts=(attemptsBySession.get(String(session.id||''))||[]).sort((a,b)=>Number(a.question_number||0)-Number(b.question_number||0));
+    const sessionAttempts=rawAttempts.map(attempt=>({...attempt,skillResults:skillByAttempt.get(String(attempt.id||''))||[]}));
     const scores=sessionAttempts.map(a=>Number(a.score)).filter(Number.isFinite);
-    const fallback=scores.length?scores.reduce((sum,v)=>sum+v,0)/scores.length:null;
+    const fallback=scores.length?average(scores):null;
     const score=session.overall_score==null?fallback:(Number.isFinite(Number(session.overall_score))?Number(session.overall_score):fallback);
-    const bySkill={};SKILL_ORDER.forEach(code=>{bySkill[code]={correct:0,total:0,score:null};});
-    sessionAttempts.forEach(attempt=>(skillByAttempt.get(String(attempt.id||''))||[]).forEach(skill=>{const code=skill.skill_code;if(!bySkill[code]) bySkill[code]={correct:0,total:0,score:null};bySkill[code].correct+=Number(skill.correct_count||0);bySkill[code].total+=Number(skill.total_count||0);}));
+    const bySkill={};
+    SKILL_ORDER.forEach(code=>{bySkill[code]={correct:0,total:0,score:null};});
+    sessionAttempts.forEach(attempt=>attempt.skillResults.forEach(skill=>{
+      const code=skill.skill_code;
+      if(!bySkill[code]) bySkill[code]={correct:0,total:0,score:null};
+      bySkill[code].correct+=Number(skill.correct_count||0);
+      bySkill[code].total+=Number(skill.total_count||0);
+    }));
     Object.values(bySkill).forEach(value=>{value.score=value.total>0?value.correct/value.total*100:null;});
-    const stage=stageById.get(String(session.stage_id||'')),exercise=exerciseById.get(String(session.exercise_id||''));
-    return {...session,score,skillScores:bySkill,stageName:stage?.stage_name||stage?.stage_code||'Stage',stageCode:stage?.stage_code||'',exerciseName:exercise?.exercise_name||exercise?.exercise_code||'Major Scale Notation',status:session.completed_at||Number(session.completed_questions||0)>=Number(session.planned_questions||0)?'completed':'in_progress'};
+    const stage=stageById.get(String(session.stage_id||''));
+    const exercise=exerciseById.get(String(session.exercise_id||''));
+    return {...session,score,skillScores:bySkill,attempts:sessionAttempts,stageName:stage?.stage_name||stage?.stage_code||'Stage',stageCode:stage?.stage_code||'',exerciseName:exercise?.exercise_name||exercise?.exercise_code||'Major Scale Notation',status:session.completed_at||Number(session.completed_questions||0)>=Number(session.planned_questions||0)?'completed':'in_progress'};
   });
   return {sessions:enriched,totalPracticeSessions:Number.isFinite(Number(source.totalPracticeSessions))?Number(source.totalPracticeSessions):enriched.filter(s=>s.mode==='practice').length};
 }
 
 function buildSkillModel(activeSkills,mastery){
-  const activeMap=new Map((activeSkills||[]).map(skill=>[skill.code,skill])),resultMap=new Map((mastery?.skill_results||[]).map(skill=>[skill.skill_code,skill]));
-  const codes=[...SKILL_ORDER.filter(code=>activeMap.has(code)||resultMap.has(code)),...Array.from(activeMap.keys()).filter(code=>!SKILL_ORDER.includes(code))];
-  return codes.map(code=>{
+  const activeMap=new Map((activeSkills||[]).map(skill=>[skill.code,skill]));
+  const resultMap=new Map((mastery?.skill_results||[]).map(skill=>[skill.skill_code,skill]));
+  return SKILL_ORDER.map(code=>{
     const meta=activeMap.get(code)||{},result=resultMap.get(code)||{};
-    const score=result.score==null?null:Number(result.score),threshold=result.threshold==null?null:Number(result.threshold),hasScore=Number.isFinite(score),passed=result.passed===true;
-    return {code,label:SKILL_LABELS[code]||meta.short_name||code,description:meta.name_th||meta.short_name||code,score:hasScore?score:null,threshold:Number.isFinite(threshold)?threshold:null,passed,status:passed?'mastered':hasScore&&Number.isFinite(threshold)&&score<threshold?'needs-practice':'developing'};
+    const score=result.score==null?null:Number(result.score);
+    const threshold=result.threshold==null?null:Number(result.threshold);
+    const hasScore=Number.isFinite(score),passed=result.passed===true;
+    const status=passed?'mastered':!hasScore?'no-data':Number.isFinite(threshold)&&score<threshold?'needs-practice':'developing';
+    return {code,label:SKILL_LABELS[code]||meta.short_name||code,description:meta.name_th||meta.short_name||code,score:hasScore?score:null,threshold:Number.isFinite(threshold)?threshold:null,passed,status};
   });
 }
 
 function weakestSkill(skills){return [...(skills||[])].filter(skill=>!skill.passed&&Number.isFinite(skill.score)).sort((a,b)=>a.score-b.score)[0]||null;}
+
 function buildDashboardViewModel({rows,activeSkills,recommendation,mastery,history}){
   const path=buildPathModel(rows),skills=buildSkillModel(activeSkills,mastery),historyModel=buildHistoryModel(history,path),rec=normalizeRecommendation(recommendation);
-  const focusCode=rec?.targetSkillCode||weakestSkill(skills)?.code||null,focusSkill=skills.find(skill=>skill.code===focusCode)||null,active=path.current||path.active;
+  const focusCode=rec?.targetSkillCode||weakestSkill(skills)?.code||null;
+  const focusSkill=skills.find(skill=>skill.code===focusCode)||null;
+  const active=path.current||path.active;
   const currentOrdinal=active?path.stages.findIndex(stage=>(stage.stage_id||stage.stage_code)===(active.stage_id||active.stage_code))+1:0;
   return {path,skills,history:historyModel,recommendation:rec,focusSkill,currentStage:active,currentOrdinal,stageMastery:mastery?.overall_score==null?null:Number(mastery.overall_score),stageThreshold:mastery?.overall_threshold==null?null:Number(mastery.overall_threshold),masteredSkills:skills.filter(skill=>skill.passed).length};
 }
-function statusLabel(status){return status==='mastered'?'Mastered':status==='needs-practice'?'Needs Practice':'Developing';}
+
+function statusLabel(status){
+  if(status==='mastered') return 'Mastered';
+  if(status==='needs-practice') return 'Needs Practice';
+  if(status==='no-data') return 'No Data';
+  return 'Developing';
+}
+
+function skillSeries(vm,skillCode){
+  return [...vm.history.sessions]
+    .filter(session=>session.mode==='practice')
+    .sort((a,b)=>new Date(a.started_at)-new Date(b.started_at))
+    .map(session=>({date:session.started_at,value:skillCode==='ALL'?session.score:session.skillScores?.[skillCode]?.score,session}))
+    .filter(point=>Number.isFinite(Number(point.value)));
+}
+
+function skillTrend(vm,skillCode){
+  const points=skillSeries(vm,skillCode);
+  const values=points.map(point=>Number(point.value));
+  const recent=average(values.slice(-3));
+  if(values.length<2) return {label:'Not enough data',direction:'neutral',recent,points};
+  const recentPair=average(values.slice(-2));
+  const previousPair=values.length>=4?average(values.slice(-4,-2)):values[0];
+  const delta=Number.isFinite(recentPair)&&Number.isFinite(previousPair)?recentPair-previousPair:0;
+  return {label:delta>3?'Improving':delta<-3?'Declining':'Stable',direction:delta>3?'up':delta<-3?'down':'neutral',recent,points};
+}
 
 function renderContinue(vm){
-  const target=$('sd2ContinueBody');if(!target)return;
+  const target=$('sd2ContinueBody');
+  if(!target) return;
   const stage=vm.currentStage,rec=vm.recommendation;
   if(!stage){target.className='sd2-empty';target.textContent=vm.path.pathMastered?'คุณสำเร็จ Learning Path ที่กำหนดแล้ว':'ยังไม่พบ Stage ที่พร้อมสำหรับการฝึก';return;}
-  const actionType=rec?.actionType||(stage.stage_status==='mastered'?'review':'practice'),sessionMode=actionType==='diagnostic'?'pretest':'practice';
+  const actionType=rec?.actionType||(stage.stage_status==='mastered'?'review':'practice');
+  const sessionMode=actionType==='diagnostic'?'pretest':'practice';
   const actionLabel=actionType==='diagnostic'?'เริ่มประเมินก่อนเรียน':actionType==='completed'?'ทบทวนผลการเรียน':actionType==='review'?'ทบทวน':'ฝึกต่อ';
-  const canLaunch=stage.exercise_code&&stage.stage_code&&actionType!=='completed',progress=Number.isFinite(vm.stageMastery)?clampPercent(vm.stageMastery):0;
+  const canLaunch=stage.exercise_code&&stage.stage_code&&actionType!=='completed';
+  const progress=Number.isFinite(vm.stageMastery)?clampPercent(vm.stageMastery):0;
   const focus=vm.focusSkill?.label||(rec?.targetItemCode?`โจทย์ ${rec.targetItemCode}`:'สะสมหลักฐานให้ครบเกณฑ์ของ Stage');
   target.className='sd2-continue-layout';
-  target.innerHTML=`<div class="sd2-continue-main"><div class="sd2-eyebrow">Continue Learning · Next Recommended Activity</div><div class="sd2-stage-line">Stage ${vm.currentOrdinal||'—'} of ${vm.path.totalStages||'—'} · ${escapeHtml(stage.stage_name||stage.stage_code||'Current Stage')}</div><h2 id="sd2ContinueHeading">${escapeHtml(stage.exercise_name||vm.path.exerciseName)}</h2><div class="sd2-subtle">${escapeHtml(rec?.reasonTh||'เรียนต่อจาก Stage ปัจจุบันตามหลักฐาน Mastery ของคุณ')}</div><div class="sd2-focus-line">Focus: <strong>${escapeHtml(focus)}</strong></div></div><div class="sd2-continue-side"><div><div class="sd2-progress-meta"><span>Stage Mastery</span><strong>${percentText(vm.stageMastery)}${Number.isFinite(vm.stageThreshold)?` / เกณฑ์ ${percentText(vm.stageThreshold)}`:''}</strong></div><div class="sd2-progress-track" role="progressbar" aria-label="Stage Mastery" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><i class="sd2-progress-fill" style="width:${progress}%"></i></div></div>${canLaunch?`<button type="button" class="dashboard-continue sd2-continue-action" data-exercise-code="${escapeHtml(stage.exercise_code)}" data-stage-code="${escapeHtml(stage.stage_code)}" data-session-mode="${sessionMode}">${escapeHtml(actionLabel)}</button>`:''}</div>`;
+  target.innerHTML=`<div class="sd2-continue-main"><div class="sd2-eyebrow">Continue Learning</div><div class="sd2-stage-line">Stage ${vm.currentOrdinal||'—'} of ${vm.path.totalStages||'—'} · ${escapeHtml(stage.stage_name||stage.stage_code||'Current Stage')}</div><h2 id="sd2ContinueHeading">${escapeHtml(stage.exercise_name||vm.path.exerciseName)}</h2><div class="sd2-subtle">${escapeHtml(rec?.reasonTh||'เรียนต่อจาก Stage ปัจจุบันตามหลักฐาน Mastery ของคุณ')}</div><div class="sd2-focus-line">Skill Focus: <strong>${escapeHtml(focus)}</strong></div></div><div class="sd2-continue-side"><div><div class="sd2-progress-meta"><span>Stage Progress</span><strong>${percentText(vm.stageMastery)}${Number.isFinite(vm.stageThreshold)?` / เกณฑ์ ${percentText(vm.stageThreshold)}`:''}</strong></div><div class="sd2-progress-track" role="progressbar" aria-label="Stage Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><i class="sd2-progress-fill" style="width:${progress}%"></i></div></div>${canLaunch?`<button type="button" class="dashboard-continue sd2-continue-action" data-exercise-code="${escapeHtml(stage.exercise_code)}" data-stage-code="${escapeHtml(stage.stage_code)}" data-session-mode="${sessionMode}">${escapeHtml(actionLabel)}</button>`:''}</div>`;
 }
 
-function renderSummary(vm){
-  const target=$('sd2Summary');if(!target)return;
-  target.innerHTML=`<article class="sd2-summary-card"><div class="sd2-eyebrow">Overall Learning Progress</div><strong>${vm.path.overallProgress}%</strong><span>ผ่าน ${vm.path.masteredCount} จาก ${vm.path.totalStages} Stage</span><div class="sd2-mini-progress"><div class="sd2-progress-track"><i class="sd2-progress-fill" style="width:${vm.path.overallProgress}%"></i></div></div></article><article class="sd2-summary-card"><div class="sd2-eyebrow">Current Stage</div><strong>${vm.currentOrdinal||'—'} / ${vm.path.totalStages||'—'}</strong><span>${escapeHtml(vm.currentStage?.stage_name||'ยังไม่เริ่ม')}</span></article><article class="sd2-summary-card"><div class="sd2-eyebrow">Mastered Skills</div><strong>${vm.masteredSkills} / ${vm.skills.length||SKILL_ORDER.length}</strong><span>นับจากเกณฑ์ Mastery ของ Stage ปัจจุบัน</span></article><article class="sd2-summary-card"><div class="sd2-eyebrow">Practice Sessions</div><strong>${vm.history.totalPracticeSessions}</strong><span>จำนวนชุดฝึกที่บันทึกในระบบ</span></article>`;
+function summaryMarkup(vm){
+  return `<article class="sd2-summary-card"><div class="sd2-eyebrow">Current Stage</div><strong>${vm.currentOrdinal||'—'} / ${vm.path.totalStages||'—'}</strong><span>${escapeHtml(vm.currentStage?.stage_name||'ยังไม่เริ่ม')}</span></article><article class="sd2-summary-card"><div class="sd2-eyebrow">Mastered Skills</div><strong>${vm.masteredSkills} / ${SKILL_ORDER.length}</strong><span>ตามเกณฑ์ Mastery ของ Stage ปัจจุบัน</span></article><article class="sd2-summary-card"><div class="sd2-eyebrow">Practice Sessions</div><strong>${vm.history.totalPracticeSessions}</strong><span>จำนวน session ที่บันทึกในระบบ</span></article><article class="sd2-summary-card"><div class="sd2-eyebrow">Overall Progress</div><strong>${vm.path.overallProgress}%</strong><span>ผ่าน ${vm.path.masteredCount} จาก ${vm.path.totalStages} Stage</span><div class="sd2-mini-progress"><div class="sd2-progress-track"><i class="sd2-progress-fill" style="width:${vm.path.overallProgress}%"></i></div></div></article>`;
 }
+
+function renderSummary(vm){const target=$('sd2Summary');if(target)target.innerHTML=summaryMarkup(vm);}
 
 function renderSkills(vm){
-  const target=$('sd2SkillList');if(!target)return;
-  target.innerHTML=vm.skills.length?vm.skills.map(skill=>`<button type="button" class="sd2-skill" data-sd2-skill="${escapeHtml(skill.code)}" aria-label="ดูแนวโน้ม ${escapeHtml(skill.label)}"><div><div class="sd2-skill-name">${escapeHtml(skill.label)}</div><div class="sd2-skill-code">${escapeHtml(skill.code)}</div></div><div class="sd2-skill-score">${percentText(skill.score)}</div><div class="sd2-skill-bar"><i style="width:${clampPercent(skill.score)}%"></i></div><div class="sd2-skill-footer"><span>${escapeHtml(skill.description)}</span><span class="sd2-status ${skill.status}">${statusLabel(skill.status)}</span></div></button>`).join(''):'<div class="sd2-empty">ยังไม่มีข้อมูล Mastery รายทักษะสำหรับ Stage นี้</div>';
+  const target=$('sd2SkillList');
+  if(!target) return;
+  target.innerHTML=vm.skills.map(skill=>`<button type="button" class="sd2-skill" data-sd2-skill-filter="${escapeHtml(skill.code)}" aria-label="เปิด Progress ของ ${escapeHtml(skill.label)}"><div><div class="sd2-skill-name">${escapeHtml(skill.label)}</div><div class="sd2-skill-code">${escapeHtml(skill.code)}</div></div><div class="sd2-skill-score">${percentText(skill.score)}</div><div class="sd2-skill-bar"><i style="width:${clampPercent(skill.score)}%"></i></div><div class="sd2-skill-footer"><span>${Number.isFinite(skill.threshold)?`เกณฑ์ ${percentText(skill.threshold)}`:'ยังไม่มีคะแนนเพียงพอ'}</span><span class="sd2-status ${skill.status}">${statusLabel(skill.status)}</span></div></button>`).join('');
 }
 
 function stageState(stage,current){
-  if(stage.stage_status==='mastered')return{cls:'is-mastered completed',status:'mastered',icon:'✓',label:'Completed'};
-  if(current&&(stage.stage_id||stage.stage_code)===(current.stage_id||current.stage_code))return{cls:'is-current current',status:'current',icon:stage.ordinal,label:'Current'};
-  if(stage.stage_status==='locked')return{cls:'is-locked locked',status:'locked',icon:stage.ordinal,label:'🔒 Locked'};
-  return{cls:'upcoming',status:'upcoming',icon:stage.ordinal,label:'Upcoming'};
+  if(stage.stage_status==='mastered') return {cls:'is-mastered completed',status:'mastered',icon:'✓',label:'Completed'};
+  if(current&&(stage.stage_id||stage.stage_code)===(current.stage_id||current.stage_code)) return {cls:'is-current current',status:'current',icon:stage.ordinal,label:'Current'};
+  if(stage.stage_status==='locked') return {cls:'is-locked locked',status:'locked',icon:stage.ordinal,label:'Locked'};
+  return {cls:'upcoming',status:'upcoming',icon:stage.ordinal,label:'Upcoming'};
 }
+
 function renderLearningPath(vm){
-  const target=$('sd2StageList');if(!target)return;
+  const target=$('sd2StageList');
+  if(!target) return;
   target.innerHTML=vm.path.stages.length?vm.path.stages.map(stage=>{
-    const state=stageState(stage,vm.path.current),current=(stage.stage_id||stage.stage_code)===(vm.currentStage?.stage_id||vm.currentStage?.stage_code);
-    const score=current?vm.stageMastery:(stage.last_mastery_score==null?null:Number(stage.last_mastery_score));
-    return `<li class="sd2-stage ${state.cls}"${state.status==='current'?' aria-current="step"':''}><div class="sd2-stage-icon" aria-hidden="true">${state.icon}</div><div><div class="sd2-stage-title">${escapeHtml(stage.stage_name||stage.stage_code||`Stage ${stage.ordinal}`)}</div><div class="sd2-stage-meta">${escapeHtml(stage.exercise_name||stage.exercise_code||'')}</div></div><div><span class="sd2-status ${state.status}">${state.label}</span>${Number.isFinite(score)?`<div class="sd2-stage-score">${percentText(score)}</div>`:''}</div></li>`;
+    const state=stageState(stage,vm.path.current);
+    return `<li class="sd2-stage ${state.cls}"${state.status==='current'?' aria-current="step"':''}><div class="sd2-stage-icon" aria-hidden="true">${state.icon}</div><div><div class="sd2-stage-title">${escapeHtml(stage.stage_name||stage.stage_code||`Stage ${stage.ordinal}`)}</div><span class="sd2-status ${state.status}">${state.label}</span></div></li>`;
   }).join(''):'<li class="sd2-empty">ยังไม่มี Stage ใน Learning Path นี้</li>';
 }
 
-function sessionTrendPoints(vm,skillCode){return [...vm.history.sessions].filter(session=>session.mode==='practice').sort((a,b)=>new Date(a.started_at)-new Date(b.started_at)).slice(-8).map(session=>({date:session.started_at,value:skillCode==='ALL'?session.score:session.skillScores?.[skillCode]?.score})).filter(point=>Number.isFinite(Number(point.value)));}
-function renderTrendChart(vm){
-  const filter=$('sd2TrendFilter'),target=$('sd2TrendChart');if(!filter||!target)return;
-  const options=[['ALL','All Skills'],...vm.skills.map(skill=>[skill.code,skill.label])];
-  if(!options.some(([value])=>value===trendSkill))trendSkill='ALL';
-  filter.innerHTML=options.map(([value,label])=>`<option value="${escapeHtml(value)}"${value===trendSkill?' selected':''}>${escapeHtml(label)}</option>`).join('');filter.value=trendSkill;
-  const points=sessionTrendPoints(vm,trendSkill);if(points.length<2){target.innerHTML='<div class="sd2-empty">ต้องมีผลการฝึกอย่างน้อย 2 session จึงจะแสดงแนวโน้มตามเวลาได้</div>';return;}
-  const width=760,height=220,pad={l:34,r:20,t:22,b:34},x=index=>pad.l+(width-pad.l-pad.r)*(points.length===1?0:index/(points.length-1)),y=value=>pad.t+(height-pad.t-pad.b)*(1-clampPercent(value)/100),coords=points.map((p,i)=>[x(i),y(p.value)]);
-  const line=coords.map(([cx,cy],i)=>`${i?'L':'M'} ${cx.toFixed(1)} ${cy.toFixed(1)}`).join(' '),area=`${line} L ${coords.at(-1)[0].toFixed(1)} ${(height-pad.b).toFixed(1)} L ${coords[0][0].toFixed(1)} ${(height-pad.b).toFixed(1)} Z`;
-  const grid=[0,25,50,75,100].map(v=>`<line class="sd2-chart-grid" x1="${pad.l}" x2="${width-pad.r}" y1="${y(v)}" y2="${y(v)}"></line><text class="sd2-chart-label" x="4" y="${y(v)+3}">${v}%</text>`).join('');
-  const dots=coords.map(([cx,cy],i)=>`<circle class="sd2-chart-dot" cx="${cx}" cy="${cy}" r="4"></circle><text class="sd2-chart-value" text-anchor="middle" x="${cx}" y="${cy-9}">${Math.round(points[i].value)}%</text>`).join('');
-  const dates=points.map((point,i)=>{const d=new Date(point.date),label=Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'short'}).format(d);return `<text class="sd2-chart-label" text-anchor="middle" x="${x(i)}" y="${height-9}">${escapeHtml(label)}</text>`;}).join('');
-  target.innerHTML=`<svg class="sd2-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="แนวโน้มผลการฝึก"><path class="sd2-chart-area" d="${area}"></path>${grid}<path class="sd2-chart-line" d="${line}"></path>${dots}${dates}</svg><div class="sd2-chart-legend"><span>แสดง ${points.length} session ล่าสุดที่มีข้อมูล</span><span>คะแนนสูงขึ้นด้านบน</span></div>`;
+function dateTime(value){const d=new Date(value);return Number.isNaN(d.getTime())?'—':new Intl.DateTimeFormat('th-TH',{dateStyle:'medium',timeStyle:'short'}).format(d);}
+
+function renderRecent(vm){
+  const target=$('sd2RecentList');
+  if(!target) return;
+  const sorted=[...vm.history.sessions].sort((a,b)=>new Date(b.started_at)-new Date(a.started_at)).slice(0,3);
+  target.innerHTML=sorted.length?sorted.map(session=>`<article class="sd2-recent-item"><div class="sd2-recent-main"><div class="sd2-recent-title">${escapeHtml(session.stageName)}</div><div class="sd2-recent-meta">${escapeHtml(dateTime(session.started_at))} · ${escapeHtml(session.exerciseName)}</div></div><div class="sd2-recent-stats"><span class="sd2-recent-score">${percentText(session.score)}</span><span class="sd2-status ${session.status==='completed'?'mastered':'developing'}">${session.status==='completed'?'Completed':'In progress'}</span></div></article>`).join(''):'<div class="sd2-empty">ยังไม่มี Practice Session ที่บันทึกไว้</div>';
 }
 
-function dateTime(value){const d=new Date(value);return Number.isNaN(d.getTime())?'—':new Intl.DateTimeFormat('th-TH',{dateStyle:'medium',timeStyle:'short'}).format(d);}
-function renderRecent(vm){
-  const target=$('sd2RecentList'),button=$('sd2ViewAll');if(!target||!button)return;
-  const sorted=[...vm.history.sessions].sort((a,b)=>new Date(b.started_at)-new Date(a.started_at)),visible=showAllRecent?sorted:sorted.slice(0,5);
-  target.innerHTML=visible.length?visible.map(session=>`<article class="sd2-recent-item" data-session-id="${escapeHtml(session.id||'')}"><div class="sd2-recent-main"><div class="sd2-recent-title">${escapeHtml(session.stageName)} · ${escapeHtml(session.exerciseName)}</div><div class="sd2-recent-meta">${escapeHtml(dateTime(session.started_at))} · ${session.mode==='pretest'?'ประเมินก่อนเรียน':'ฝึกปฏิบัติ'} · ${Number(session.completed_questions||0)} / ${Number(session.planned_questions||0)||'—'} ข้อ</div></div><div class="sd2-recent-stats"><span class="sd2-recent-score">${percentText(session.score)}</span><span class="sd2-status ${session.status==='completed'?'mastered':'developing'}">${session.status==='completed'?'Completed':'In progress'}</span></div></article>`).join(''):'<div class="sd2-empty">ยังไม่มี Practice Session ที่บันทึกไว้</div>';
-  button.hidden=sorted.length<=5;button.textContent=showAllRecent?'แสดง 5 รายการล่าสุด':'ดูทั้งหมด';
+function renderProgressOverall(vm){const target=$('sd2ProgressOverallBody');if(target)target.innerHTML=summaryMarkup(vm);}
+
+function renderProgressSkills(vm){
+  const target=$('sd2ProgressSkillList');
+  if(!target) return;
+  target.innerHTML=vm.skills.map(skill=>{
+    const trend=skillTrend(vm,skill.code);
+    return `<article class="sd2-progress-skill" data-progress-skill="${escapeHtml(skill.code)}"><div class="sd2-progress-skill-head"><div><div class="sd2-skill-name">${escapeHtml(skill.label)}</div><div class="sd2-skill-code">${escapeHtml(skill.code)}</div></div><div class="sd2-skill-score">${percentText(skill.score)}</div></div><div class="sd2-skill-bar"><i style="width:${clampPercent(skill.score)}%"></i></div><div class="sd2-progress-skill-metrics"><div><span>Status</span><strong class="sd2-status ${skill.status}">${statusLabel(skill.status)}</strong></div><div><span>Trend</span><strong class="sd2-trend ${trend.direction}">${escapeHtml(trend.label)}</strong></div><div><span>Recent performance</span><strong>${percentText(trend.recent)}</strong></div><div><span>Mastery threshold</span><strong>${percentText(skill.threshold)}</strong></div></div></article>`;
+  }).join('');
 }
-function renderAchievements(vm){
-  const target=$('sd2AchievementList');if(!target)return;const achievements=[];
-  if(vm.history.totalPracticeSessions>=1)achievements.push(['1','First Practice','เริ่มต้นการฝึกครั้งแรกแล้ว']);
-  if(vm.history.totalPracticeSessions>=10)achievements.push(['10','10 Sessions','ฝึกสะสมครบ 10 session']);
-  vm.skills.filter(skill=>skill.passed).forEach(skill=>achievements.push(['✓',`${skill.label} Mastered`,'ผ่านเกณฑ์ของ Stage ปัจจุบัน']));
-  if(vm.path.pathMastered)achievements.push(['★','Major Scale Master','สำเร็จทุก Stage ใน Learning Path']);
-  target.innerHTML=achievements.length?achievements.map(([icon,title,detail])=>`<div class="sd2-achievement"><span class="sd2-achievement-icon" aria-hidden="true">${icon}</span><div><strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail)}</span></div></div>`).join(''):'<div class="sd2-empty">Achievement จะปรากฏเมื่อคุณเริ่มฝึกและผ่านเกณฑ์ Mastery</div>';
+
+function renderTrendChart(vm){
+  const filter=$('sd2ProgressTrendFilter'),target=$('sd2ProgressTrendChart');
+  if(!filter||!target) return;
+  const options=[['ALL','All Skills'],...vm.skills.map(skill=>[skill.code,skill.label])];
+  if(!options.some(([value])=>value===trendSkill)) trendSkill='ALL';
+  filter.innerHTML=options.map(([value,label])=>`<option value="${escapeHtml(value)}"${value===trendSkill?' selected':''}>${escapeHtml(label)}</option>`).join('');
+  filter.value=trendSkill;
+  const points=skillSeries(vm,trendSkill).slice(-12);
+  if(points.length<2){target.innerHTML='<div class="sd2-empty">ต้องมีผลการฝึกอย่างน้อย 2 session จึงจะแสดงแนวโน้มตามเวลาได้</div>';return;}
+  const width=760,height=220,pad={l:34,r:20,t:22,b:34};
+  const x=index=>pad.l+(width-pad.l-pad.r)*(points.length===1?0:index/(points.length-1));
+  const y=value=>pad.t+(height-pad.t-pad.b)*(1-clampPercent(value)/100);
+  const coords=points.map((point,index)=>[x(index),y(point.value)]);
+  const line=coords.map(([cx,cy],index)=>`${index?'L':'M'} ${cx.toFixed(1)} ${cy.toFixed(1)}`).join(' ');
+  const area=`${line} L ${coords.at(-1)[0].toFixed(1)} ${(height-pad.b).toFixed(1)} L ${coords[0][0].toFixed(1)} ${(height-pad.b).toFixed(1)} Z`;
+  const grid=[0,25,50,75,100].map(value=>`<line class="sd2-chart-grid" x1="${pad.l}" x2="${width-pad.r}" y1="${y(value)}" y2="${y(value)}"></line><text class="sd2-chart-label" x="4" y="${y(value)+3}">${value}%</text>`).join('');
+  const dots=coords.map(([cx,cy],index)=>`<circle class="sd2-chart-dot" cx="${cx}" cy="${cy}" r="4"></circle><text class="sd2-chart-value" text-anchor="middle" x="${cx}" y="${cy-9}">${Math.round(points[index].value)}%</text>`).join('');
+  const dates=points.map((point,index)=>{const d=new Date(point.date),label=Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'short'}).format(d);return `<text class="sd2-chart-label" text-anchor="middle" x="${x(index)}" y="${height-9}">${escapeHtml(label)}</text>`;}).join('');
+  target.innerHTML=`<svg class="sd2-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="แนวโน้มผลการฝึก"><path class="sd2-chart-area" d="${area}"></path>${grid}<path class="sd2-chart-line" d="${line}"></path>${dots}${dates}</svg><div class="sd2-chart-legend"><span>ข้อมูลจริงจาก Practice Sessions / Attempts</span><span>${points.length} จุดล่าสุดที่มีคะแนน</span></div>`;
 }
-function renderAll(vm){renderContinue(vm);renderSummary(vm);renderSkills(vm);renderLearningPath(vm);renderTrendChart(vm);renderRecent(vm);renderAchievements(vm);renderProfile(profileState.data,profileState.user);window.__studentDashboardV2Model=vm;}
+
+function stageEvidenceDate(vm,stage){
+  const matches=vm.history.sessions.filter(session=>session.stageCode&&session.stageCode===stage.stage_code&&session.status==='completed').sort((a,b)=>new Date(b.completed_at||b.started_at)-new Date(a.completed_at||a.started_at));
+  return matches[0]?.completed_at||matches[0]?.started_at||null;
+}
+
+function renderProgressStages(vm){
+  const target=$('sd2ProgressStageList');
+  if(!target) return;
+  target.innerHTML=vm.path.stages.length?vm.path.stages.map(stage=>{
+    const state=stageState(stage,vm.path.current);
+    const current=(stage.stage_id||stage.stage_code)===(vm.currentStage?.stage_id||vm.currentStage?.stage_code);
+    const score=current?vm.stageMastery:(stage.last_mastery_score==null?null:Number(stage.last_mastery_score));
+    const evidenceDate=stageEvidenceDate(vm,stage);
+    return `<article class="sd2-stage-history-item ${state.cls}"${state.status==='current'?' aria-current="step"':''}><div class="sd2-stage-history-index">${state.icon}</div><div><div class="sd2-stage-title">${escapeHtml(stage.stage_name||stage.stage_code||`Stage ${stage.ordinal}`)}</div><div class="sd2-stage-meta">${escapeHtml(stage.exercise_name||stage.exercise_code||'')}</div>${evidenceDate?`<div class="sd2-stage-meta">หลักฐาน session ล่าสุด: ${escapeHtml(dateTime(evidenceDate))}</div>`:''}</div><div class="sd2-stage-history-status"><span class="sd2-status ${state.status}">${state.label}</span>${Number.isFinite(score)?`<strong>${percentText(score)}</strong>`:''}</div></article>`;
+  }).join(''):'<div class="sd2-empty">ยังไม่มี Stage ใน Learning Path นี้</div>';
+}
+
+function renderAttempt(attempt){
+  const skills=Array.isArray(attempt.skillResults)?attempt.skillResults:[];
+  const skillHtml=skills.length?skills.map(skill=>`<span class="sd2-attempt-skill"><strong>${escapeHtml(SKILL_LABELS[skill.skill_code]||skill.skill_code)}</strong> ${Number(skill.correct_count||0)}/${Number(skill.total_count||0)} · ${percentText(skill.score==null?(Number(skill.total_count)>0?Number(skill.correct_count)/Number(skill.total_count)*100:null):skill.score)}</span>`).join(''):'<span class="sd2-subtle">ไม่มี skill result รายข้อที่บันทึกไว้</span>';
+  return `<article class="sd2-attempt"><div class="sd2-attempt-head"><strong>ข้อ ${Number(attempt.question_number||0)||'—'}</strong><span>${escapeHtml(attempt.item_code||'ไม่ระบุ item')}</span><b>${percentText(attempt.score)}</b></div><div class="sd2-attempt-skills">${skillHtml}</div></article>`;
+}
+
+function renderSessionHistory(vm){
+  const target=$('sd2SessionHistoryList');
+  if(!target) return;
+  const sessions=[...vm.history.sessions].sort((a,b)=>new Date(b.started_at)-new Date(a.started_at));
+  target.innerHTML=sessions.length?sessions.map(session=>{
+    const attempts=session.attempts||[];
+    return `<details class="sd2-session" data-session-id="${escapeHtml(session.id||'')}"><summary><div><strong>${escapeHtml(session.stageName)} · ${escapeHtml(session.exerciseName)}</strong><span>${escapeHtml(dateTime(session.started_at))}</span></div><div class="sd2-session-summary-stats"><b>${percentText(session.score)}</b><span>${Number(session.completed_questions||0)} / ${Number(session.planned_questions||0)||'—'} ข้อ</span><span class="sd2-status ${session.status==='completed'?'mastered':'developing'}">${session.status==='completed'?'Completed':'In progress'}</span></div></summary><div class="sd2-session-detail"><div class="sd2-session-detail-head">Attempt / Detailed Review</div>${attempts.length?attempts.map(renderAttempt).join(''):'<div class="sd2-empty">Session นี้ยังไม่มี attempt detail ที่ระบบส่งกลับมา</div>'}</div></details>`;
+  }).join(''):'<div class="sd2-empty">ยังไม่มี Session History</div>';
+}
+
+function renderAll(vm){
+  renderContinue(vm);
+  renderSummary(vm);
+  renderSkills(vm);
+  renderLearningPath(vm);
+  renderRecent(vm);
+  renderProgressOverall(vm);
+  renderProgressSkills(vm);
+  renderTrendChart(vm);
+  renderProgressStages(vm);
+  renderSessionHistory(vm);
+  renderProfile(profileState.data,profileState.user);
+  window.__studentDashboardV2Model=vm;
+  syncNavigation();
+}
 
 async function refresh(){
-  const shell=$('studentDashboard'),content=$('dashboardContent');if(!repo||!learningRepo||!shell||shell.hidden||!content||content.hidden)return;if(!ensureStructure())return;const token=++revision;
+  const shell=$('studentDashboard');
+  if(!repo||!learningRepo||!shell||shell.hidden) return;
+  if(!ensureStructure()) return;
+  const token=++revision;
   try{
     const authResult=await authRepo?.getUser?.();
-    const authUser=authResult?.data?.user||null;profileState.user=authUser;
-    const [dashboardResult,skillsResult,recommendationResult,historyResult,profileResult]=await Promise.all([repo.getStudentDashboard(),repo.getActiveSkills(),learningRepo.getRecommendedNextAction(),repo.getStudentLearningHistory({limit:40}),authUser?repo.getStudentProfileDetails(authUser.id):Promise.resolve({data:null,error:null})]);
-    if(token!==revision)return;if(dashboardResult.error)throw dashboardResult.error;if(skillsResult.error)throw skillsResult.error;
-    if(recommendationResult.error)console.warn('STUDENT DASHBOARD V2 RECOMMENDATION:',recommendationResult.error);
-    if(historyResult.error)console.warn('STUDENT DASHBOARD V2 HISTORY:',historyResult.error);
-    if(profileResult.error)console.warn('STUDENT DASHBOARD V2 PROFILE:',profileResult.error); else profileState.data=profileResult.data||{};
-    const rows=Array.isArray(dashboardResult.data)?dashboardResult.data:[],path=buildPathModel(rows);let mastery=null;
-    if(path.active?.exercise_code&&path.active?.stage_code){const masteryResult=await repo.getStageMastery({exerciseCode:path.active.exercise_code,stageCode:path.active.stage_code});if(token!==revision)return;if(masteryResult.error)console.warn('STUDENT DASHBOARD V2 MASTERY:',masteryResult.error);else mastery=first(masteryResult.data);}
+    const authUser=authResult?.data?.user||null;
+    profileState.user=authUser;
+    const [dashboardResult,skillsResult,recommendationResult,historyResult,profileResult]=await Promise.all([
+      repo.getStudentDashboard(),repo.getActiveSkills(),learningRepo.getRecommendedNextAction(),repo.getStudentLearningHistory({limit:40}),authUser?repo.getStudentProfileDetails(authUser.id):Promise.resolve({data:null,error:null})
+    ]);
+    if(token!==revision) return;
+    if(dashboardResult.error) throw dashboardResult.error;
+    if(skillsResult.error) throw skillsResult.error;
+    if(recommendationResult.error) console.warn('STUDENT DASHBOARD V2 RECOMMENDATION:',recommendationResult.error);
+    if(historyResult.error) console.warn('STUDENT DASHBOARD V2 HISTORY:',historyResult.error);
+    if(profileResult.error) console.warn('STUDENT DASHBOARD V2 PROFILE:',profileResult.error); else profileState.data=profileResult.data||{};
+    const rows=Array.isArray(dashboardResult.data)?dashboardResult.data:[];
+    const path=buildPathModel(rows);
+    let mastery=null;
+    if(path.active?.exercise_code&&path.active?.stage_code){
+      const masteryResult=await repo.getStageMastery({exerciseCode:path.active.exercise_code,stageCode:path.active.stage_code});
+      if(token!==revision) return;
+      if(masteryResult.error) console.warn('STUDENT DASHBOARD V2 MASTERY:',masteryResult.error); else mastery=first(masteryResult.data);
+    }
     renderAll(buildDashboardViewModel({rows,activeSkills:skillsResult.data||[],recommendation:recommendationResult.data,mastery,history:historyResult.data||{sessions:[],attempts:[],skillResults:[],totalPracticeSessions:0}}));
   }catch(error){
     console.warn('STUDENT DASHBOARD V2:',error);
     if(!syncLegacyFallbackAction()){
-      const target=$('sd2ContinueBody');if(target){target.className='sd2-empty';target.textContent='ไม่สามารถโหลด Dashboard แบบละเอียดได้ แต่ข้อมูลพื้นฐานยังพร้อมใช้งานเมื่อระบบรีเฟรช';}
+      const target=$('sd2ContinueBody');
+      if(target){target.className='sd2-empty';target.textContent='ไม่สามารถโหลด Dashboard แบบละเอียดได้ แต่ข้อมูลพื้นฐานยังพร้อมใช้งานเมื่อระบบรีเฟรช';}
     }
   }
 }
+
 function scheduleRefresh(delay=80){clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>refresh(),delay);}
+
 function handleNavigation(action){
   if(action==='logout'){$('dashboardLogoutButton')?.click();return;}
-  const target=$(NAV_TARGETS[action]);if(!target)return;
-  // Keep the existing launch handler and its authoritative stage/session attributes.
   if(action==='practice'){
     const launch=$('sd2Continue')?.querySelector('.dashboard-continue')||$('dashboardRecommendation')?.querySelector('.dashboard-continue');
     if(launch){launch.click();return;}
+    return;
   }
+  const target=$(NAV_TARGETS[action]);
+  if(!target) return;
   window.location.hash=NAV_TARGETS[action];
   syncNavigation();
-  target.tabIndex=-1;
   target.focus({preventScroll:true});
   target.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
 }
 
 async function saveProfile(form){
-  if(profileState.busy||!profileState.user?.id)return;
+  if(profileState.busy||!profileState.user?.id) return;
   const data=new FormData(form),value=name=>String(data.get(name)||'').trim();
-  if(!value('full_name')){profileState.error=true;profileState.message='กรุณาระบุชื่อเต็ม';renderProfile(profileState.data,profileState.user);return;}
-  profileState={...profileState,busy:true,message:'',error:false};renderProfile(profileState.data,profileState.user);
-  const result=await repo.updateStudentProfile({userId:profileState.user.id,fullName:value('full_name'),displayName:value('display_name')||null,studentId:value('student_id')||null,program:value('program')||null,yearLevel:value('year_level')||null,section:value('section')||null,avatarUrl:value('avatar_url')||null});
-  if(result.error){profileState={...profileState,busy:false,error:true,message:'บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่'};}
+  const firstName=value('first_name'),lastName=value('last_name');
+  if(!firstName||!lastName){profileState.error=true;profileState.message='กรุณาระบุชื่อและนามสกุล';renderProfile(profileState.data,profileState.user);return;}
+  profileState={...profileState,busy:true,message:'',error:false};
+  renderProfile(profileState.data,profileState.user);
+  const result=await repo.updateStudentProfile({userId:profileState.user.id,fullName:`${firstName}${PROFILE_NAME_SEPARATOR}${lastName}`,displayName:value('nickname')||null,studentId:value('student_id')||null,program:value('program')||null,avatarUrl:value('avatar_url')||null});
+  if(result.error) profileState={...profileState,busy:false,error:true,message:'บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่'};
   else profileState={...profileState,busy:false,error:false,message:'บันทึกข้อมูลโปรไฟล์แล้ว',data:result.data};
   renderProfile(profileState.data,profileState.user);
+  app.navigationDrawer?.sync?.();
 }
 
 function bind(){
-  if(initialized)return;initialized=true;
+  if(initialized) return;
+  initialized=true;
   window.addEventListener('hashchange',syncNavigation);
   document.addEventListener('click',event=>{
-    const nav=event.target.closest?.('[data-sd2-nav]');if(nav){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();handleNavigation(nav.dataset.sd2Nav);return;}
+    const nav=event.target.closest?.('[data-sd2-nav]');
+    if(nav){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();handleNavigation(nav.dataset.sd2Nav);return;}
     if(event.target.closest?.('[data-sd2-profile-cancel]')){profileState={...profileState,message:'',error:false};renderProfile(profileState.data,profileState.user);return;}
-    const skill=event.target.closest?.('[data-sd2-skill]');if(skill){trendSkill=skill.dataset.sd2Skill||'ALL';const vm=window.__studentDashboardV2Model;if(vm)renderTrendChart(vm);$('sd2Trend')?.scrollIntoView({behavior:'smooth',block:'start'});}
-    if(event.target?.id==='sd2ViewAll'){showAllRecent=!showAllRecent;const vm=window.__studentDashboardV2Model;if(vm)renderRecent(vm);}
+    const skill=event.target.closest?.('[data-sd2-skill-filter]');
+    if(skill){
+      trendSkill=skill.dataset.sd2SkillFilter||'ALL';
+      const vm=window.__studentDashboardV2Model;
+      if(vm){renderProgressSkills(vm);renderTrendChart(vm);}
+      handleNavigation('progress');
+      requestAnimationFrame(()=>document.querySelector(`[data-progress-skill="${CSS.escape(trendSkill)}"]`)?.scrollIntoView({behavior:'smooth',block:'center'}));
+    }
   });
   document.addEventListener('submit',event=>{if(event.target?.id==='sd2ProfileForm'){event.preventDefault();saveProfile(event.target);}});
-  document.addEventListener('change',event=>{if(event.target?.id==='sd2TrendFilter'){trendSkill=event.target.value||'ALL';const vm=window.__studentDashboardV2Model;if(vm)renderTrendChart(vm);}});
-  const shell=$('studentDashboard'),content=$('dashboardContent');
-  const observer=new MutationObserver(()=>{if(shell&&!shell.hidden&&content&&!content.hidden)scheduleRefresh(100);});
-  if(shell)observer.observe(shell,{attributes:true,attributeFilter:['hidden']});if(content)observer.observe(content,{attributes:true,attributeFilter:['hidden']});
+  document.addEventListener('change',event=>{if(event.target?.id==='sd2ProgressTrendFilter'){trendSkill=event.target.value||'ALL';const vm=window.__studentDashboardV2Model;if(vm)renderTrendChart(vm);}});
+  const shell=$('studentDashboard');
+  const observer=new MutationObserver(()=>{if(shell&&!shell.hidden)scheduleRefresh(100);});
+  if(shell) observer.observe(shell,{attributes:true,attributeFilter:['hidden']});
   const legacy=$('dashboardCurrentFocus');
   if(legacy){legacyObserver=new MutationObserver(()=>syncLegacyFallbackAction());legacyObserver.observe(legacy,{childList:true,subtree:true,characterData:true});syncLegacyFallbackAction();}
 }
 
-ensureStylesheet();ensureStructure();bind();
-if($('studentDashboard')&&!$('studentDashboard').hidden&&$('dashboardContent')&&!$('dashboardContent').hidden)scheduleRefresh(30);
-app.studentDashboardV2=Object.freeze({refresh,buildPathModel,buildHistoryModel,buildSkillModel,buildDashboardViewModel,sessionTrendPoints,syncLegacyFallbackAction});
+ensureStylesheet();
+ensureStructure();
+bind();
+if($('studentDashboard')&&!$('studentDashboard').hidden) scheduleRefresh(30);
+app.studentDashboardV2=Object.freeze({refresh,buildPathModel,buildHistoryModel,buildSkillModel,buildDashboardViewModel,skillSeries,skillTrend,syncLegacyFallbackAction,syncNavigation});
 })();
