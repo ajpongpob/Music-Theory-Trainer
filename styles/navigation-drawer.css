@@ -1,0 +1,332 @@
+/* Universal Hamburger Menu / Navigation Drawer
+   Additive UI only: existing dashboard, trainer and auth controllers remain authoritative. */
+:root{
+  --app-nav-ink:#172033;
+  --app-nav-muted:#667085;
+  --app-nav-line:#e1e6ee;
+  --app-nav-surface:#ffffff;
+  --app-nav-soft:#f7f9fc;
+  --app-nav-accent:#f6c515;
+  --app-nav-primary:#2456d6;
+  --app-nav-danger:#b42318;
+  --app-nav-shadow:0 18px 50px rgba(15,23,42,.20);
+}
+
+html.app-nav-drawer-open,
+body.app-nav-drawer-open{
+  overflow:hidden!important;
+  overscroll-behavior:none;
+}
+
+.app-nav-menu-button{
+  flex:0 0 44px;
+  width:44px;
+  height:44px;
+  box-sizing:border-box;
+  display:inline-flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  padding:0;
+  border:1px solid #d7dde7;
+  border-radius:12px;
+  background:#fff;
+  color:var(--app-nav-ink);
+  cursor:pointer;
+  box-shadow:0 1px 2px rgba(15,23,42,.04);
+  z-index:2;
+}
+.app-nav-menu-button>span{
+  display:block;
+  width:19px;
+  height:2px;
+  border-radius:999px;
+  background:currentColor;
+  transition:transform .18s ease,opacity .18s ease;
+}
+.app-nav-menu-button:hover{background:#f8fafc;border-color:#b8c2d1;}
+.app-nav-menu-button:focus-visible{outline:3px solid rgba(36,86,214,.24);outline-offset:2px;}
+.app-nav-menu-button[aria-expanded="true"]>span:nth-child(1){transform:translateY(6px) rotate(45deg);}
+.app-nav-menu-button[aria-expanded="true"]>span:nth-child(2){opacity:0;}
+.app-nav-menu-button[aria-expanded="true"]>span:nth-child(3){transform:translateY(-6px) rotate(-45deg);}
+
+.app-nav-scrim{
+  position:fixed;
+  inset:0;
+  z-index:9998;
+  background:rgba(15,23,42,.42);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .22s ease;
+}
+.app-nav-drawer{
+  position:fixed;
+  inset:0 auto 0 0;
+  z-index:9999;
+  width:min(360px,88vw);
+  max-width:100%;
+  box-sizing:border-box;
+  display:flex;
+  flex-direction:column;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  padding:0;
+  background:var(--app-nav-surface);
+  color:var(--app-nav-ink);
+  box-shadow:var(--app-nav-shadow);
+  transform:translate3d(-104%,0,0);
+  visibility:hidden;
+  transition:transform .24s cubic-bezier(.2,.8,.2,1),visibility 0s linear .24s;
+}
+html.app-nav-drawer-open .app-nav-scrim{
+  opacity:1;
+  pointer-events:auto;
+}
+html.app-nav-drawer-open .app-nav-drawer{
+  transform:translate3d(0,0,0);
+  visibility:visible;
+  transition:transform .24s cubic-bezier(.2,.8,.2,1),visibility 0s;
+}
+
+.app-nav-drawer-head{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-height:74px;
+  padding:13px 14px 13px 16px;
+  border-bottom:1px solid var(--app-nav-line);
+  background:linear-gradient(90deg,#fff8d4 0,#fff 78%);
+}
+.app-nav-drawer-brand{
+  min-width:0;
+  flex:1;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.app-nav-drawer-logo{
+  flex:0 0 42px;
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  border-radius:12px;
+  background:var(--app-nav-accent);
+  color:#111827;
+  font-size:1.4rem;
+  font-weight:900;
+}
+.app-nav-drawer-brand>div{min-width:0;}
+.app-nav-drawer-brand strong{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:.92rem;
+  line-height:1.3;
+}
+.app-nav-drawer-brand span:last-child{
+  display:block;
+  margin-top:2px;
+  color:var(--app-nav-muted);
+  font-size:.7rem;
+  font-weight:700;
+}
+.app-nav-close{
+  flex:0 0 40px;
+  width:40px;
+  height:40px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:#344054;
+  font:inherit;
+  font-size:1.65rem;
+  line-height:1;
+  cursor:pointer;
+}
+.app-nav-close:hover{background:rgba(255,255,255,.8);}
+.app-nav-close:focus-visible{outline:3px solid rgba(36,86,214,.24);outline-offset:1px;}
+
+.app-nav-account{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  margin:14px 14px 8px;
+  padding:11px 12px;
+  border:1px solid var(--app-nav-line);
+  border-radius:14px;
+  background:var(--app-nav-soft);
+  transition:box-shadow .18s ease,border-color .18s ease;
+}
+.app-nav-account.is-profile-focus{
+  border-color:#8fa9e6;
+  box-shadow:0 0 0 4px rgba(36,86,214,.10);
+}
+.app-nav-account:focus-visible{outline:3px solid rgba(36,86,214,.20);outline-offset:1px;}
+.app-nav-avatar{
+  flex:0 0 40px;
+  width:40px;
+  height:40px;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  border-radius:50%;
+  background:#e9eef7 center/cover no-repeat;
+  color:#344054;
+  font-weight:900;
+}
+.app-nav-avatar.has-image{box-shadow:inset 0 0 0 1px rgba(15,23,42,.08);}
+.app-nav-account>div{min-width:0;}
+.app-nav-account strong{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:.84rem;
+}
+.app-nav-account span:last-child{
+  display:block;
+  margin-top:2px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--app-nav-muted);
+  font-size:.69rem;
+}
+
+.app-nav-items{
+  display:grid;
+  gap:3px;
+  padding:7px 12px 16px;
+}
+.app-nav-item{
+  width:100%;
+  min-height:52px;
+  box-sizing:border-box;
+  display:grid;
+  grid-template-columns:32px minmax(0,1fr) 18px;
+  align-items:center;
+  gap:8px;
+  padding:7px 10px;
+  border:0;
+  border-radius:11px;
+  background:transparent;
+  color:#344054;
+  text-align:left;
+  font:inherit;
+  cursor:pointer;
+}
+.app-nav-item:hover:not(:disabled){background:#f2f5fa;color:#111827;}
+.app-nav-item:focus-visible{outline:3px solid rgba(36,86,214,.20);outline-offset:1px;}
+.app-nav-item[aria-current="page"]{
+  background:#eef3ff;
+  color:#173f9d;
+}
+.app-nav-item[aria-current="page"] .app-nav-item-icon{background:#dce6ff;color:#173f9d;}
+.app-nav-item:disabled{
+  opacity:.42;
+  cursor:not-allowed;
+}
+.app-nav-item-icon{
+  width:30px;
+  height:30px;
+  display:grid;
+  place-items:center;
+  border-radius:9px;
+  background:#f2f4f7;
+  color:#344054;
+  font-size:.9rem;
+  font-weight:900;
+}
+.app-nav-item-copy{min-width:0;}
+.app-nav-item-copy strong{display:block;font-size:.82rem;line-height:1.25;}
+.app-nav-item-copy small{display:block;margin-top:2px;color:var(--app-nav-muted);font-size:.65rem;line-height:1.25;}
+.app-nav-item-chevron{color:#98a2b3;font-size:1.15rem;text-align:center;}
+.app-nav-item-danger{color:var(--app-nav-danger);}
+.app-nav-item-danger .app-nav-item-icon{background:#fff1ef;color:var(--app-nav-danger);}
+.app-nav-separator{height:1px;margin:7px 7px;background:var(--app-nav-line);}
+.app-nav-drawer-foot{
+  margin-top:auto;
+  padding:12px 18px 18px;
+  color:#98a2b3;
+  font-size:.63rem;
+  text-align:center;
+}
+
+/* Student Dashboard: Dashboard / Practice / Progress / Profile now live in the drawer. */
+.dashboard-v2-enabled #sd2TopNav{display:none!important;}
+.dashboard-v2-enabled .student-dashboard-header.app-nav-host{
+  grid-template-columns:auto minmax(0,1fr) auto!important;
+  grid-template-rows:auto!important;
+}
+.dashboard-v2-enabled .student-dashboard-header.app-nav-host>.app-nav-menu-button{grid-column:1;grid-row:1;align-self:center;}
+.dashboard-v2-enabled .student-dashboard-header.app-nav-host>.student-dashboard-brand{grid-column:2;grid-row:1;}
+.dashboard-v2-enabled .student-dashboard-header.app-nav-host>.student-dashboard-actions{grid-column:3;grid-row:1;}
+
+.app-header-profile-button{
+  cursor:pointer;
+  user-select:none;
+}
+.dashboard-user-chip.app-header-profile-button{
+  min-height:40px;
+  box-sizing:border-box;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid #d8dee9;
+  border-radius:10px;
+  padding:7px 11px;
+  background:#f7f9fc;
+}
+.dashboard-user-chip.app-header-profile-button:hover{background:#eef3ff;border-color:#b9c9f2;}
+.app-header-profile-button:focus-visible{outline:3px solid rgba(36,86,214,.22);outline-offset:2px;}
+
+/* Trainer: Dashboard is moved into the drawer; Practice is the current surface. */
+#trainerApp #dashboardButton.app-nav-moved-action{display:none!important;}
+#trainerApp .session-header.app-nav-host>.app-nav-menu-button{order:-10;}
+#trainerHeaderProfileButton{white-space:nowrap;}
+
+/* Auth cards and onboarding also receive the same hamburger trigger. */
+#authScreen .auth-brand.app-nav-host>.app-nav-menu-button{align-self:center;}
+#authScreen .auth-brand.app-nav-host{align-items:center;}
+
+@media(max-width:599px){
+  .dashboard-v2-enabled .student-dashboard-header.app-nav-host{
+    grid-template-columns:auto minmax(0,1fr)!important;
+    gap:9px!important;
+  }
+  .dashboard-v2-enabled .student-dashboard-header.app-nav-host>.student-dashboard-actions{
+    grid-column:1/-1;
+    grid-row:2;
+    justify-content:flex-end!important;
+    gap:8px;
+  }
+  .dashboard-v2-enabled .student-dashboard-header.app-nav-host>.student-dashboard-brand h1{
+    font-size:1rem;
+  }
+  .dashboard-v2-enabled .dashboard-user-chip{max-width:min(62vw,220px);}
+  #trainerApp .session-header.app-nav-host{
+    align-items:center;
+    gap:7px;
+  }
+  #trainerHeaderProfileButton{min-height:40px;padding-inline:10px;}
+}
+
+@media(max-width:380px){
+  .app-nav-drawer{width:92vw;}
+  .dashboard-v2-enabled .student-dashboard-header.app-nav-host>.student-dashboard-actions{
+    justify-content:stretch!important;
+  }
+  .dashboard-v2-enabled .dashboard-user-chip.app-header-profile-button{flex:1;min-width:0;}
+  .dashboard-v2-enabled #dashboardLogoutButton{flex:0 0 auto;}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .app-nav-menu-button>span,.app-nav-scrim,.app-nav-drawer{transition:none!important;}
+}
+
+@media print{
+  .app-nav-menu-button,.app-nav-scrim,.app-nav-drawer{display:none!important;}
+}
