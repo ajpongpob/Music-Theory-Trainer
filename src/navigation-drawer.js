@@ -171,6 +171,12 @@ function currentStudentAction(){
   return 'dashboard';
 }
 
+function setMenuMarkup(target,signature,html){
+  if(target.dataset.appNavSignature===signature) return;
+  target.dataset.appNavSignature=signature;
+  target.innerHTML=html;
+}
+
 function renderMenuItems(){
   const target=$('appNavigationItems');
   if(!target) return;
@@ -178,23 +184,24 @@ function renderMenuItems(){
     const loginVisible=isVisible($('loginPanel'));
     const registerVisible=isVisible($('registerPanel'));
     const forgotVisible=isVisible($('forgotPasswordPanel')) || isVisible($('resetPasswordPanel'));
-    target.innerHTML=[
+    const signature=`auth:${Number(loginVisible)}:${Number(registerVisible)}:${Number(forgotVisible)}`;
+    setMenuMarkup(target,signature,[
       actionMarkup('login',{current:loginVisible}),
       actionMarkup('register',{current:registerVisible}),
       actionMarkup('forgot',{current:forgotVisible})
-    ].join('');
+    ].join(''));
     return;
   }
   if(surface==='onboarding'){
-    target.innerHTML=`${actionMarkup('dashboard',{disabled:true})}${actionMarkup('practice',{disabled:true})}${actionMarkup('progress',{disabled:true})}${actionMarkup('profile',{current:true})}<div class="app-nav-separator" role="separator"></div>${actionMarkup('logout')}`;
+    setMenuMarkup(target,'onboarding',`${actionMarkup('dashboard',{disabled:true})}${actionMarkup('practice',{disabled:true})}${actionMarkup('progress',{disabled:true})}${actionMarkup('profile',{current:true})}<div class="app-nav-separator" role="separator"></div>${actionMarkup('logout')}`);
     return;
   }
   if(surface==='teacher'){
-    target.innerHTML=`${actionMarkup('dashboard',{current:true})}${actionMarkup('profile')}<div class="app-nav-separator" role="separator"></div>${actionMarkup('refresh')}${actionMarkup('logout')}`;
+    setMenuMarkup(target,'teacher',`${actionMarkup('dashboard',{current:true})}${actionMarkup('profile')}<div class="app-nav-separator" role="separator"></div>${actionMarkup('refresh')}${actionMarkup('logout')}`);
     return;
   }
   const current=currentStudentAction();
-  target.innerHTML=`${actionMarkup('dashboard',{current:current==='dashboard'})}${actionMarkup('practice',{current:current==='practice'})}${actionMarkup('progress',{current:current==='progress'})}${actionMarkup('profile',{current:current==='profile'})}<div class="app-nav-separator" role="separator"></div>${actionMarkup('logout')}`;
+  setMenuMarkup(target,`${surface}:${current}`,`${actionMarkup('dashboard',{current:current==='dashboard'})}${actionMarkup('practice',{current:current==='practice'})}${actionMarkup('progress',{current:current==='progress'})}${actionMarkup('profile',{current:current==='profile'})}<div class="app-nav-separator" role="separator"></div>${actionMarkup('logout')}`);
 }
 
 function setSurfaceLabel(){
