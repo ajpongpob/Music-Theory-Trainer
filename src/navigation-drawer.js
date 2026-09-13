@@ -166,7 +166,7 @@ function currentStudentAction(){
   if(surface==='trainer') return 'practice';
   if(surface==='onboarding') return 'profile';
   const hash=window.location.hash;
-  if(hash==='#sd2Skills') return 'progress';
+  if(hash==='#sd2ProgressPage' || hash==='#sd2Skills') return 'progress';
   if(hash==='#sd2ProfilePanel') return 'profile';
   if(hash==='#sd2Continue') return 'practice';
   return 'dashboard';
@@ -282,9 +282,9 @@ function dispatchStudentAction(action){
     }
   }
   if(action==='progress'){
-    const target=$('sd2Skills');
+    const target=$('sd2ProgressPage') || $('sd2Skills');
     if(target){
-      window.location.hash='sd2Skills';
+      window.location.hash=target.id;
       target.scrollIntoView({behavior:'smooth',block:'start'});
       return true;
     }
