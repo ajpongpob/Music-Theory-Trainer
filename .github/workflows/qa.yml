@@ -48,6 +48,12 @@ jobs:
           BROWSER_CHANNEL: chrome
         run: node tests/student-dashboard-v2.browser.cjs
 
+      - name: Run Navigation Drawer responsive E2E
+        env:
+          PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
+          BROWSER_CHANNEL: chrome
+        run: node tests/navigation-drawer.browser.cjs
+
       - name: Run Diagnostic Feedback responsive E2E
         env:
           PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
