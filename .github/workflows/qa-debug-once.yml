@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  diagnose-node-tests:
+  diagnose-browser:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,27 +19,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run every Node test and capture failures
+      - name: Install pinned Playwright
+        run: npm install --no-save --ignore-scripts playwright@1.63.0
+      - name: Capture real Chrome E2E output
         shell: bash
+        env:
+          PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
+          BROWSER_CHANNEL: chrome
         run: |
-          : > QA-DEBUG.txt
-          failed=0
-          for test_file in tests/*.test.js; do
-            echo "===== $test_file =====" >> QA-DEBUG.txt
-            if node "$test_file" >> QA-DEBUG.txt 2>&1; then
-              echo "RESULT: PASS" >> QA-DEBUG.txt
-            else
-              echo "RESULT: FAIL" >> QA-DEBUG.txt
-              failed=1
-            fi
-            echo >> QA-DEBUG.txt
-          done
-          echo "ANY_FAILURE=$failed" >> QA-DEBUG.txt
+          : > QA-BROWSER-DEBUG.txt
+          if node tests/exercise-routing.browser.cjs >> QA-BROWSER-DEBUG.txt 2>&1; then
+            echo "RESULT: PASS" >> QA-BROWSER-DEBUG.txt
+          else
+            echo "RESULT: FAIL" >> QA-BROWSER-DEBUG.txt
+          fi
       - name: Commit diagnostic report
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add QA-DEBUG.txt
-          git commit -m "Capture QA node test diagnostics"
+          git add QA-BROWSER-DEBUG.txt
+          git commit -m "Capture Chrome E2E diagnostics"
           git push origin HEAD:main
