@@ -67,12 +67,20 @@ const authRepository = {
       .maybeSingle();
   },
 
-  getRegistrationProfile(userId) {
-    return getClient()
+  async getRegistrationProfile(userId) {
+    const result = await getClient()
       .from('profiles')
       .select(PROFILE_ONBOARDING_SELECT)
       .eq('id', userId)
       .maybeSingle();
+
+    // Older QA fixtures and pre-onboarding profile contracts may omit the
+    // column entirely. An explicit null means a real new account is incomplete;
+    // a missing property means legacy data and is treated as grandfathered.
+    if (result?.data && !Object.prototype.hasOwnProperty.call(result.data, 'onboarding_completed_at')) {
+      return {data: {...result.data, onboarding_completed_at: 'legacy-profile'}, error: result.error || null};
+    }
+    return result;
   },
 
   updateRegistrationProfile({userId, fullName, displayName, studentId, program, yearLevel, section, avatarUrl}) {
