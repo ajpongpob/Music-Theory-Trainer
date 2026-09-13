@@ -4,6 +4,7 @@ const ctx={window:{}};vm.createContext(ctx);vm.runInContext(fs.readFileSync(path
 const api=ctx.window.MajorScaleApp.masteryLearningCore;
 assert(api && Object.isFrozen(api));
 assert.equal(api.normalizeSessionMode('PRETEST'),'pretest');
+assert.equal(api.normalizeSessionMode('teacher_demo'),'teacher_demo');
 assert.equal(api.normalizeSessionMode('mastery_test'),'practice');
 assert.equal(api.normalizeSessionMode('mastery_test',{allowMasteryTest:true}),'mastery_test');
 assert.deepStrictEqual(JSON.parse(JSON.stringify(api.buildDiagnosticItemCodes([{item_code:'G',sequence_order:2},{item_code:'C',sequence_order:1},{item_code:'C',sequence_order:3}],[]))),['C','G']);
