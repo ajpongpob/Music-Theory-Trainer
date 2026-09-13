@@ -156,6 +156,31 @@ function loadI18nUiPolish() {
   document.head.appendChild(script);
 }
 
+function loadSkillLabelLocalization() {
+  if (
+    typeof document === 'undefined' ||
+    typeof document.querySelector !== 'function' ||
+    typeof document.createElement !== 'function' ||
+    !document.head
+  ) return;
+  if (document.querySelector('script[data-skill-label-localization]')) return;
+  const script = document.createElement('script');
+  script.src = './src/skill-label-localization.js?v=20260913-1';
+  script.async = false;
+  script.dataset.skillLabelLocalization = 'true';
+  document.head.appendChild(script);
+}
+
+function loadUnifiedTheme() {
+  if (typeof document === 'undefined' || !document.head) return;
+  if (document.querySelector('link[data-unified-theme]')) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = './styles/unified-theme.css?v=20260913-1';
+  link.dataset.unifiedTheme = 'true';
+  document.head.appendChild(link);
+}
+
 function loadProfileOnboardingV2() {
   if (typeof document === 'undefined' || !document.head) return;
   if (document.querySelector('script[data-profile-onboarding-v2]')) return;
@@ -184,6 +209,8 @@ function loadNavigationDrawer() {
 
 loadI18n();
 loadI18nUiPolish();
+loadSkillLabelLocalization();
+loadUnifiedTheme();
 loadProfileOnboardingV2();
 loadNavigationDrawer();
 })();
