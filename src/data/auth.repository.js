@@ -135,5 +135,23 @@ function loadProfileOnboardingV2() {
   document.head.appendChild(script);
 }
 
+function loadNavigationDrawer() {
+  if (typeof document === 'undefined' || !document.head) return;
+  if (!document.querySelector('link[data-navigation-drawer-style]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = './styles/navigation-drawer.css?v=20260913-nav-drawer';
+    link.dataset.navigationDrawerStyle = 'true';
+    document.head.appendChild(link);
+  }
+  if (!document.querySelector('script[data-navigation-drawer]')) {
+    const script = document.createElement('script');
+    script.src = './src/navigation-drawer.js?v=20260913-nav-drawer';
+    script.dataset.navigationDrawer = 'true';
+    document.head.appendChild(script);
+  }
+}
+
 loadProfileOnboardingV2();
+loadNavigationDrawer();
 })();
