@@ -29,6 +29,14 @@ const authRepository = {
     return getClient().auth.signInWithPassword({email, password});
   },
 
+  signInWithGoogle({redirectTo} = {}) {
+    const options = redirectTo ? {redirectTo} : {};
+    return getClient().auth.signInWithOAuth({
+      provider: 'google',
+      options
+    });
+  },
+
   signUp({email, password, fullName}) {
     return getClient().auth.signUp({
       email,
