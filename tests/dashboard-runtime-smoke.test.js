@@ -54,7 +54,7 @@ function makeClient(scenario, ctx){
   const student={id:'student-1',email:'student@example.com',user_metadata:{full_name:'Student Test'}};
   let currentUser = scenario==='teacher'||scenario==='recovery' ? teacher : scenario==='student' ? student : null;
   let cb=null;
-  const calls={rpc:[],from:[],signIn:0,reset:0,updatePassword:0,signOut:0};
+  const calls={rpc:[],from:[],signIn:0,signUp:[],reset:0,updatePassword:0,signOut:0};
   ctx.__mockCalls=calls;
   const teacherSummary=[{class_id:'class-1',class_code:'MT-TEST-01',class_name:'ห้องเรียนทดสอบทฤษฎีดนตรี',academic_year:'2569',term:'1',class_active:true,student_count:1,learning_path_id:'path-1',learning_path_code:'MUSIC_THEORY_FOUNDATIONS',learning_path_name:'เส้นทางการเรียนรู้พื้นฐานทฤษฎีดนตรี',learning_path_sort_order:10,assigned_at:'2026-09-11T15:34:38Z'}];
   const teacherDetail=[{class_id:'class-1',class_code:'MT-TEST-01',class_name:'ห้องเรียนทดสอบทฤษฎีดนตรี',academic_year:'2569',term:'1',student_id:'student-1',student_name:'test2',learning_path_id:'path-1',learning_path_code:'MUSIC_THEORY_FOUNDATIONS',learning_path_name:'เส้นทางการเรียนรู้พื้นฐานทฤษฎีดนตรี',learning_path_status:'mastered',learning_status:'completed',path_started_at:'2026-09-11T12:52:04Z',path_mastered_at:'2026-09-11T14:48:23Z',exercise_id:'exercise-1',exercise_code:'MAJOR_SCALE_NOTATION',exercise_name:'การเขียนบันไดเสียงเมเจอร์',exercise_sequence:10,required_for_completion:true,exercise_status:'mastered',stages_mastered:4,stages_total:4,current_stage_id:null,current_stage_code:null,current_stage_name:null,current_stage_sequence:null,latest_mastery_score:100}];
@@ -77,7 +77,7 @@ function makeClient(scenario, ctx){
       getUser:async()=>({data:{user:currentUser},error:null}),
       onAuthStateChange(fn){cb=fn; return {data:{subscription:{unsubscribe(){}}}};},
       async signInWithPassword({email}={}){calls.signIn++; currentUser=email==='student@example.com'?student:teacher; const session={user:currentUser}; queueMicrotask(()=>cb?.('SIGNED_IN',session)); return {data:{session},error:null};},
-      async signUp(){return {data:{session:null,user:{id:'new'}},error:null};},
+      async signUp(credentials){calls.signUp.push(credentials); return {data:{session:null,user:{id:'new'}},error:null};},
       async signOut(){calls.signOut++; currentUser=null; queueMicrotask(()=>cb?.('SIGNED_OUT',null)); return {error:null};},
       async resetPasswordForEmail(){calls.reset++; return {data:{},error:null};},
       async updateUser(){calls.updatePassword++; return {data:{user:currentUser},error:null};}
@@ -99,7 +99,9 @@ async function runScenario(scenario){
     addEventListener(type,cb){(docListeners[type] ||= []).push(cb);},
     querySelectorAll(){return [];}
   };
-  const href='https://example.test/'+(scenario==='recovery'?'?mode=reset-password':'');
+  const href=scenario==='register'
+    ? 'https://example.test/Music-Theory-Trainer/?source=invite#ignored'
+    : 'https://example.test/'+(scenario==='recovery'?'?mode=reset-password':'');
   const ctx={
     console:{log(){},warn(...a){logs.warn.push(a.join(' '));},error(...a){logs.error.push(a.join(' '));}},
     document, location:new URL(href), history:{replaceState(){}}, URL, URLSearchParams, Intl, Date, Map, Set, WeakMap, WeakSet, Promise, Object, Array, String, Number, Boolean, RegExp, Math, JSON,
@@ -178,6 +180,14 @@ async function runScenario(scenario){
     check('teacher visible after login',get('teacherDashboard').hidden===false,get('teacherDashboard').hidden);
     check('teacher data after login',get('teacherStudentList').innerHTML.includes('test2'),get('teacherDashboardMessage').textContent);
   }
+  if(scenario==='register'){
+    get('registerName').value='New Student'; get('registerEmail').value='new@example.com'; get('registerPassword').value='password'; get('registerButton').click();
+    await new Promise(r=>setTimeout(r,20));
+    const signup=ctx.__mockCalls.signUp[0];
+    check('signUp called once',ctx.__mockCalls.signUp.length===1,ctx.__mockCalls.signUp.length);
+    check('confirmation redirect preserves GitHub Pages subpath',signup?.options?.emailRedirectTo==='https://example.test/Music-Theory-Trainer/',signup?.options?.emailRedirectTo);
+    check('signup metadata preserved',signup?.options?.data?.full_name==='New Student',signup?.options?.data?.full_name);
+  }
   if(scenario==='switchUser'){
     check('auth initially visible for switch-user flow',get('authScreen').hidden===false,get('authScreen').hidden);
     get('loginEmail').value='student@example.com'; get('loginPassword').value='password'; get('loginButton').click();
@@ -216,7 +226,7 @@ async function runScenario(scenario){
 
 (async()=>{
   let any=false;
-  for(const s of ['teacher','student','loginTeacher','switchUser','forgot','recovery']){
+  for(const s of ['teacher','student','loginTeacher','register','switchUser','forgot','recovery']){
     const r=await runScenario(s);
     console.log(JSON.stringify(r,null,2));
     if(r.loadError || r.failed?.length) any=true;

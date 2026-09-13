@@ -39,11 +39,14 @@ const authRepository = {
     });
   },
 
-  signUp({email, password, fullName}) {
+  signUp({email, password, fullName, emailRedirectTo}) {
     return getClient().auth.signUp({
       email,
       password,
-      options: {data: {full_name: fullName}}
+      options: {
+        data: {full_name: fullName},
+        emailRedirectTo
+      }
     });
   },
 

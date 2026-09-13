@@ -509,7 +509,7 @@ async function submit(register) {
   busy = true; controls(); message(prefix+'Message', register ? 'กำลังสมัครสมาชิก...' : 'กำลังเข้าสู่ระบบ...');
   try {
     const {data, error} = register
-      ? await authRepository.signUp({email,password,fullName:name})
+      ? await authRepository.signUp({email,password,fullName:name,emailRedirectTo:oauthRedirectUrl()})
       : await authRepository.signInWithPassword({email,password});
     if (error) throw error;
     if (data.session?.user) sessionView(data.session);
