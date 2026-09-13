@@ -99,6 +99,8 @@ function enhanceOnboardingForm(){
     maxlength:100,
     autocomplete:'family-name'
   });
+  // Keep the dynamic DOM contract explicit for static-integrity checks.
+  lastInput.id='profileOnboardingLastName';
   fullField?.insertAdjacentElement('afterend',lastField);
 
   const compat=document.createElement('input');
