@@ -1708,6 +1708,10 @@ async function resolveMajorScaleExerciseStage(level){
 
 async function createPracticeSessionRecord(generation, level){
 
+  if(state.sessionMode==="teacher_demo"){
+    return null;
+  }
+
   const sessionLevel=effectiveSessionLevel(level);
   const app=window.MajorScaleApp || {};
   const authRepository=app.authRepository;
@@ -2544,8 +2548,10 @@ async function refreshMasteryProgress(level=state.level){
 }
 
 async function startTrainerForAuthenticatedUser(levelOverride=null,sessionMode="practice",stageCode=null){
-  await closeStalePracticeSessionsForCurrentUser();
   state.sessionMode=masteryLearningCore?.normalizeSessionMode(sessionMode) || "practice";
+  if(state.sessionMode!=="teacher_demo"){
+    await closeStalePracticeSessionsForCurrentUser();
+  }
   configurePathStageAuthority(stageCode);
 
   const requestedLevel=state.pathStageEnforced ? state.authoritativeLevel : Number(levelOverride);
@@ -2626,8 +2632,12 @@ function startSession(){
   state.sessionLength=state.sessionMode==="pretest" ? state.diagnosticItemCodes.length : null;
   state.masteryPriorityItemCodes=[];
   document.getElementById("levelStatus").textContent=
-    `Level ${state.level}`;
-  setMasteryProgressLoading(state.level);
+    state.sessionMode==="teacher_demo"
+      ? `Teacher Demo · Level ${state.level} · ไม่บันทึกความก้าวหน้า`
+      : `Level ${state.level}`;
+  const masteryProgress=document.getElementById("masteryProgress");
+  if(masteryProgress) masteryProgress.hidden=state.sessionMode==="teacher_demo";
+  if(state.sessionMode!=="teacher_demo") setMasteryProgressLoading(state.level);
   state.sessionResults=[];
   state.sessionComplete=false;
   state.questionIndex=0;
@@ -2648,6 +2658,8 @@ function startSession(){
 
   const masteryOverlay=document.getElementById("levelMasteryOverlay");
   if(masteryOverlay) masteryOverlay.hidden=true;
+  const masteryProgressForSession=document.getElementById("masteryProgress");
+  if(masteryProgressForSession && state.sessionMode!=="teacher_demo") masteryProgressForSession.hidden=false;
   const app=document.querySelector('.session-app');
   if(app){
     app.inert=false;
@@ -3007,6 +3019,15 @@ async function saveAttemptRecord({
   completedQuestions,
   level
 }){
+  if(state.sessionMode==="teacher_demo"){
+    return {
+      attemptId:null,
+      mastery:null,
+      diagnosticPlacement:null,
+      teacherDemo:true
+    };
+  }
+
   level=effectiveSessionLevel(level);
   const practiceRepository=
     window.MajorScaleApp?.practiceRepository;
