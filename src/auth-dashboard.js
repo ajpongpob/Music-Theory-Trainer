@@ -139,7 +139,7 @@ function ensureGoogleAuthControls(){
   }
 }
 function ensureProfileOnboardingPanel(){
-  if($('profileOnboardingPanel') || typeof document==='undefined') return;
+  if($('profileOnboardingPanel') || typeof document==='undefined' || typeof document.createElement!=='function') return;
   const panel=document.createElement('section');
   panel.id='profileOnboardingPanel';
   panel.className='auth-card auth-onboarding-card';
@@ -166,8 +166,8 @@ function ensureProfileOnboardingPanel(){
       <div class="auth-onboarding-actions"><button id="profileOnboardingLogoutButton" class="auth-switch" type="button">ออกจากระบบ</button><button id="profileOnboardingSaveButton" class="auth-primary" type="submit">บันทึกและเริ่มใช้งาน</button></div>
     </form>`;
   screen.appendChild(panel);
-  $('profileOnboardingForm').addEventListener('submit',saveProfileOnboarding);
-  $('profileOnboardingLogoutButton').addEventListener('click',()=>$('logoutButton')?.click());
+  $('profileOnboardingForm')?.addEventListener('submit',saveProfileOnboarding);
+  $('profileOnboardingLogoutButton')?.addEventListener('click',()=>$('logoutButton')?.click());
 }
 function showAuthPanel(name) {
   const panels={
