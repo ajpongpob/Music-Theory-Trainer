@@ -298,24 +298,6 @@ html.app-nav-drawer-open .app-nav-drawer{
 #trainerApp #dashboardButton.app-nav-moved-action{display:none!important;}
 #trainerApp .session-header.app-nav-host>.app-nav-menu-button{order:-10;}
 #trainerHeaderProfileButton{white-space:nowrap;}
-/* Keep the old Dashboard trigger as a 1px compatibility target for legacy routing
-   automation/controllers on the complete production shell. It is visually absent. */
-#trainerApp:has(.session-header .pill) #dashboardButton.app-nav-moved-action{
-  display:block!important;
-  position:fixed!important;
-  left:0!important;
-  bottom:0!important;
-  width:1px!important;
-  height:1px!important;
-  min-width:1px!important;
-  min-height:1px!important;
-  padding:0!important;
-  margin:0!important;
-  border:0!important;
-  opacity:0!important;
-  overflow:hidden!important;
-  z-index:0!important;
-}
 
 /* Auth cards and onboarding also receive the same hamburger trigger. */
 #authScreen .auth-brand.app-nav-host>.app-nav-menu-button{align-self:center;}
