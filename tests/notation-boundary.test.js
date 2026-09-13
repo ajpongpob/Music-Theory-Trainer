@@ -15,8 +15,10 @@ const restoreV091=require('./helpers/restore-v091-path-stage.cjs');
 const restoreV092=require('./helpers/restore-v092-scoring-policy.cjs');
 const restoreBeaming=require('./helpers/restore-notation-beaming.cjs');
 const restoreMobileSafariUi=require('./helpers/restore-mobile-safari-ui.cjs');
+const restoreRegisterAuthTheme=require('./helpers/restore-register-auth-theme.cjs');
 
 function restoreApprovedDeltas(source,file){
+  source=restoreRegisterAuthTheme(source,file);
   source=restoreMobileSafariUi(source,file);
   source=restoreV092(source,file);
   source=restoreV091(source,file);
@@ -66,4 +68,4 @@ assert(at('src/domain/notation/notation-interaction.js')<at('src/domain/notation
 assert(at('src/domain/notation/notation-beaming.js')<at('src/exercises/major-scale/major-scale.domain.js'));
 assert(at('src/domain/notation/notation-beaming.js')<at('src/trainer.js'));
 assert(at('src/trainer.js')<at('src/keyboard.js'));
-console.log('PASS notation boundary: exact v0.8.0-c reconstruction, approved v0.9.2 scoring delta, explicit contract-tested infrastructure exceptions, protected notation/interaction hashes and script order');
+console.log('PASS notation boundary: exact v0.8.0-c reconstruction, approved v0.9.2 scoring delta, explicit contract-tested infrastructure/UI exceptions, protected notation/interaction hashes and script order');
