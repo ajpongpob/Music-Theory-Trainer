@@ -141,6 +141,21 @@ function loadI18n() {
   document.head.appendChild(script);
 }
 
+function loadI18nUiPolish() {
+  if (
+    typeof document === 'undefined' ||
+    typeof document.querySelector !== 'function' ||
+    typeof document.createElement !== 'function' ||
+    !document.head
+  ) return;
+  if (document.querySelector('script[data-major-scale-i18n-ui-polish]')) return;
+  const script = document.createElement('script');
+  script.src = './src/i18n-ui-polish.js?v=20260913-2';
+  script.async = false;
+  script.dataset.majorScaleI18nUiPolish = 'true';
+  document.head.appendChild(script);
+}
+
 function loadProfileOnboardingV2() {
   if (typeof document === 'undefined' || !document.head) return;
   if (document.querySelector('script[data-profile-onboarding-v2]')) return;
@@ -168,6 +183,7 @@ function loadNavigationDrawer() {
 }
 
 loadI18n();
+loadI18nUiPolish();
 loadProfileOnboardingV2();
 loadNavigationDrawer();
 })();
