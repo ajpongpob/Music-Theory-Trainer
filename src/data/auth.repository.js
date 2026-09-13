@@ -10,6 +10,8 @@ function getClient() {
   return app.supabaseClient;
 }
 
+const PROFILE_ONBOARDING_SELECT = 'id,full_name,display_name,student_id,program,year_level,section,avatar_url,role,onboarding_completed_at,created_at,updated_at';
+
 const authRepository = {
   getClient,
 
@@ -63,6 +65,31 @@ const authRepository = {
       .select('role')
       .eq('id', userId)
       .maybeSingle();
+  },
+
+  getRegistrationProfile(userId) {
+    return getClient()
+      .from('profiles')
+      .select(PROFILE_ONBOARDING_SELECT)
+      .eq('id', userId)
+      .maybeSingle();
+  },
+
+  updateRegistrationProfile({userId, fullName, displayName, studentId, program, yearLevel, section, avatarUrl}) {
+    return getClient()
+      .from('profiles')
+      .update({
+        full_name: fullName,
+        display_name: displayName,
+        student_id: studentId,
+        program,
+        year_level: yearLevel,
+        section,
+        avatar_url: avatarUrl
+      })
+      .eq('id', userId)
+      .select(PROFILE_ONBOARDING_SELECT)
+      .single();
   }
 };
 
