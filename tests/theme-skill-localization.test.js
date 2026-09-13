@@ -1,0 +1,40 @@
+'use strict';
+
+const fs=require('fs');
+const path=require('path');
+const assert=require('assert');
+const ROOT=path.resolve(__dirname,'..');
+const read=rel=>fs.readFileSync(path.join(ROOT,rel),'utf8');
+
+const auth=read('src/data/auth.repository.js');
+const labels=read('src/skill-label-localization.js');
+const theme=read('styles/unified-theme.css');
+
+assert(auth.includes("./src/skill-label-localization.js?v=20260913-1"),'auth bootstrap must load skill-label localization');
+assert(auth.includes("./styles/unified-theme.css?v=20260913-1"),'auth bootstrap must load unified visual theme');
+
+const expected=[
+  ['Treble Pitch','ระดับเสียงบนกุญแจซอล (Treble Pitch)'],
+  ['Stem Direction','ทิศก้านโน้ต (Stem Direction)'],
+  ['Duration Value','ค่าความยาวโน้ต (Duration Value)'],
+  ['Primary Beam','การเชื่อมบีมหลัก (Primary Beam)'],
+  ['Scale Accidental','เครื่องหมายแปลงเสียงของบันไดเสียง (Scale Accidental)']
+];
+for(const [en,th] of expected){
+  assert(labels.includes(`'${en}':'${th}'`),`${en} must have Thai + English learner label`);
+}
+assert(labels.includes("#dashboardContent,#sd2ProgressPage"),'skill localization must be limited to learner Dashboard and Progress');
+assert(labels.includes("live==='th'||live==='en'"),'skill labels must follow the active language');
+assert(labels.includes("if(lang==='th')"),'Thai mode must use Thai labels with English in parentheses');
+assert(labels.includes("if(REVERSE.has(text)) return REVERSE.get(text)"),'English mode must restore English-only labels');
+
+for(const token of ['--unity-bg:#f4f6fb','--unity-surface:#ffffff','--unity-text:#172033','--unity-line:#d8dee9','--unity-accent:#315efb','--unity-good:#15803d','--unity-bad:#b42318']){
+  assert(theme.includes(token),`unified theme must reuse trainer token ${token}`);
+}
+for(const selector of ['.auth-screen','.sd2-card','#teacherDashboard .dashboard-card','.app-nav-drawer','.app-nav-item[aria-current="page"]']){
+  assert(theme.includes(selector),`unified theme must cover ${selector}`);
+}
+assert(!theme.includes('#trainerApp .card'),'unified theme must not restyle trainer cards directly');
+assert(!/service_role/i.test(labels+theme),'UI localization/theme files must not contain backend secrets');
+
+console.log('PASS learner skill labels: Thai bilingual / English-only; trainer palette unified across auth, dashboards, progress, profile, teacher and navigation');
