@@ -176,7 +176,7 @@ function loadUnifiedTheme() {
   if (document.querySelector('link[data-unified-theme]')) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = './styles/unified-theme.css?v=20260913-1';
+  link.href = './styles/unified-theme.css?v=20260913-2';
   link.dataset.unifiedTheme = 'true';
   document.head.appendChild(link);
 }
