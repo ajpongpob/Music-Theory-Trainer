@@ -53,6 +53,14 @@ const dashboardRepository = {
   getStudentProfile(userId) {
     return getClient()
       .from('profiles')
+      .select('full_name')
+      .eq('id', userId)
+      .maybeSingle();
+  },
+
+  getStudentProfileDetails(userId) {
+    return getClient()
+      .from('profiles')
       .select('id,full_name,display_name,student_id,program,year_level,section,avatar_url,role,created_at,updated_at')
       .eq('id', userId)
       .maybeSingle();

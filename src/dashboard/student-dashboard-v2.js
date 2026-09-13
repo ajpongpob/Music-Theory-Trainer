@@ -276,7 +276,7 @@ async function refresh(){
   try{
     const authResult=await authRepo?.getUser?.();
     const authUser=authResult?.data?.user||null;profileState.user=authUser;
-    const [dashboardResult,skillsResult,recommendationResult,historyResult,profileResult]=await Promise.all([repo.getStudentDashboard(),repo.getActiveSkills(),learningRepo.getRecommendedNextAction(),repo.getStudentLearningHistory({limit:40}),authUser?repo.getStudentProfile(authUser.id):Promise.resolve({data:null,error:null})]);
+    const [dashboardResult,skillsResult,recommendationResult,historyResult,profileResult]=await Promise.all([repo.getStudentDashboard(),repo.getActiveSkills(),learningRepo.getRecommendedNextAction(),repo.getStudentLearningHistory({limit:40}),authUser?repo.getStudentProfileDetails(authUser.id):Promise.resolve({data:null,error:null})]);
     if(token!==revision)return;if(dashboardResult.error)throw dashboardResult.error;if(skillsResult.error)throw skillsResult.error;
     if(recommendationResult.error)console.warn('STUDENT DASHBOARD V2 RECOMMENDATION:',recommendationResult.error);
     if(historyResult.error)console.warn('STUDENT DASHBOARD V2 HISTORY:',historyResult.error);
