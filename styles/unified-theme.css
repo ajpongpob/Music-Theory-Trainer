@@ -1,0 +1,199 @@
+/* Visual unity layer: reuse the trainer palette without changing trainer behavior. */
+:root{
+  --unity-bg:#f4f6fb;
+  --unity-surface:#ffffff;
+  --unity-surface-soft:#f8fafc;
+  --unity-text:#172033;
+  --unity-muted:#667085;
+  --unity-line:#d8dee9;
+  --unity-accent:#315efb;
+  --unity-accent-soft:#eef4ff;
+  --unity-good:#15803d;
+  --unity-bad:#b42318;
+  --unity-shadow:0 14px 36px rgba(23,32,51,.08);
+}
+
+body{
+  color:var(--unity-text);
+  background:linear-gradient(180deg,#f9fbff 0%,var(--unity-bg) 100%);
+}
+
+/* Auth / onboarding */
+.auth-screen{
+  background:linear-gradient(180deg,#f9fbff 0%,var(--unity-bg) 100%)!important;
+}
+.auth-card,
+.profile-onboarding-card{
+  background:var(--unity-surface)!important;
+  border-color:var(--unity-line)!important;
+  box-shadow:var(--unity-shadow)!important;
+}
+.auth-brand-icon{
+  background:var(--unity-accent-soft)!important;
+  color:var(--unity-accent)!important;
+}
+.auth-primary,
+.profile-onboarding-card .btn.primary{
+  background:var(--unity-accent)!important;
+  border-color:var(--unity-accent)!important;
+}
+.auth-switch,.auth-inline-link{color:var(--unity-accent)!important;}
+.auth-field input,
+.profile-onboarding-card input,
+.profile-onboarding-card select{
+  border-color:var(--unity-line)!important;
+  background:var(--unity-surface)!important;
+  color:var(--unity-text)!important;
+}
+.auth-field input:focus,
+.profile-onboarding-card input:focus,
+.profile-onboarding-card select:focus{
+  border-color:var(--unity-accent)!important;
+  outline:2px solid rgba(49,94,251,.18)!important;
+}
+
+/* Student Dashboard / Progress / Profile */
+.student-dashboard-shell.dashboard-v2-enabled,
+#teacherDashboard.student-dashboard-shell{
+  background:linear-gradient(180deg,#f9fbff 0%,var(--unity-bg) 100%)!important;
+}
+.dashboard-v2-enabled .student-dashboard-header,
+#teacherDashboard .student-dashboard-header{
+  background:var(--unity-surface)!important;
+  border-color:var(--unity-line)!important;
+  box-shadow:var(--unity-shadow)!important;
+  color:var(--unity-text)!important;
+}
+.sd2-card,
+.sd2-summary-card,
+.sd2-skill,
+.sd2-progress-skill,
+.sd2-recent-item,
+.sd2-stage-history-item,
+.sd2-session,
+.sd2-attempt,
+.sd2-profile-card,
+#teacherDashboard .dashboard-card,
+#teacherDashboard .teacher-v2-section,
+#teacherDashboard .teacher-path-item,
+#teacherDashboard .teacher-student-item{
+  background:var(--unity-surface)!important;
+  border-color:var(--unity-line)!important;
+  box-shadow:var(--unity-shadow)!important;
+  color:var(--unity-text)!important;
+}
+.sd2-continue{
+  border-color:#cfdbff!important;
+  background:linear-gradient(135deg,#fff 0%,#f5f8ff 100%)!important;
+}
+.sd2-continue::before,
+.sd2-progress-fill,
+.sd2-skill-bar i,
+.sd2-chart-line,
+.sd2-continue-action.dashboard-continue{
+  background:var(--unity-accent)!important;
+}
+.sd2-chart-line{stroke:var(--unity-accent)!important;background:none!important;}
+.sd2-chart-dot{stroke:var(--unity-accent)!important;}
+.sd2-chart-area{fill:rgba(49,94,251,.07)!important;}
+.sd2-stage[aria-current="step"] .sd2-stage-icon,
+.sd2-stage-history-item[aria-current="step"] .sd2-stage-history-index{
+  background:var(--unity-accent)!important;
+  border-color:var(--unity-accent)!important;
+}
+.sd2-stage[aria-current="step"] .sd2-stage-icon{box-shadow:0 0 0 4px #dce6ff!important;}
+.sd2-link-button,
+.sd2-stage-line,
+.dashboard-v2-enabled a,
+.dashboard-v2-enabled .sd2-skill-score{color:var(--unity-accent)!important;}
+.sd2-link-button:hover,
+.sd2-skill:hover,
+.sd2-skill:focus-visible{
+  background:var(--unity-accent-soft)!important;
+  border-color:#cfdbff!important;
+}
+.sd2-empty,
+.sd2-progress-skill-metrics>div,
+.sd2-session-detail,
+.dashboard-user-chip.app-header-profile-button{
+  background:var(--unity-surface-soft)!important;
+}
+.dashboard-user-chip.app-header-profile-button:hover{background:var(--unity-accent-soft)!important;border-color:#cfdbff!important;}
+.sd2-subtle,.sd2-eyebrow,.sd2-stage-meta,.sd2-recent-meta,.sd2-skill-code{color:var(--unity-muted)!important;}
+
+/* Status colors keep the same semantic green / amber / red used by the trainer feedback. */
+.sd2-status.mastered{color:var(--unity-good)!important;background:#ecfdf3!important;}
+.sd2-status.needs-practice{color:var(--unity-bad)!important;background:#fff4f2!important;}
+.sd2-status.current{color:var(--unity-accent)!important;background:var(--unity-accent-soft)!important;}
+
+/* Teacher Dashboard adopts the same surfaces and blue action hierarchy. */
+#teacherDashboard .btn.primary,
+#teacherDashboard .teacher-v2-action,
+#teacherDashboard button[data-teacher-action]:not(.danger){
+  background:var(--unity-accent)!important;
+  border-color:var(--unity-accent)!important;
+  color:#fff!important;
+}
+#teacherDashboard input,
+#teacherDashboard select{
+  border-color:var(--unity-line)!important;
+  background:var(--unity-surface)!important;
+  color:var(--unity-text)!important;
+}
+#teacherDashboard input:focus,
+#teacherDashboard select:focus{
+  border-color:var(--unity-accent)!important;
+  outline:2px solid rgba(49,94,251,.18)!important;
+}
+
+/* Navigation drawer uses the same trainer blue/neutral palette instead of a separate yellow theme. */
+.app-nav-drawer{
+  --app-nav-ink:var(--unity-text);
+  --app-nav-muted:var(--unity-muted);
+  --app-nav-line:var(--unity-line);
+  --app-nav-surface:var(--unity-surface);
+  --app-nav-soft:var(--unity-surface-soft);
+  --app-nav-accent:var(--unity-accent);
+  --app-nav-primary:var(--unity-accent);
+  background:var(--unity-surface)!important;
+}
+.app-nav-drawer-head{
+  background:linear-gradient(90deg,#eef4ff 0%,#fff 78%)!important;
+  border-color:var(--unity-line)!important;
+}
+.app-nav-drawer-logo{
+  background:var(--unity-accent)!important;
+  color:#fff!important;
+}
+.app-nav-item[aria-current="page"]{
+  background:var(--unity-accent-soft)!important;
+  color:var(--unity-accent)!important;
+}
+.app-nav-item[aria-current="page"] .app-nav-item-icon{
+  background:#dce6ff!important;
+  color:var(--unity-accent)!important;
+}
+.app-nav-menu-button{
+  background:var(--unity-surface)!important;
+  border-color:var(--unity-line)!important;
+}
+.app-nav-menu-button:hover{background:var(--unity-surface-soft)!important;border-color:#b8c2d1!important;}
+
+/* Shared form controls and language selector */
+#appLanguageControl select,
+.sd2-profile-form input,
+.sd2-filter{
+  border-color:var(--unity-line)!important;
+  background:var(--unity-surface)!important;
+  color:var(--unity-text)!important;
+}
+#appLanguageControl select:focus-visible,
+.sd2-profile-form input:focus-visible,
+.sd2-filter:focus-visible{
+  outline:3px solid rgba(49,94,251,.20)!important;
+  border-color:var(--unity-accent)!important;
+}
+
+@media(prefers-reduced-motion:reduce){
+  .sd2-progress-fill,.sd2-skill-bar i{transition:none!important;}
+}
