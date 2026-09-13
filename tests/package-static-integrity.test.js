@@ -50,6 +50,10 @@ for (const file of sourceFiles) {
   for (const m of source.matchAll(/\.id\s*=\s*['"]([^'"]+)['"]/g)) dynamicIds.add(m[1]);
   for (const m of source.matchAll(/\bid=["']([^"']+)["']/g)) dynamicIds.add(m[1]);
 }
+// The navigation drawer intentionally recognizes the pre-separation Progress
+// anchor so a cached/older Student Dashboard can still route users safely while
+// GitHub Pages assets converge. It is not rendered by the current UI.
+const legacyCompatibilityIds = new Set(['sd2Skills']);
 const missingRefs = new Set();
 for (const file of sourceFiles) {
   const source = fs.readFileSync(file, 'utf8');
@@ -58,7 +62,7 @@ for (const file of sourceFiles) {
     /\$\(\s*['"]([^'"]+)['"]\s*\)/g
   ]) {
     for (const m of source.matchAll(re)) {
-      if (!idSet.has(m[1]) && !dynamicIds.has(m[1])) missingRefs.add(m[1]);
+      if (!idSet.has(m[1]) && !dynamicIds.has(m[1]) && !legacyCompatibilityIds.has(m[1])) missingRefs.add(m[1]);
     }
   }
 }
