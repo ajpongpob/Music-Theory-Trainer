@@ -2,6 +2,7 @@
 'use strict';
 
 const app = window.MajorScaleApp = window.MajorScaleApp || {};
+const PROFILE_NAME_SEPARATOR = '\u001f';
 
 function getClient() {
   if (!app.supabaseClient) {
@@ -9,6 +10,25 @@ function getClient() {
   }
   return app.supabaseClient;
 }
+
+function decodeProfileName(fullName) {
+  const raw = String(fullName || '').trim();
+  if (!raw) return {firstName: null, lastName: null};
+  if (raw.includes(PROFILE_NAME_SEPARATOR)) {
+    const [firstName, ...lastParts] = raw.split(PROFILE_NAME_SEPARATOR);
+    return {
+      firstName: firstName.trim() || null,
+      lastName: lastParts.join(PROFILE_NAME_SEPARATOR).trim() || null
+    };
+  }
+  const match = raw.match(/^(\S+)(?:\s+(.+))?$/u);
+  return {
+    firstName: match?.[1]?.trim() || raw,
+    lastName: match?.[2]?.trim() || null
+  };
+}
+
+const PROFILE_DETAILS_SELECT = 'id,first_name,last_name,nickname,full_name,display_name,student_id,program,avatar_url,role,created_at,updated_at';
 
 const dashboardRepository = {
   getStudentDashboard() {
@@ -53,7 +73,7 @@ const dashboardRepository = {
   getStudentProfile(userId) {
     return getClient()
       .from('profiles')
-      .select('full_name')
+      .select('first_name,last_name,full_name')
       .eq('id', userId)
       .maybeSingle();
   },
@@ -61,25 +81,32 @@ const dashboardRepository = {
   getStudentProfileDetails(userId) {
     return getClient()
       .from('profiles')
-      .select('id,full_name,display_name,student_id,program,year_level,section,avatar_url,role,created_at,updated_at')
+      .select(PROFILE_DETAILS_SELECT)
       .eq('id', userId)
       .maybeSingle();
   },
 
-  updateStudentProfile({userId, fullName, displayName, studentId, program, yearLevel, section, avatarUrl}) {
+  updateStudentProfile({userId, fullName, displayName, studentId, program, avatarUrl}) {
+    const {firstName, lastName} = decodeProfileName(fullName);
     return getClient()
       .from('profiles')
-      .update({full_name: fullName, display_name: displayName, student_id: studentId,
-        program, year_level: yearLevel, section, avatar_url: avatarUrl})
+      .update({
+        first_name: firstName,
+        last_name: lastName,
+        nickname: displayName || null,
+        student_id: studentId,
+        program,
+        avatar_url: avatarUrl
+      })
       .eq('id', userId)
-      .select('id,full_name,display_name,student_id,program,year_level,section,avatar_url,role,created_at,updated_at')
+      .select(PROFILE_DETAILS_SELECT)
       .single();
   },
 
   getTeacherStudentProfile(userId) {
     return getClient()
       .from('profiles')
-      .select('id,full_name,display_name,student_id,program,year_level,section,avatar_url,role,created_at,updated_at')
+      .select(PROFILE_DETAILS_SELECT)
       .eq('id', userId)
       .maybeSingle();
   },
@@ -161,7 +188,7 @@ const dashboardRepository = {
   getTeacherProfile(userId) {
     return getClient()
       .from('profiles')
-      .select('full_name,role')
+      .select('first_name,last_name,full_name,role')
       .eq('id', userId)
       .maybeSingle();
   },
