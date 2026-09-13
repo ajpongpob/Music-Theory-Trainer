@@ -26,6 +26,7 @@ const studentDashboardController = app.studentDashboard;
 const teacherDashboardController = app.teacherDashboard;
 let busy = false, ready = false, revision = 0, activeUser = null;
 const PASSWORD_RESET_REDIRECT = 'https://ajpongpob.github.io/Music-Theory-Trainer/?mode=reset-password';
+const OAUTH_DEFAULT_REDIRECT = 'https://ajpongpob.github.io/Music-Theory-Trainer/';
 const passwordRecoveryIntentFromUrl = (() => {
   try{
     const url=new URL(window.location.href);
@@ -43,6 +44,7 @@ function message(id, text = '', error = false) {
 function controls() {
   [
     'loginButton','registerButton','showLoginButton','showRegisterButton',
+    'googleLoginButton','googleRegisterButton',
     'showForgotPasswordButton','forgotPasswordButton','showLoginFromForgotButton',
     'resetPasswordButton','cancelResetPasswordButton',
     'logoutButton','dashboardLogoutButton','teacherDashboardLogoutButton',
@@ -51,6 +53,70 @@ function controls() {
     const control=$(id);
     if(control) control.disabled = busy || !ready;
   });
+}
+function oauthRedirectUrl(){
+  try{
+    const url=new URL(window.location.href);
+    url.search='';
+    url.hash='';
+    return url.href;
+  }catch(_error){
+    return OAUTH_DEFAULT_REDIRECT;
+  }
+}
+function authRedirectErrorFromUrl(){
+  try{
+    const url=new URL(window.location.href);
+    const hashParams=new URLSearchParams((url.hash || '').replace(/^#/,''));
+    const code=url.searchParams.get('error_code') || hashParams.get('error_code') || url.searchParams.get('error') || hashParams.get('error');
+    if(!code) return '';
+    return url.searchParams.get('error_description') || hashParams.get('error_description') || code;
+  }catch(_error){
+    return '';
+  }
+}
+function ensureGoogleAuthControls(){
+  if(typeof document==='undefined' || typeof document.createElement!=='function') return;
+  if(!document.querySelector('style[data-google-auth-style]')){
+    const style=document.createElement('style');
+    style.setAttribute('data-google-auth-style','true');
+    style.textContent=`
+      .auth-oauth-block{margin-top:14px}
+      .auth-oauth-divider{display:flex;align-items:center;gap:10px;margin:2px 0 10px;color:#64748b;font-size:.82rem}
+      .auth-oauth-divider::before,.auth-oauth-divider::after{content:"";height:1px;background:#d7dee8;flex:1}
+      .auth-google-button{width:100%;min-height:44px;display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;color:#1f2937;font:inherit;font-weight:700;cursor:pointer;box-shadow:0 1px 2px rgba(15,23,42,.05)}
+      .auth-google-button:hover:not(:disabled){background:#f8fafc;border-color:#94a3b8}
+      .auth-google-button:focus-visible{outline:3px solid rgba(37,99,235,.28);outline-offset:2px}
+      .auth-google-button:disabled{opacity:.55;cursor:not-allowed}
+      .auth-google-mark{display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;border-radius:50%;font-weight:800;color:#2563eb;background:#eff6ff}
+    `;
+    document.head?.appendChild(style);
+  }
+
+  const configs=[
+    {panel:'loginPanel',anchor:'loginButton',id:'googleLoginButton',label:'เข้าสู่ระบบด้วย Google',messageId:'loginMessage'},
+    {panel:'registerPanel',anchor:'registerButton',id:'googleRegisterButton',label:'สมัครหรือเข้าสู่ระบบด้วย Google',messageId:'registerMessage'}
+  ];
+  for(const config of configs){
+    if($(config.id)) continue;
+    const panel=$(config.panel), anchor=$(config.anchor);
+    if(!panel || !anchor) continue;
+    const block=document.createElement('div');
+    block.className='auth-oauth-block';
+    const divider=document.createElement('div');
+    divider.className='auth-oauth-divider';
+    divider.textContent='หรือ';
+    const button=document.createElement('button');
+    button.id=config.id;
+    button.type='button';
+    button.className='auth-google-button';
+    button.setAttribute('aria-label',config.label);
+    button.innerHTML='<span class="auth-google-mark" aria-hidden="true">G</span><span></span>';
+    button.lastElementChild.textContent=config.label;
+    button.addEventListener('click',()=>signInWithGoogle(config.messageId));
+    block.append(divider,button);
+    anchor.insertAdjacentElement('afterend',block);
+  }
 }
 function showAuthPanel(name) {
   const panels={
@@ -190,6 +256,19 @@ $('showLoginButton').addEventListener('click', () => panel(false));
 $('showForgotPasswordButton').addEventListener('click', showForgotPasswordPanel);
 $('showLoginFromForgotButton').addEventListener('click', () => panel(false));
 
+async function signInWithGoogle(messageId='loginMessage'){
+  if(busy || !ready) return;
+  busy=true; controls();
+  message(messageId,'กำลังเชื่อมต่อกับ Google...');
+  try{
+    const {error}=await authRepository.signInWithGoogle({redirectTo:oauthRedirectUrl()});
+    if(error) throw error;
+  }catch(error){
+    busy=false; controls();
+    message(messageId,'เข้าสู่ระบบด้วย Google ไม่สำเร็จ: '+(error.message || 'กรุณาลองใหม่'),true);
+  }
+}
+
 async function sendPasswordResetEmail(){
   if(busy || !ready) return;
   const email=$('forgotEmail').value.trim();
@@ -321,6 +400,7 @@ $('logoutButton').addEventListener('click', async () => {
   finally { busy = false; controls(); }
 });
 async function initializeAuth() {
+  ensureGoogleAuthControls();
   controls(); message('loginMessage','กำลังตรวจสอบการเข้าสู่ระบบ...');
   try {
     if (!client || !authRepository) {
@@ -351,6 +431,10 @@ async function initializeAuth() {
       sessionView(data.session);
     }
     ready = true;
+    if(!data.session){
+      const redirectError=authRedirectErrorFromUrl();
+      if(redirectError) message('loginMessage','เข้าสู่ระบบด้วย Google ไม่สำเร็จ: '+redirectError,true);
+    }
   } catch (error) {
     sessionView(null);
     ready = !!client;
