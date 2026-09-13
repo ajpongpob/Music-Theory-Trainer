@@ -146,6 +146,36 @@ const dashboardRepository = {
     });
   },
 
+  async getTeacherClassDashboards(classIds=[]) {
+    const ids=[...new Set((classIds || []).filter(Boolean))];
+    try {
+      const results=await Promise.all(ids.map(async classId=>{
+        const result=await this.getTeacherClassDashboard(classId);
+        if(result.error) throw result.error;
+        return {classId,data:Array.isArray(result.data) ? result.data : []};
+      }));
+      return {data:results,error:null};
+    } catch(error) {
+      return {data:null,error};
+    }
+  },
+
+  createTeacherClass({code,name,academicYear=null,term=null}) {
+    return getClient().rpc('create_my_class', {
+      p_code: code,
+      p_name: name,
+      p_academic_year: academicYear,
+      p_term: term
+    });
+  },
+
+  addStudentToTeacherClass({classId,email}) {
+    return getClient().rpc('add_student_to_my_class', {
+      p_class_id: classId,
+      p_student_email: email
+    });
+  },
+
   async getTeacherClassLearningFeedback(classId) {
     const result = await this.getTeacherClassDashboard(classId);
     if (result.error) return result;
@@ -189,6 +219,7 @@ function loadOptionalStylesheet(href, dataAttribute) {
 if (typeof window.addEventListener === 'function' && typeof document !== 'undefined') {
   window.addEventListener('load', () => {
     loadOptionalStylesheet('./styles/student-dashboard-v2.css?v=20260913-dashboard-v2-fix2', 'data-student-dashboard-v2-style');
+    loadOptionalStylesheet('./styles/teacher-dashboard-v2.css?v=20260913-teacher-v2', 'data-teacher-dashboard-v2-style');
     const dashboardV2 = loadOptionalScript('./src/dashboard/student-dashboard-v2.js?v=20260913-dashboard-v2-fix2', 'data-student-dashboard-v2');
     const loadDashboardCompat = () => loadOptionalScript('./src/dashboard/student-dashboard-v2-compat.js?v=20260913-dashboard-v2-fix2', 'data-student-dashboard-v2-compat');
     if (dashboardV2) dashboardV2.addEventListener('load', loadDashboardCompat, {once:true});
