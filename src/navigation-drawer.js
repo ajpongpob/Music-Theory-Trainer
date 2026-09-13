@@ -99,7 +99,7 @@ function createDrawer(){
 
 function ensureShell(){
   if(!$('appNavigationScrim')) createDrawer();
-  if(!$('appNavigationMenuButton')) createMenuButton();
+  if(!$('appNavigationMenuButton')) document.body.appendChild(createMenuButton());
 }
 
 function menuButton(){
