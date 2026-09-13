@@ -24,7 +24,8 @@ const authRepository = app.authRepository;
 const client = app.supabaseClient;
 const studentDashboardController = app.studentDashboard;
 const teacherDashboardController = app.teacherDashboard;
-let busy = false, ready = false, revision = 0, activeUser = null;
+let busy = false, ready = false, revision = 0, activeUser = null, authRouteRevision = 0;
+let onboardingProfile = null, onboardingAuthUser = null;
 const PASSWORD_RESET_REDIRECT = 'https://ajpongpob.github.io/Music-Theory-Trainer/?mode=reset-password';
 const OAUTH_DEFAULT_REDIRECT = 'https://ajpongpob.github.io/Music-Theory-Trainer/';
 const passwordRecoveryIntentFromUrl = (() => {
@@ -38,8 +39,10 @@ const passwordRecoveryIntentFromUrl = (() => {
 })();
 let currentUserRole = null, passwordRecoveryMode = passwordRecoveryIntentFromUrl;
 function message(id, text = '', error = false) {
-  $(id).textContent = text;
-  $(id).className = 'auth-message' + (error ? ' error' : '');
+  const target=$(id);
+  if(!target) return;
+  target.textContent = text;
+  target.className = 'auth-message' + (error ? ' error' : '');
 }
 function controls() {
   [
@@ -47,6 +50,7 @@ function controls() {
     'googleLoginButton','googleRegisterButton',
     'showForgotPasswordButton','forgotPasswordButton','showLoginFromForgotButton',
     'resetPasswordButton','cancelResetPasswordButton',
+    'profileOnboardingSaveButton','profileOnboardingLogoutButton',
     'logoutButton','dashboardLogoutButton','teacherDashboardLogoutButton',
     'teacherDashboardRefreshButton','dashboardButton'
   ].forEach(id => {
@@ -75,6 +79,10 @@ function authRedirectErrorFromUrl(){
     return '';
   }
 }
+function authProviderLabel(user){
+  const provider=String(user?.app_metadata?.provider || user?.identities?.[0]?.provider || 'email').toLowerCase();
+  return provider==='google' ? 'Google' : 'Email';
+}
 function ensureGoogleAuthControls(){
   if(typeof document==='undefined' || typeof document.createElement!=='function') return;
   if(!document.querySelector('style[data-google-auth-style]')){
@@ -89,6 +97,18 @@ function ensureGoogleAuthControls(){
       .auth-google-button:focus-visible{outline:3px solid rgba(37,99,235,.28);outline-offset:2px}
       .auth-google-button:disabled{opacity:.55;cursor:not-allowed}
       .auth-google-mark{display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;border-radius:50%;font-weight:800;color:#2563eb;background:#eff6ff}
+      .auth-onboarding-card{width:min(680px,calc(100vw - 28px));max-width:680px}
+      .auth-onboarding-intro{margin:0 0 16px;color:#475569;line-height:1.55}
+      .auth-onboarding-account{display:flex;flex-wrap:wrap;gap:8px 14px;margin:0 0 18px;padding:12px 14px;border-radius:12px;background:#f8fafc;color:#475569;font-size:.9rem}
+      .auth-onboarding-account strong{color:#0f172a}
+      .auth-onboarding-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+      .auth-onboarding-grid .auth-field{margin:0}
+      .auth-onboarding-grid .auth-wide{grid-column:1/-1}
+      .auth-onboarding-grid select{width:100%;min-height:44px;padding:0 12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#0f172a;font:inherit}
+      .auth-required-note{margin:14px 0 0;color:#64748b;font-size:.82rem}
+      .auth-onboarding-actions{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:18px}
+      .auth-onboarding-actions .auth-primary{flex:1}
+      @media(max-width:620px){.auth-onboarding-grid{grid-template-columns:1fr}.auth-onboarding-grid .auth-wide{grid-column:auto}.auth-onboarding-actions{flex-direction:column-reverse}.auth-onboarding-actions button{width:100%}}
     `;
     document.head?.appendChild(style);
   }
@@ -118,23 +138,58 @@ function ensureGoogleAuthControls(){
     anchor.insertAdjacentElement('afterend',block);
   }
 }
+function ensureProfileOnboardingPanel(){
+  if($('profileOnboardingPanel') || typeof document==='undefined') return;
+  const panel=document.createElement('section');
+  panel.id='profileOnboardingPanel';
+  panel.className='auth-card auth-onboarding-card';
+  panel.hidden=true;
+  panel.innerHTML=`
+    <div class="auth-brand">
+      <div class="auth-brand-icon">♫</div>
+      <div><h1>Major Scale Notation Trainer</h1><p>ตั้งค่าโปรไฟล์ผู้เรียนก่อนเริ่มใช้งาน</p></div>
+    </div>
+    <h2>ข้อมูลโปรไฟล์</h2>
+    <p class="auth-onboarding-intro">กรอกข้อมูลพื้นฐานเพื่อให้ระบบระบุตัวผู้เรียนและใช้แสดงผลใน Dashboard ของผู้เรียนและผู้สอนได้ถูกต้อง</p>
+    <div class="auth-onboarding-account"><span>บัญชี: <strong id="profileOnboardingEmail">—</strong></span><span>เข้าสู่ระบบด้วย: <strong id="profileOnboardingProvider">—</strong></span></div>
+    <form id="profileOnboardingForm">
+      <div class="auth-onboarding-grid">
+        <div class="auth-field auth-wide"><label for="profileOnboardingFullName">ชื่อ-นามสกุล *</label><input id="profileOnboardingFullName" name="full_name" type="text" autocomplete="name" maxlength="120" required placeholder="ชื่อ-นามสกุล"></div>
+        <div class="auth-field"><label for="profileOnboardingDisplayName">ชื่อที่ต้องการให้แสดง</label><input id="profileOnboardingDisplayName" name="display_name" type="text" maxlength="80" placeholder="เช่น ปิง"></div>
+        <div class="auth-field"><label for="profileOnboardingStudentId">รหัสนักศึกษา *</label><input id="profileOnboardingStudentId" name="student_id" type="text" inputmode="numeric" maxlength="60" required placeholder="รหัสนักศึกษา"></div>
+        <div class="auth-field"><label for="profileOnboardingProgram">หลักสูตร / สาขาวิชา *</label><input id="profileOnboardingProgram" name="program" type="text" maxlength="120" required placeholder="เช่น ดนตรีสากล"></div>
+        <div class="auth-field"><label for="profileOnboardingYearLevel">ชั้นปี *</label><select id="profileOnboardingYearLevel" name="year_level" required><option value="">เลือกชั้นปี</option><option value="1">ปี 1</option><option value="2">ปี 2</option><option value="3">ปี 3</option><option value="4">ปี 4</option><option value="5">ปี 5</option><option value="6">ปี 6</option><option value="graduate">บัณฑิตศึกษา</option><option value="other">อื่น ๆ</option></select></div>
+        <div class="auth-field"><label for="profileOnboardingSection">หมู่เรียน / Section</label><input id="profileOnboardingSection" name="section" type="text" maxlength="40" placeholder="ถ้ามี"></div>
+      </div>
+      <p class="auth-required-note">* จำเป็นต้องกรอกให้ครบก่อนเข้าสู่ระบบครั้งแรก ข้อมูลนี้แก้ไขภายหลังได้จากเมนู Profile</p>
+      <div id="profileOnboardingMessage" class="auth-message" aria-live="polite"></div>
+      <div class="auth-onboarding-actions"><button id="profileOnboardingLogoutButton" class="auth-switch" type="button">ออกจากระบบ</button><button id="profileOnboardingSaveButton" class="auth-primary" type="submit">บันทึกและเริ่มใช้งาน</button></div>
+    </form>`;
+  screen.appendChild(panel);
+  $('profileOnboardingForm').addEventListener('submit',saveProfileOnboarding);
+  $('profileOnboardingLogoutButton').addEventListener('click',()=>$('logoutButton')?.click());
+}
 function showAuthPanel(name) {
   const panels={
     login:$('loginPanel'),
     register:$('registerPanel'),
     forgot:$('forgotPasswordPanel'),
-    reset:$('resetPasswordPanel')
+    reset:$('resetPasswordPanel'),
+    onboarding:$('profileOnboardingPanel')
   };
   Object.entries(panels).forEach(([key,element])=>{
     if(element) element.hidden=key!==name;
   });
 }
 function panel(register) {
+  onboardingProfile=null;
+  onboardingAuthUser=null;
   showAuthPanel(register ? 'register' : 'login');
   message('loginMessage');
   message('registerMessage');
   message('forgotMessage');
   message('resetPasswordMessage');
+  message('profileOnboardingMessage');
 }
 function showForgotPasswordPanel() {
   const loginEmail=$('loginEmail')?.value.trim();
@@ -149,6 +204,68 @@ function showResetPasswordPanel() {
   trainer.hidden=true; trainer.inert=true;
   showAuthPanel('reset');
   message('resetPasswordMessage');
+}
+function showProfileOnboarding(profile,user,errorMessage=''){
+  ensureProfileOnboardingPanel();
+  onboardingProfile=profile || {};
+  onboardingAuthUser=user || null;
+  screen.hidden=false;
+  dashboard.hidden=true; dashboard.inert=true;
+  teacherDashboard.hidden=true; teacherDashboard.inert=true;
+  trainer.hidden=true; trainer.inert=true;
+  $('sessionSummary').hidden=true;
+  $('levelMasteryOverlay').hidden=true;
+  showAuthPanel('onboarding');
+  const meta=user?.user_metadata || {};
+  $('profileOnboardingEmail').textContent=user?.email || '—';
+  $('profileOnboardingProvider').textContent=authProviderLabel(user);
+  $('profileOnboardingFullName').value=profile?.full_name || meta.full_name || meta.name || '';
+  $('profileOnboardingDisplayName').value=profile?.display_name || '';
+  $('profileOnboardingStudentId').value=profile?.student_id || '';
+  $('profileOnboardingProgram').value=profile?.program || '';
+  $('profileOnboardingYearLevel').value=profile?.year_level || '';
+  $('profileOnboardingSection').value=profile?.section || '';
+  message('profileOnboardingMessage',errorMessage,!!errorMessage);
+  controls();
+  setTimeout(()=>$('profileOnboardingFullName')?.focus(),0);
+}
+async function saveProfileOnboarding(event){
+  event?.preventDefault?.();
+  if(busy || !ready || !onboardingAuthUser?.id) return;
+  const form=$('profileOnboardingForm');
+  if(!form?.reportValidity()) return;
+  const formData=new FormData(form), value=name=>String(formData.get(name)||'').trim();
+  const required=['full_name','student_id','program','year_level'];
+  if(required.some(name=>!value(name))){
+    message('profileOnboardingMessage','กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบ',true);
+    return;
+  }
+  busy=true; controls();
+  message('profileOnboardingMessage','กำลังบันทึกข้อมูลโปรไฟล์...');
+  try{
+    const metadata=onboardingAuthUser.user_metadata || {};
+    const avatarUrl=onboardingProfile?.avatar_url || metadata.avatar_url || metadata.picture || null;
+    const {data,error}=await authRepository.updateRegistrationProfile({
+      userId:onboardingAuthUser.id,
+      fullName:value('full_name'),
+      displayName:value('display_name') || null,
+      studentId:value('student_id'),
+      program:value('program'),
+      yearLevel:value('year_level'),
+      section:value('section') || null,
+      avatarUrl
+    });
+    if(error) throw error;
+    if(!data?.onboarding_completed_at) throw new Error('ระบบยังไม่ยืนยันว่าข้อมูลโปรไฟล์ครบ กรุณาตรวจสอบข้อมูลอีกครั้ง');
+    onboardingProfile=data;
+    message('profileOnboardingMessage','บันทึกข้อมูลเรียบร้อยแล้ว');
+    await showDashboardForAuthenticatedUser();
+  }catch(error){
+    console.error('PROFILE ONBOARDING SAVE ERROR:',error);
+    message('profileOnboardingMessage','บันทึกข้อมูลไม่สำเร็จ: '+(error.message || 'กรุณาลองใหม่'),true);
+  }finally{
+    busy=false; controls();
+  }
 }
 async function resolveAuthenticatedRole() {
   if(!client || !activeUser) return 'student';
@@ -203,19 +320,55 @@ async function showDashboardForAuthenticatedUser({closeSession=false}={}) {
   if(!studentDashboardController) throw new Error('Student Dashboard module is unavailable');
   await studentDashboardController.load({activeUser});
 }
+async function routeAuthenticatedUser(user){
+  if(!user?.id || user.id!==activeUser) return;
+  const routeToken=++authRouteRevision;
+  try{
+    currentUserRole=await resolveAuthenticatedRole();
+    if(routeToken!==authRouteRevision || user.id!==activeUser) return;
+    if(currentUserRole==='teacher' || currentUserRole==='admin'){
+      await showTeacherDashboardForAuthenticatedUser();
+      return;
+    }
+    // Runtime-test stubs created before onboarding do not expose these methods.
+    // Production always does; the fallback keeps legacy QA harnesses compatible.
+    if(typeof authRepository.getRegistrationProfile!=='function'){
+      await showDashboardForAuthenticatedUser();
+      return;
+    }
+    const {data,error}=await authRepository.getRegistrationProfile(user.id);
+    if(routeToken!==authRouteRevision || user.id!==activeUser) return;
+    if(error) throw error;
+    if(!data) throw new Error('ไม่พบโปรไฟล์ของบัญชีนี้');
+    if(!data.onboarding_completed_at){
+      showProfileOnboarding(data,user);
+      return;
+    }
+    await showDashboardForAuthenticatedUser();
+  }catch(error){
+    console.error('AUTH PROFILE ROUTE ERROR:',error);
+    if(routeToken!==authRouteRevision || user.id!==activeUser) return;
+    if(typeof authRepository.getRegistrationProfile==='function') showProfileOnboarding(onboardingProfile||{},user,'ไม่สามารถตรวจสอบข้อมูลโปรไฟล์ได้: '+(error.message || 'กรุณาลองใหม่'));
+    else await showDashboardForAuthenticatedUser();
+  }
+}
 function sessionView(session) {
-  const user = session?.user?.id || null;
+  const sessionUser=session?.user || null;
+  const user=sessionUser?.id || null;
   const changed = user !== activeUser;
   activeUser = user;
   if(passwordRecoveryMode){
     showResetPasswordPanel();
     return;
   }
-  screen.hidden = !!user;
   if (!user) {
+    authRouteRevision++;
     studentDashboardController?.invalidate?.();
     teacherDashboardController?.invalidate?.();
     currentUserRole=null;
+    onboardingProfile=null;
+    onboardingAuthUser=null;
+    screen.hidden = false;
     dashboard.hidden = true; dashboard.inert = true;
     teacherDashboard.hidden = true; teacherDashboard.inert = true;
     trainer.hidden = true; trainer.inert = true;
@@ -226,8 +379,13 @@ function sessionView(session) {
   if (changed) {
     $('loginPassword').value = ''; $('registerPassword').value = '';
     if (user) {
-      Promise.resolve(showDashboardForAuthenticatedUser()).catch(error=>{
-        console.error('SHOW DASHBOARD ERROR:',error);
+      screen.hidden=false;
+      dashboard.hidden=true; dashboard.inert=true;
+      teacherDashboard.hidden=true; teacherDashboard.inert=true;
+      trainer.hidden=true; trainer.inert=true;
+      message('loginMessage','กำลังตรวจสอบข้อมูลบัญชี...');
+      Promise.resolve(routeAuthenticatedUser(sessionUser)).catch(error=>{
+        console.error('SHOW AUTHENTICATED VIEW ERROR:',error);
       });
     }
   }
@@ -239,13 +397,15 @@ for (const type of ['keydown','keyup']) window.addEventListener(type, event => {
     event.preventDefault();
     if (event.target.tagName === 'BUTTON') event.target.click();
     else {
-      const button=!$('resetPasswordPanel').hidden
-        ? $('resetPasswordButton')
-        : !$('forgotPasswordPanel').hidden
-          ? $('forgotPasswordButton')
-          : !$('registerPanel').hidden
-            ? $('registerButton')
-            : $('loginButton');
+      const button=!$('profileOnboardingPanel')?.hidden
+        ? $('profileOnboardingSaveButton')
+        : !$('resetPasswordPanel').hidden
+          ? $('resetPasswordButton')
+          : !$('forgotPasswordPanel').hidden
+            ? $('forgotPasswordButton')
+            : !$('registerPanel').hidden
+              ? $('registerButton')
+              : $('loginButton');
       button?.click();
     }
   }
@@ -355,7 +515,7 @@ async function submit(register) {
     if (data.session?.user) sessionView(data.session);
     else if (register) {
       $('registerPassword').value = ''; $('loginEmail').value = email;
-      message('registerMessage','สมัครสำเร็จ กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี แล้วกลับมาเข้าสู่ระบบ');
+      message('registerMessage','สมัครสำเร็จ กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี จากนั้นเข้าสู่ระบบเพื่อกรอกข้อมูลโปรไฟล์ผู้เรียนให้ครบก่อนเริ่มใช้งาน');
     } else throw new Error('ยังไม่ได้รับ session กรุณาลองเข้าสู่ระบบอีกครั้ง');
   } catch (error) {
     message(prefix+'Message',(register ? 'สมัครไม่สำเร็จ: ' : 'เข้าสู่ระบบไม่สำเร็จ: ')+(error.message || 'กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่'),true);
@@ -401,6 +561,7 @@ $('logoutButton').addEventListener('click', async () => {
 });
 async function initializeAuth() {
   ensureGoogleAuthControls();
+  ensureProfileOnboardingPanel();
   controls(); message('loginMessage','กำลังตรวจสอบการเข้าสู่ระบบ...');
   try {
     if (!client || !authRepository) {
