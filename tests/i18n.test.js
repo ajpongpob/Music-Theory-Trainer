@@ -6,7 +6,7 @@ const assert=require('assert');
 const ROOT=path.resolve(__dirname,'..');
 const read=rel=>fs.readFileSync(path.join(ROOT,rel),'utf8');
 const i18n=read('src/i18n.js');
-const keyboard=read('src/keyboard.js');
+const authRepository=read('src/data/auth.repository.js');
 
 assert(i18n.includes("const STORAGE_KEY='major-scale-trainer.language'"),'language preference must use a stable localStorage key');
 assert(i18n.includes("const DEFAULT_LANGUAGE='th'"),'Thai must remain the default language');
@@ -19,7 +19,7 @@ assert(i18n.includes("major-scale:languagechange"),'language changes must publis
 assert(i18n.includes("['ภาพรวมความก้าวหน้าทั้งระบบ','Overall learning progress']"),'Progress heading must have a bilingual pair');
 assert(i18n.includes("['ชื่อเล่น','Nickname']"),'Profile fields must have bilingual pairs');
 assert(i18n.includes("['ตรวจคำตอบ','Check answer']"),'Practice controls must have bilingual pairs');
-assert(keyboard.includes("script.src='./src/i18n.js?v=20260913-1'"),'production runtime must load the shared i18n layer');
+assert(authRepository.includes("script.src = './src/i18n.js?v=20260913-1'"),'production runtime must load the shared i18n layer from an existing bootstrap surface');
 assert(!/service_role/i.test(i18n),'language layer must not contain backend secrets');
 
 console.log('PASS i18n contract: Thai/English selector, persistence, dynamic UI translation, semantic coverage and secret boundary');
