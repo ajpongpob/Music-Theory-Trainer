@@ -228,7 +228,7 @@ function renderLearningPath(vm){
   target.innerHTML=vm.path.stages.length?vm.path.stages.map(stage=>{
     const state=stageState(stage,vm.path.current),current=(stage.stage_id||stage.stage_code)===(vm.currentStage?.stage_id||vm.currentStage?.stage_code);
     const score=current?vm.stageMastery:(stage.last_mastery_score==null?null:Number(stage.last_mastery_score));
-    return `<li class="sd2-stage ${state.cls}"${state.status==='current'?' aria-current="step"':''}><div class="sd2-stage-icon" aria-hidden="true">${state.icon}</div><div><div class="sd2-stage-title">Stage ${stage.ordinal} — ${escapeHtml(stage.stage_name||stage.stage_code||'')}</div><div class="sd2-stage-meta">${escapeHtml(stage.exercise_name||stage.exercise_code||'')}</div></div><div><span class="sd2-status ${state.status}">${state.label}</span>${Number.isFinite(score)?`<div class="sd2-stage-score">${percentText(score)}</div>`:''}</div></li>`;
+    return `<li class="sd2-stage ${state.cls}"${state.status==='current'?' aria-current="step"':''}><div class="sd2-stage-icon" aria-hidden="true">${state.icon}</div><div><div class="sd2-stage-title">${escapeHtml(stage.stage_name||stage.stage_code||`Stage ${stage.ordinal}`)}</div><div class="sd2-stage-meta">${escapeHtml(stage.exercise_name||stage.exercise_code||'')}</div></div><div><span class="sd2-status ${state.status}">${state.label}</span>${Number.isFinite(score)?`<div class="sd2-stage-score">${percentText(score)}</div>`:''}</div></li>`;
   }).join(''):'<li class="sd2-empty">ยังไม่มี Stage ใน Learning Path นี้</li>';
 }
 

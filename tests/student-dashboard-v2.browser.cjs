@@ -52,7 +52,7 @@ function learningHistory(){
     page.on('pageerror',error=>errors.push(error.message));
     page.on('console',message=>{if(message.type()==='error') errors.push(message.text());});
 
-    await page.setContent(`<!doctype html><html lang="th"><body>
+    await page.setContent(`<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>
       <section id="studentDashboard" class="student-dashboard-shell">
         <div class="student-dashboard-inner">
           <header class="student-dashboard-header">
@@ -158,7 +158,7 @@ function learningHistory(){
         await window.MajorScaleApp.studentDashboardV2.refresh();
       },statuses);
       assert.equal(await page.locator('#sd2StageList [aria-current="step"]').count(),statuses.includes('in_progress')?1:0);
-      if(statuses.includes('available'))assert.equal(await page.locator('#sd2StageList .upcoming').count(),1);
+      if(statuses.includes('available'))assert.equal(await page.locator('#sd2StageList > li.upcoming').count(),1);
       if(statuses.includes('in_progress'))assert.equal(await page.locator('#sd2StageList [aria-current="step"] .sd2-stage-icon').textContent(),'3');
     }
     assert.deepEqual(errors,[]);
