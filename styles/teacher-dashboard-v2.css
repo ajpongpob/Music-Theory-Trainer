@@ -94,3 +94,5 @@
   .teacher-student-table td::before{content:attr(data-label);display:block;color:#667085;font-size:.6rem;text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px}
   .teacher-detail-stat-grid{grid-template-columns:1fr 1fr}
 }
+ .teacher-profile-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0}.teacher-profile-list div{padding:8px;border-radius:8px;background:#f7f9fc}.teacher-profile-list dt{font-size:.68rem;color:#667085}.teacher-profile-list dd{margin:3px 0 0;font-size:.78rem;font-weight:750;color:#172033;overflow-wrap:anywhere}
+@media(max-width:600px){.teacher-profile-list{grid-template-columns:1fr}}

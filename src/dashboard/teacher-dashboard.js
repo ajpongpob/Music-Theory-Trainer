@@ -25,6 +25,7 @@ let teacherDashboardSummaryRows=[];
 let teacherClassData=[];
 let selectedScope=null;
 let selectedStudentKey=null;
+let selectedStudentProfile=null;
 let filters={search:'',stage:'all',status:'all'};
 let sortState={key:'name',dir:'asc'};
 let panelState={createClass:false,addStudent:false,busy:false,message:'',error:false};
@@ -392,6 +393,9 @@ function detailHtml(student){
     }).join('');
     return '<div class="teacher-detail-path"><strong>' + escapeHtml(path.name || path.code) + '</strong><span class="teacher-learning-pill ' + escapeHtml(status.className) + '">' + escapeHtml(status.label) + '</span>' + exercises + '</div>';
   }).join('');
+  const profile=selectedStudentProfile;
+  const profileHtml='<article class="teacher-detail-card teacher-profile-summary"><h4>Profile</h4>'+
+    (profile ? '<dl class="teacher-profile-list"><div><dt>ชื่อเต็ม</dt><dd>'+escapeHtml(profile.full_name || '—')+'</dd></div><div><dt>ชื่อที่แสดง</dt><dd>'+escapeHtml(profile.display_name || '—')+'</dd></div><div><dt>รหัสนักเรียน</dt><dd>'+escapeHtml(profile.student_id || '—')+'</dd></div><div><dt>หลักสูตร / ชั้นปี</dt><dd>'+escapeHtml([profile.program,profile.year_level].filter(Boolean).join(' · ') || '—')+'</dd></div><div><dt>Section</dt><dd>'+escapeHtml(profile.section || '—')+'</dd></div><div><dt>Role</dt><dd>'+escapeHtml(profile.role || 'student')+'</dd></div></dl>' : '<div class="teacher-empty">กำลังโหลดข้อมูลโปรไฟล์ที่ได้รับอนุญาต…</div>')+'</article>';
   return '<section class="teacher-student-detail" aria-label="รายละเอียดผู้เรียน">' +
     '<div class="teacher-detail-head"><div><h3>' + escapeHtml(student.name) + '</h3><div class="teacher-detail-meta">' + escapeHtml(student.classCode + ' · ' + student.className) + '</div></div><button type="button" class="btn small" data-teacher-action="close-student-detail">ปิดรายละเอียด</button></div>' +
     '<div class="teacher-detail-stat-grid" style="margin-top:12px">' +
@@ -399,7 +403,7 @@ function detailHtml(student){
       '<div class="teacher-detail-stat"><strong>' + student.sessions + '</strong><span>Practice Sessions</span></div>' +
       '<div class="teacher-detail-stat"><strong>' + student.attempts + '</strong><span>Attempts</span></div>' +
     '</div>' +
-    '<div class="teacher-detail-grid"><article class="teacher-detail-card"><h4>Skill Performance</h4>' + skills + '</article><article class="teacher-detail-card"><h4>Learning Progress</h4>' + (paths || '<div class="teacher-empty">ยังไม่มี Learning Path progress</div>') + '</article></div>' +
+    '<div class="teacher-detail-grid">'+profileHtml+'<article class="teacher-detail-card"><h4>Skill Performance</h4>' + skills + '</article><article class="teacher-detail-card"><h4>Learning Progress</h4>' + (paths || '<div class="teacher-empty">ยังไม่มี Learning Path progress</div>') + '</article></div>' +
   '</section>';
 }
 
@@ -609,7 +613,14 @@ dashboard?.addEventListener('click',event=>{
   const studentTarget=event.target.closest?.('[data-teacher-student]');
   if(studentTarget){
     selectedStudentKey=studentTarget.dataset.teacherStudent;
+    selectedStudentProfile=null;
     renderStudents(buildStudentRecords());
+    const student=buildStudentRecords().find(row=>row.key===selectedStudentKey);
+    if(student) dashboardRepository.getTeacherStudentProfile(student.id).then(result=>{
+      if(selectedStudentKey!==student.key)return;
+      if(!result.error) selectedStudentProfile=result.data;
+      renderStudents(buildStudentRecords());
+    }).catch(error=>console.warn('LOAD TEACHER STUDENT PROFILE:',error));
     return;
   }
   const action=event.target.closest?.('[data-teacher-action]');
@@ -621,7 +632,7 @@ dashboard?.addEventListener('click',event=>{
     if(selectedScope===ALL_CLASSES) return;
     panelState.addStudent=!panelState.addStudent; panelState.createClass=false; resetPanelMessage(); renderAll();
   }else if(name==='close-student-detail'){
-    selectedStudentKey=null; renderStudents(buildStudentRecords());
+    selectedStudentKey=null; selectedStudentProfile=null; renderStudents(buildStudentRecords());
   }else if(name==='launch-demo'){
     launchTeacherDemo(action).catch(error=>console.error('TEACHER DEMO ERROR:',error));
   }
@@ -672,6 +683,7 @@ app.teacherDashboard=Object.freeze({
     teacherClassData=[];
     selectedScope=null;
     selectedStudentKey=null;
+    selectedStudentProfile=null;
     filters={search:'',stage:'all',status:'all'};
     sortState={key:'name',dir:'asc'};
     panelState={createClass:false,addStudent:false,busy:false,message:'',error:false};

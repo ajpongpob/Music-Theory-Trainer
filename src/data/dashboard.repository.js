@@ -53,7 +53,25 @@ const dashboardRepository = {
   getStudentProfile(userId) {
     return getClient()
       .from('profiles')
-      .select('full_name')
+      .select('id,full_name,display_name,student_id,program,year_level,section,avatar_url,role,created_at,updated_at')
+      .eq('id', userId)
+      .maybeSingle();
+  },
+
+  updateStudentProfile({userId, fullName, displayName, studentId, program, yearLevel, section, avatarUrl}) {
+    return getClient()
+      .from('profiles')
+      .update({full_name: fullName, display_name: displayName, student_id: studentId,
+        program, year_level: yearLevel, section, avatar_url: avatarUrl})
+      .eq('id', userId)
+      .select('id,full_name,display_name,student_id,program,year_level,section,avatar_url,role,created_at,updated_at')
+      .single();
+  },
+
+  getTeacherStudentProfile(userId) {
+    return getClient()
+      .from('profiles')
+      .select('id,full_name,display_name,student_id,program,year_level,section,avatar_url,role,created_at,updated_at')
       .eq('id', userId)
       .maybeSingle();
   },

@@ -186,6 +186,13 @@
 .sd2-profile-panel{display:none;margin:0 0 16px;padding:14px;border:1px solid var(--sd2-line);border-radius:14px;background:#fff;box-shadow:var(--sd2-shadow);}
 .sd2-profile-panel.is-open{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .sd2-profile-panel strong{display:block;font-size:.9rem;}.sd2-profile-panel span{display:block;margin-top:2px;color:var(--sd2-muted);font-size:.72rem;}
+.sd2-profile-panel.is-open{display:block;}
+.sd2-profile-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px;}
+.sd2-profile-head h2{margin:4px 0 3px;color:var(--sd2-ink);}.sd2-profile-head p{margin:0;color:var(--sd2-muted);font-size:.78rem;}
+.sd2-profile-form{display:grid;gap:14px;}.sd2-profile-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.sd2-profile-form label{display:grid;gap:5px;color:var(--sd2-ink);font-size:.78rem;font-weight:750;}.sd2-profile-form input{width:100%;box-sizing:border-box;min-height:42px;padding:8px 10px;border:1px solid var(--sd2-line);border-radius:9px;background:#fff;color:var(--sd2-ink);font:inherit;font-weight:500;}.sd2-profile-form input:focus{border-color:var(--sd2-primary);outline:3px solid #dce6ff;}.sd2-profile-wide{grid-column:1/-1;}
+.sd2-profile-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0;padding:10px;border-radius:10px;background:var(--sd2-surface-soft);}.sd2-profile-meta div{min-width:0;}.sd2-profile-meta dt{color:var(--sd2-muted);font-size:.68rem;}.sd2-profile-meta dd{margin:3px 0 0;color:var(--sd2-ink);font-size:.74rem;font-weight:750;overflow-wrap:anywhere;}.sd2-profile-actions{display:flex;justify-content:flex-end;gap:8px;}.sd2-profile-message{padding:9px 11px;border-radius:9px;font-size:.78rem;font-weight:700;margin-bottom:12px;}.sd2-profile-message.is-success{background:#edf8f2;color:var(--sd2-mastered);}.sd2-profile-message.is-error{background:#fff1ef;color:var(--sd2-needs);}
+@media(max-width:599px){.sd2-profile-grid{grid-template-columns:1fr;}.sd2-profile-meta{grid-template-columns:repeat(2,minmax(0,1fr));}.sd2-profile-head{align-items:stretch;flex-direction:column;}.sd2-profile-head .btn{align-self:flex-start;}.sd2-profile-actions{justify-content:stretch;}.sd2-profile-actions .btn{flex:1;}}
 
 .sd2-compat{display:none!important;}
 

@@ -4,6 +4,7 @@
 const app=window.MajorScaleApp=window.MajorScaleApp || {};
 const repo=app.dashboardRepository;
 const learningRepo=app.learningRepository;
+const authRepo=app.authRepository;
 const masteryCore=app.masteryLearningCore;
 const $=id=>document.getElementById(id);
 
@@ -16,7 +17,7 @@ const SKILL_LABELS=Object.freeze({
   MS03_SCALE_ACCIDENTAL:'Scale Accidental'
 });
 
-let revision=0,initialized=false,showAllRecent=false,trendSkill='ALL',refreshTimer=null,profileOpen=false,legacyObserver=null;
+let revision=0,initialized=false,showAllRecent=false,trendSkill='ALL',refreshTimer=null,profileOpen=false,legacyObserver=null,profileState={data:null,user:null,message:'',error:false,busy:false};
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const first=data=>Array.isArray(data)?(data[0]||null):(data||null);
 const clampPercent=value=>Number.isFinite(Number(value))?Math.max(0,Math.min(100,Number(value))):0;
@@ -85,7 +86,7 @@ function ensureStructure(){
   if(!$('sd2ProfilePanel')){
     const panel=document.createElement('section');
     panel.id='sd2ProfilePanel';panel.className='sd2-profile-panel';panel.setAttribute('aria-label','โปรไฟล์ผู้เรียน');
-    panel.innerHTML='<div><strong id="sd2ProfileName">ผู้เรียน</strong><span>บัญชีผู้เรียน · Major Scale Notation Trainer</span></div><button type="button" class="btn" data-sd2-nav="logout">ออกจากระบบ</button>';
+    panel.innerHTML='<div id="sd2ProfileBody" class="sd2-profile-body"></div>';
     shell.querySelector('.student-dashboard-header')?.insertAdjacentElement('afterend',panel);
     panel.tabIndex=-1;
   }
@@ -130,6 +131,12 @@ function ensureStructure(){
 
   syncNavigation();
   return true;
+}
+
+function renderProfile(profile,user){
+  const panel=$('sd2ProfilePanel');if(!panel)return;
+  const p=profile||{},email=user?.email||'—',status=profileState.message?`<div class="sd2-profile-message ${profileState.error?'is-error':'is-success'}" role="status">${escapeHtml(profileState.message)}</div>`:'';
+  panel.innerHTML=`<div class="sd2-profile-head"><div><div class="sd2-eyebrow">Profile</div><h2 id="sd2ProfileName">${escapeHtml(p.display_name||p.full_name||user?.user_metadata?.full_name||'ผู้เรียน')}</h2><p>ข้อมูลบัญชีและข้อมูลการเรียนของคุณ</p></div><button type="button" class="btn" data-sd2-nav="logout">ออกจากระบบ</button></div>${status}<form id="sd2ProfileForm" class="sd2-profile-form"><div class="sd2-profile-grid"><label>ชื่อเต็ม<input name="full_name" maxlength="120" value="${escapeHtml(p.full_name||'')}" required></label><label>ชื่อที่แสดง<input name="display_name" maxlength="80" value="${escapeHtml(p.display_name||'')}"></label><label>รหัสนักเรียน<input name="student_id" maxlength="60" value="${escapeHtml(p.student_id||'')}"></label><label>หลักสูตร<input name="program" maxlength="120" value="${escapeHtml(p.program||'')}"></label><label>ชั้นปี<input name="year_level" maxlength="30" value="${escapeHtml(p.year_level||'')}"></label><label>Section<input name="section" maxlength="40" value="${escapeHtml(p.section||'')}"></label><label class="sd2-profile-wide">Avatar URL<input type="url" name="avatar_url" maxlength="500" value="${escapeHtml(p.avatar_url||'')}" placeholder="https://..."></label></div><dl class="sd2-profile-meta"><div><dt>Email</dt><dd>${escapeHtml(email)}</dd></div><div><dt>Role</dt><dd>${escapeHtml(p.role||'student')}</dd></div><div><dt>สร้างบัญชี</dt><dd>${escapeHtml(dateTime(p.created_at))}</dd></div><div><dt>เข้าสู่ระบบล่าสุด</dt><dd>${escapeHtml(dateTime(user?.last_sign_in_at))}</dd></div></dl><div class="sd2-profile-actions"><button type="button" class="btn" data-sd2-profile-cancel>ยกเลิก</button><button type="submit" class="btn primary" ${profileState.busy?'disabled':''}>${profileState.busy?'กำลังบันทึก…':'บันทึกข้อมูล'}</button></div></form>`;
 }
 
 function normalizeRecommendation(raw){
@@ -262,15 +269,18 @@ function renderAchievements(vm){
   if(vm.path.pathMastered)achievements.push(['★','Major Scale Master','สำเร็จทุก Stage ใน Learning Path']);
   target.innerHTML=achievements.length?achievements.map(([icon,title,detail])=>`<div class="sd2-achievement"><span class="sd2-achievement-icon" aria-hidden="true">${icon}</span><div><strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail)}</span></div></div>`).join(''):'<div class="sd2-empty">Achievement จะปรากฏเมื่อคุณเริ่มฝึกและผ่านเกณฑ์ Mastery</div>';
 }
-function renderAll(vm){renderContinue(vm);renderSummary(vm);renderSkills(vm);renderLearningPath(vm);renderTrendChart(vm);renderRecent(vm);renderAchievements(vm);const name=$('dashboardUserName')?.textContent?.trim()||'ผู้เรียน';if($('sd2ProfileName'))$('sd2ProfileName').textContent=name;window.__studentDashboardV2Model=vm;}
+function renderAll(vm){renderContinue(vm);renderSummary(vm);renderSkills(vm);renderLearningPath(vm);renderTrendChart(vm);renderRecent(vm);renderAchievements(vm);renderProfile(profileState.data,profileState.user);window.__studentDashboardV2Model=vm;}
 
 async function refresh(){
   const shell=$('studentDashboard'),content=$('dashboardContent');if(!repo||!learningRepo||!shell||shell.hidden||!content||content.hidden)return;if(!ensureStructure())return;const token=++revision;
   try{
-    const [dashboardResult,skillsResult,recommendationResult,historyResult]=await Promise.all([repo.getStudentDashboard(),repo.getActiveSkills(),learningRepo.getRecommendedNextAction(),repo.getStudentLearningHistory({limit:40})]);
+    const authResult=await authRepo?.getUser?.();
+    const authUser=authResult?.data?.user||null;profileState.user=authUser;
+    const [dashboardResult,skillsResult,recommendationResult,historyResult,profileResult]=await Promise.all([repo.getStudentDashboard(),repo.getActiveSkills(),learningRepo.getRecommendedNextAction(),repo.getStudentLearningHistory({limit:40}),authUser?repo.getStudentProfile(authUser.id):Promise.resolve({data:null,error:null})]);
     if(token!==revision)return;if(dashboardResult.error)throw dashboardResult.error;if(skillsResult.error)throw skillsResult.error;
     if(recommendationResult.error)console.warn('STUDENT DASHBOARD V2 RECOMMENDATION:',recommendationResult.error);
     if(historyResult.error)console.warn('STUDENT DASHBOARD V2 HISTORY:',historyResult.error);
+    if(profileResult.error)console.warn('STUDENT DASHBOARD V2 PROFILE:',profileResult.error); else profileState.data=profileResult.data||{};
     const rows=Array.isArray(dashboardResult.data)?dashboardResult.data:[],path=buildPathModel(rows);let mastery=null;
     if(path.active?.exercise_code&&path.active?.stage_code){const masteryResult=await repo.getStageMastery({exerciseCode:path.active.exercise_code,stageCode:path.active.stage_code});if(token!==revision)return;if(masteryResult.error)console.warn('STUDENT DASHBOARD V2 MASTERY:',masteryResult.error);else mastery=first(masteryResult.data);}
     renderAll(buildDashboardViewModel({rows,activeSkills:skillsResult.data||[],recommendation:recommendationResult.data,mastery,history:historyResult.data||{sessions:[],attempts:[],skillResults:[],totalPracticeSessions:0}}));
@@ -297,14 +307,27 @@ function handleNavigation(action){
   target.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
 }
 
+async function saveProfile(form){
+  if(profileState.busy||!profileState.user?.id)return;
+  const data=new FormData(form),value=name=>String(data.get(name)||'').trim();
+  if(!value('full_name')){profileState.error=true;profileState.message='กรุณาระบุชื่อเต็ม';renderProfile(profileState.data,profileState.user);return;}
+  profileState={...profileState,busy:true,message:'',error:false};renderProfile(profileState.data,profileState.user);
+  const result=await repo.updateStudentProfile({userId:profileState.user.id,fullName:value('full_name'),displayName:value('display_name')||null,studentId:value('student_id')||null,program:value('program')||null,yearLevel:value('year_level')||null,section:value('section')||null,avatarUrl:value('avatar_url')||null});
+  if(result.error){profileState={...profileState,busy:false,error:true,message:'บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่'};}
+  else profileState={...profileState,busy:false,error:false,message:'บันทึกข้อมูลโปรไฟล์แล้ว',data:result.data};
+  renderProfile(profileState.data,profileState.user);
+}
+
 function bind(){
   if(initialized)return;initialized=true;
   window.addEventListener('hashchange',syncNavigation);
   document.addEventListener('click',event=>{
     const nav=event.target.closest?.('[data-sd2-nav]');if(nav){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();handleNavigation(nav.dataset.sd2Nav);return;}
+    if(event.target.closest?.('[data-sd2-profile-cancel]')){profileState={...profileState,message:'',error:false};renderProfile(profileState.data,profileState.user);return;}
     const skill=event.target.closest?.('[data-sd2-skill]');if(skill){trendSkill=skill.dataset.sd2Skill||'ALL';const vm=window.__studentDashboardV2Model;if(vm)renderTrendChart(vm);$('sd2Trend')?.scrollIntoView({behavior:'smooth',block:'start'});}
     if(event.target?.id==='sd2ViewAll'){showAllRecent=!showAllRecent;const vm=window.__studentDashboardV2Model;if(vm)renderRecent(vm);}
   });
+  document.addEventListener('submit',event=>{if(event.target?.id==='sd2ProfileForm'){event.preventDefault();saveProfile(event.target);}});
   document.addEventListener('change',event=>{if(event.target?.id==='sd2TrendFilter'){trendSkill=event.target.value||'ALL';const vm=window.__studentDashboardV2Model;if(vm)renderTrendChart(vm);}});
   const shell=$('studentDashboard'),content=$('dashboardContent');
   const observer=new MutationObserver(()=>{if(shell&&!shell.hidden&&content&&!content.hidden)scheduleRefresh(100);});
