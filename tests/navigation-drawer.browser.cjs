@@ -75,7 +75,10 @@ const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
     assert.equal(await menu.getAttribute('aria-expanded'),'true');
     assert.equal(await page.locator('#appNavigationDrawer').getAttribute('aria-hidden'),'false');
     assert.equal(await page.locator('html').evaluate(el=>el.classList.contains('app-nav-drawer-open')),true);
-    assert.deepEqual(await page.locator('#appNavigationItems [data-app-nav-action]').allTextContents().then(items=>items.map(text=>text.replace(/\s+/g,' ').trim()).map(text=>text.split(' ')[0])),['⌂Dashboard','♪Practice','↗Progress','◉Profile','↪ออกจากระบบ']);
+    assert.deepEqual(
+      await page.locator('#appNavigationItems [data-app-nav-action]').evaluateAll(items=>items.map(item=>item.dataset.appNavAction)),
+      ['dashboard','practice','progress','profile','logout']
+    );
 
     await page.locator('[data-app-nav-action="progress"]').click();
     assert.equal(await page.evaluate(()=>window.__navHits.progress),1,'drawer Progress must delegate to existing student navigation');
