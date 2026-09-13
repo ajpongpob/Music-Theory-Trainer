@@ -122,7 +122,8 @@ window.supabase={createClient:()=>{
     await page.locator('#levelMasteryOverlay').waitFor({state:'visible'});
     await page.locator('#continueNextLevel').click();
     await page.locator('#levelMasteryOverlay').waitFor({state:'hidden'});
-    await page.locator('#dashboardButton').click();
+    await page.locator('#appNavigationMenuButton').click();
+    await page.locator('[data-app-nav-action="dashboard"]').click();
     await page.waitForFunction(()=>!document.getElementById('studentDashboard').hidden);
     assert.equal(await page.evaluate(()=>MajorScaleApp.exerciseHost.getCurrentContext()),null);
     // Dashboard V2 intentionally moves the legacy recommendation into a hidden
