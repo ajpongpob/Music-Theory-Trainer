@@ -20,6 +20,10 @@ assert(js.includes("event.key!=='Tab'"),'drawer must trap keyboard focus while o
 assert(js.includes("scrim.addEventListener('click'"),'scrim tap must close the drawer');
 assert(js.includes("document.documentElement.classList.toggle('app-nav-drawer-open'"),'drawer open state must lock page scrolling');
 assert(js.includes("requestAnimationFrame(()=>target?.focus?.())"),'closing the drawer must restore focus to its opener');
+assert(js.includes("if(label.textContent!==nextLabel) label.textContent=nextLabel"),'surface label updates must be idempotent to avoid observer churn');
+assert(js.includes('function navigationOwnedNode(node)'),'drawer must identify its own DOM mutations');
+assert(js.includes('mutations.some(mutationNeedsSync)'),'MutationObserver must ignore navigation-owned DOM changes');
+assert(js.includes('if(surfaceChanged || !lastAccountKey) syncAccount()'),'account reads must not run on every DOM mutation');
 for(const action of ['dashboard','practice','progress','profile','logout']){
   assert(js.includes(`actionMarkup('${action}'`),`drawer missing ${action} action`);
 }
@@ -29,4 +33,4 @@ assert(css.includes('html.app-nav-drawer-open') && css.includes('overflow:hidden
 assert(authRepo.includes('./styles/navigation-drawer.css?v=20260913-nav-drawer'),'navigation drawer stylesheet must be loaded by the app');
 assert(authRepo.includes('./src/navigation-drawer.js?v=20260913-nav-drawer'),'navigation drawer controller must be loaded by the app');
 
-console.log('PASS universal navigation drawer contract: hamburger trigger, off-canvas nav, moved learner navigation, duplicate Profile/Logout access and accessible close behavior');
+console.log('PASS universal navigation drawer contract: accessible drawer, stable DOM observation, bounded account reads, moved learner navigation and duplicate Profile/Logout access');
