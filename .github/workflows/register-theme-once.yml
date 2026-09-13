@@ -19,8 +19,11 @@ jobs:
 
       - name: Append register-only visual overrides
         shell: bash
+        env:
+          REGISTER_THEME_CSS_B64: LyogPT09PT0gUmVnaXN0ZXIgdmlzdWFsIGRpZmZlcmVudGlhdGlvbjogeWVsbG93LWdyYXkgYWNjZW50ID09PT09ICovCi8qIEtlZXAgdGhlIGFwcCdzIGV4aXN0aW5nIGJsdWUgaWRlbnRpdHksIHdoaWxlIG1ha2luZyBTaWduIHVwIHZpc2libHkgZGlzdGluY3QKICAgd2l0aCB0aGUgc2FtZSB5ZWxsb3cgKyBuZXV0cmFsIGdyYXkgdm9jYWJ1bGFyeSB1c2VkIGJ5IHRoZSB0cmFpbmVyIFVJLiAqLwojcmVnaXN0ZXJQYW5lbHsKICBwb3NpdGlvbjpyZWxhdGl2ZTsKICBvdmVyZmxvdzpoaWRkZW47CiAgcGFkZGluZy10b3A6NzZweDsKICBib3JkZXItY29sb3I6I2NmZDZlMTsKICBib3JkZXItcmFkaXVzOjI2cHggMjZweCAyMHB4IDIwcHg7CiAgYmFja2dyb3VuZDoKICAgIGxpbmVhci1ncmFkaWVudCgxODBkZWcscmdiYSgyNDUsMTg1LDIyLC4wNzUpIDAscmdiYSgyNDUsMTg1LDIyLDApIDE1MHB4KSwKICAgICNmZmY7CiAgYm94LXNoYWRvdzoKICAgIDAgMThweCA1MHB4IHJnYmEoMjMsMzIsNTEsLjEyKSwKICAgIDAgMCAwIDFweCByZ2JhKDI0NSwxODUsMjIsLjA4KTsKfQoKI3JlZ2lzdGVyUGFuZWw6OmJlZm9yZXsKICBjb250ZW50OiLguKrguKPguYnguLLguIfguJrguLHguI3guIrguLXguYPguKvguKHguYgiOwogIHBvc2l0aW9uOmFic29sdXRlOwogIGluc2V0OjAgMCBhdXRvIDA7CiAgaGVpZ2h0OjQ2cHg7CiAgZGlzcGxheTpmbGV4OwogIGFsaWduLWl0ZW1zOmNlbnRlcjsKICBwYWRkaW5nOjAgMjJweDsKICBib3JkZXItYm90dG9tOjFweCBzb2xpZCAjZDhkZWU5OwogIGJhY2tncm91bmQ6CiAgICBsaW5lYXItZ3JhZGllbnQoOTBkZWcsI2Y1YjkxNiAwIDg2cHgsI2U5ZWRmMyA4NnB4IDEwMCUpOwogIGNvbG9yOiMzNDQwNTQ7CiAgZm9udC1zaXplOi43OHJlbTsKICBmb250LXdlaWdodDo5MDA7CiAgbGV0dGVyLXNwYWNpbmc6LjAyZW07Cn0KCiNyZWdpc3RlclBhbmVsIC5hdXRoLWJyYW5kewogIG1hcmdpbi1ib3R0b206MThweDsKICBwYWRkaW5nLWJvdHRvbToxNnB4OwogIGJvcmRlci1ib3R0b206MXB4IHNvbGlkICNlNGU3ZWM7Cn0KCiNyZWdpc3RlclBhbmVsIC5hdXRoLWJyYW5kLWljb257CiAgYmFja2dyb3VuZDojMzQ0MDU0OwogIGNvbG9yOiNmNWI5MTY7CiAgYm9yZGVyOjFweCBzb2xpZCAjNDc1NDY3OwogIGJveC1zaGFkb3c6aW5zZXQgMCAtMnB4IDAgcmdiYSgwLDAsMCwuMTYpOwp9CgojcmVnaXN0ZXJQYW5lbCAuYXV0aC1icmFuZCBwewogIGNvbG9yOiM1OTY1Nzk7Cn0KCiNyZWdpc3RlclBhbmVsIGgyewogIHBvc2l0aW9uOnJlbGF0aXZlOwogIG1hcmdpbi1ib3R0b206MjBweDsKICBwYWRkaW5nLWxlZnQ6MTRweDsKICBjb2xvcjojMTcyMDMzOwp9CgojcmVnaXN0ZXJQYW5lbCBoMjo6YmVmb3JlewogIGNvbnRlbnQ6IiI7CiAgcG9zaXRpb246YWJzb2x1dGU7CiAgbGVmdDowOwogIHRvcDouMTVlbTsKICBib3R0b206LjE1ZW07CiAgd2lkdGg6NXB4OwogIGJvcmRlci1yYWRpdXM6OTk5cHg7CiAgYmFja2dyb3VuZDojZjViOTE2Owp9CgojcmVnaXN0ZXJQYW5lbCAuYXV0aC1maWVsZCBpbnB1dHsKICBib3JkZXItY29sb3I6I2M3Y2VkOTsKICBiYWNrZ3JvdW5kOiNmOGZhZmM7Cn0KCiNyZWdpc3RlclBhbmVsIC5hdXRoLWZpZWxkIGlucHV0OmhvdmVyewogIGJvcmRlci1jb2xvcjojOThhMmIzOwp9CgojcmVnaXN0ZXJQYW5lbCAuYXV0aC1maWVsZCBpbnB1dDpmb2N1c3sKICBvdXRsaW5lOjJweCBzb2xpZCByZ2JhKDQ5LDk0LDI1MSwuMTYpOwogIGJvcmRlci1jb2xvcjojMzE1ZWZiOwogIGJveC1zaGFkb3c6MCAwIDAgNHB4IHJnYmEoMjQ1LDE4NSwyMiwuMTQpOwogIGJhY2tncm91bmQ6I2ZmZjsKfQoKI3JlZ2lzdGVyUGFuZWwgLmF1dGgtcHJpbWFyeXsKICBwb3NpdGlvbjpyZWxhdGl2ZTsKICBib3JkZXI6MXB4IHNvbGlkICMyNDQ4Yzc7CiAgYm94LXNoYWRvdzoKICAgIGluc2V0IDVweCAwIDAgI2Y1YjkxNiwKICAgIDAgNXB4IDE0cHggcmdiYSg0OSw5NCwyNTEsLjE4KTsKfQoKI3JlZ2lzdGVyUGFuZWwgLmF1dGgtcHJpbWFyeTpob3Zlcjpub3QoOmRpc2FibGVkKXsKICBmaWx0ZXI6YnJpZ2h0bmVzcyguOTcpOwogIHRyYW5zZm9ybTp0cmFuc2xhdGVZKC0xcHgpOwp9CgojcmVnaXN0ZXJQYW5lbCAuYXV0aC1wcmltYXJ5OmFjdGl2ZTpub3QoOmRpc2FibGVkKXsKICB0cmFuc2Zvcm06dHJhbnNsYXRlWSgwKTsKfQoKI3JlZ2lzdGVyUGFuZWwgLmF1dGgtc3dpdGNoewogIG1hcmdpbi10b3A6MTRweDsKICBib3JkZXI6MXB4IHNvbGlkICNkOGRlZTk7CiAgYm9yZGVyLXJhZGl1czoxMHB4OwogIGJhY2tncm91bmQ6I2YyZjRmNzsKICBjb2xvcjojMzQ0MDU0Owp9CgojcmVnaXN0ZXJQYW5lbCAuYXV0aC1zd2l0Y2g6aG92ZXJ7CiAgYm9yZGVyLWNvbG9yOiNiOGMwY2M7CiAgYmFja2dyb3VuZDojZTllZGYzOwogIGNvbG9yOiMzMTVlZmI7Cn0KCkBtZWRpYShtYXgtd2lkdGg6NDgwcHgpewogICNyZWdpc3RlclBhbmVsewogICAgcGFkZGluZy10b3A6NzBweDsKICAgIGJvcmRlci1yYWRpdXM6MjJweCAyMnB4IDE4cHggMThweDsKICB9CgogICNyZWdpc3RlclBhbmVsOjpiZWZvcmV7CiAgICBoZWlnaHQ6NDJweDsKICAgIHBhZGRpbmc6MCAxOHB4OwogICAgYmFja2dyb3VuZDpsaW5lYXItZ3JhZGllbnQoOTBkZWcsI2Y1YjkxNiAwIDcycHgsI2U5ZWRmMyA3MnB4IDEwMCUpOwogIH0KfQo=
         run: |
           python - <<'PY'
+          import base64, os
           from pathlib import Path
 
           path = Path('styles/app.css')
@@ -30,138 +33,8 @@ jobs:
               print('Register theme override already present; nothing to append.')
               raise SystemExit(0)
 
-          block = r'''
-
-/* ===== Register visual differentiation: yellow-gray accent ===== */
-/* Keep the app's existing blue identity, while making Sign up visibly distinct
-   with the same yellow + neutral gray vocabulary used by the trainer UI. */
-#registerPanel{
-  position:relative;
-  overflow:hidden;
-  padding-top:76px;
-  border-color:#cfd6e1;
-  border-radius:26px 26px 20px 20px;
-  background:
-    linear-gradient(180deg,rgba(245,185,22,.075) 0,rgba(245,185,22,0) 150px),
-    #fff;
-  box-shadow:
-    0 18px 50px rgba(23,32,51,.12),
-    0 0 0 1px rgba(245,185,22,.08);
-}
-
-#registerPanel::before{
-  content:"สร้างบัญชีใหม่";
-  position:absolute;
-  inset:0 0 auto 0;
-  height:46px;
-  display:flex;
-  align-items:center;
-  padding:0 22px;
-  border-bottom:1px solid #d8dee9;
-  background:
-    linear-gradient(90deg,#f5b916 0 86px,#e9edf3 86px 100%);
-  color:#344054;
-  font-size:.78rem;
-  font-weight:900;
-  letter-spacing:.02em;
-}
-
-#registerPanel .auth-brand{
-  margin-bottom:18px;
-  padding-bottom:16px;
-  border-bottom:1px solid #e4e7ec;
-}
-
-#registerPanel .auth-brand-icon{
-  background:#344054;
-  color:#f5b916;
-  border:1px solid #475467;
-  box-shadow:inset 0 -2px 0 rgba(0,0,0,.16);
-}
-
-#registerPanel .auth-brand p{
-  color:#596579;
-}
-
-#registerPanel h2{
-  position:relative;
-  margin-bottom:20px;
-  padding-left:14px;
-  color:#172033;
-}
-
-#registerPanel h2::before{
-  content:"";
-  position:absolute;
-  left:0;
-  top:.15em;
-  bottom:.15em;
-  width:5px;
-  border-radius:999px;
-  background:#f5b916;
-}
-
-#registerPanel .auth-field input{
-  border-color:#c7ced9;
-  background:#f8fafc;
-}
-
-#registerPanel .auth-field input:hover{
-  border-color:#98a2b3;
-}
-
-#registerPanel .auth-field input:focus{
-  outline:2px solid rgba(49,94,251,.16);
-  border-color:#315efb;
-  box-shadow:0 0 0 4px rgba(245,185,22,.14);
-  background:#fff;
-}
-
-#registerPanel .auth-primary{
-  position:relative;
-  border:1px solid #2448c7;
-  box-shadow:
-    inset 5px 0 0 #f5b916,
-    0 5px 14px rgba(49,94,251,.18);
-}
-
-#registerPanel .auth-primary:hover:not(:disabled){
-  filter:brightness(.97);
-  transform:translateY(-1px);
-}
-
-#registerPanel .auth-primary:active:not(:disabled){
-  transform:translateY(0);
-}
-
-#registerPanel .auth-switch{
-  margin-top:14px;
-  border:1px solid #d8dee9;
-  border-radius:10px;
-  background:#f2f4f7;
-  color:#344054;
-}
-
-#registerPanel .auth-switch:hover{
-  border-color:#b8c0cc;
-  background:#e9edf3;
-  color:#315efb;
-}
-
-@media(max-width:480px){
-  #registerPanel{
-    padding-top:70px;
-    border-radius:22px 22px 18px 18px;
-  }
-
-  #registerPanel::before{
-    height:42px;
-    padding:0 18px;
-    background:linear-gradient(90deg,#f5b916 0 72px,#e9edf3 72px 100%);
-  }
-}
-'''
-          path.write_text(text.rstrip() + block + '\n', encoding='utf-8')
+          block = base64.b64decode(os.environ['REGISTER_THEME_CSS_B64']).decode('utf-8')
+          path.write_text(text.rstrip() + '\n\n' + block, encoding='utf-8')
           PY
 
       - name: Commit theme update
