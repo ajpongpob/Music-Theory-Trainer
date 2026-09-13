@@ -46,7 +46,10 @@ assert(source.includes("'Progress','progress'"),'Navigation must include Progres
 assert(source.includes("'Profile','profile'"),'Navigation must include Profile');
 assert(source.includes("progress.hidden=action!=='progress'"),'Progress must be a distinct page state');
 assert(source.includes("dashboard.hidden=action!=='dashboard'"),'Dashboard must hide outside its page state');
+assert(source.includes("practice.hidden=action!=='practice'"),'Practice must open as a distinct page state');
 assert(source.includes("profile.hidden=action!=='profile'"),'Profile must hide Dashboard/Progress rather than overlay them');
+assert(source.includes("if(hash==='#sd2PracticePage') return 'practice'"),'Practice must have an addressable dashboard route');
+assert(!source.includes("if(action==='practice'){"),'Practice navigation must not launch the Trainer before the learner chooses Start');
 assert(!source.includes('sd2Achievements'),'Dashboard must not retain the nonessential Achievements block');
 assert(!/Stage 3 — Major Scale Accidentals/.test(source),'Example content must not be hard-coded as production data');
 assert(!/Progress 68%/.test(source),'Example mastery percentage must not be hard-coded');
@@ -70,5 +73,7 @@ assert(css.includes('grid-template-columns:repeat(4,minmax(0,1fr))'),'Desktop su
 assert(css.includes('--sd2-mastered'),'Status color semantics must include Mastered');
 assert(css.includes('--sd2-needs'),'Status color semantics must include Needs Practice');
 assert(css.includes('--sd2-locked'),'Status color semantics must include Locked');
+assert(css.includes('--sd2-primary:var(--accent)'),'Student pages must inherit the Trainer accent theme');
+assert(css.includes('position:sticky'),'Site Header must remain available while switching student pages');
 
 console.log('PASS Student learning IA: actionable Dashboard, analytical Progress, isolated Profile, real evidence and responsive contracts');

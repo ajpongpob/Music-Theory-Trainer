@@ -18,7 +18,7 @@ const SKILL_LABELS=Object.freeze({
   MS03_SCALE_ACCIDENTAL:'Scale Accidental'
 });
 
-const NAV_TARGETS=Object.freeze({dashboard:'dashboardContent',practice:'sd2Continue',progress:'sd2ProgressPage',profile:'sd2ProfilePanel'});
+const NAV_TARGETS=Object.freeze({dashboard:'dashboardContent',practice:'sd2PracticePage',progress:'sd2ProgressPage',profile:'sd2ProfilePanel'});
 let revision=0,initialized=false,trendSkill='ALL',refreshTimer=null,legacyObserver=null;
 let profileState={data:null,user:null,message:'',error:false,busy:false};
 
@@ -44,6 +44,7 @@ function navLinks(){
 
 function currentAction(){
   const hash=window.location.hash;
+  if(hash==='#sd2PracticePage') return 'practice';
   if(hash==='#sd2ProgressPage') return 'progress';
   if(hash==='#sd2ProfilePanel') return 'profile';
   return 'dashboard';
@@ -55,8 +56,9 @@ function syncNavigation(){
     if(link.dataset.sd2Nav===action) link.setAttribute('aria-current','page');
     else link.removeAttribute('aria-current');
   });
-  const dashboard=$('dashboardContent'),progress=$('sd2ProgressPage'),profile=$('sd2ProfilePanel');
+  const dashboard=$('dashboardContent'),practice=$('sd2PracticePage'),progress=$('sd2ProgressPage'),profile=$('sd2ProfilePanel');
   if(dashboard) dashboard.hidden=action!=='dashboard';
+  if(practice) practice.hidden=action!=='practice';
   if(progress) progress.hidden=action!=='progress';
   if(profile) profile.hidden=action!=='profile';
   app.navigationDrawer?.sync?.();
@@ -120,6 +122,14 @@ function ensureStructure(){
   }
 
   if(!$('sd2ProgressPage')){
+    const practice=document.createElement('main');
+    practice.id='sd2PracticePage';
+    practice.className='sd2-practice-page sd2-page';
+    practice.hidden=true;
+    practice.tabIndex=-1;
+    practice.innerHTML='<section class="sd2-card" aria-labelledby="sd2PracticeHeading"><div id="sd2PracticeBody" class="sd2-empty">กำลังเตรียมแบบฝึกหัด...</div></section>';
+    content.insertAdjacentElement('afterend',practice);
+
     const progress=document.createElement('main');
     progress.id='sd2ProgressPage';
     progress.className='sd2-progress-page sd2-page';
@@ -131,7 +141,7 @@ function ensureStructure(){
       <section id="sd2ProgressTrend" class="sd2-card" aria-labelledby="sd2ProgressTrendHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Learning Trend</div><h2 id="sd2ProgressTrendHeading">แนวโน้มตามเวลา</h2></div><select id="sd2ProgressTrendFilter" class="sd2-filter" aria-label="เลือกทักษะสำหรับกราฟ"></select></div><div id="sd2ProgressTrendChart" class="sd2-chart-wrap"></div></section>
       <section id="sd2ProgressStages" class="sd2-card" aria-labelledby="sd2ProgressStagesHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Stage Progress / History</div><h2 id="sd2ProgressStagesHeading">สถานะและหลักฐานของแต่ละ Stage</h2></div></div><div id="sd2ProgressStageList" class="sd2-stage-history"></div></section>
       <section id="sd2SessionHistory" class="sd2-card" aria-labelledby="sd2SessionHistoryHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Session History</div><h2 id="sd2SessionHistoryHeading">ประวัติ Practice Session</h2></div></div><div id="sd2SessionHistoryList" class="sd2-session-history"></div></section>`;
-    content.insertAdjacentElement('afterend',progress);
+    practice.insertAdjacentElement('afterend',progress);
   }
 
   if(!$('sd2ProfilePanel')){
@@ -299,6 +309,19 @@ function renderContinue(vm){
   target.innerHTML=`<div class="sd2-continue-main"><div class="sd2-eyebrow">Continue Learning</div><div class="sd2-stage-line">Stage ${vm.currentOrdinal||'—'} of ${vm.path.totalStages||'—'} · ${escapeHtml(stage.stage_name||stage.stage_code||'Current Stage')}</div><h2 id="sd2ContinueHeading">${escapeHtml(stage.exercise_name||vm.path.exerciseName)}</h2><div class="sd2-subtle">${escapeHtml(rec?.reasonTh||'เรียนต่อจาก Stage ปัจจุบันตามหลักฐาน Mastery ของคุณ')}</div><div class="sd2-focus-line">Skill Focus: <strong>${escapeHtml(focus)}</strong></div></div><div class="sd2-continue-side"><div><div class="sd2-progress-meta"><span>Stage Progress</span><strong>${percentText(vm.stageMastery)}${Number.isFinite(vm.stageThreshold)?` / เกณฑ์ ${percentText(vm.stageThreshold)}`:''}</strong></div><div class="sd2-progress-track" role="progressbar" aria-label="Stage Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><i class="sd2-progress-fill" style="width:${progress}%"></i></div></div>${canLaunch?`<button type="button" class="dashboard-continue sd2-continue-action" data-exercise-code="${escapeHtml(stage.exercise_code)}" data-stage-code="${escapeHtml(stage.stage_code)}" data-session-mode="${sessionMode}">${escapeHtml(actionLabel)}</button>`:''}</div>`;
 }
 
+function renderPractice(vm){
+  const target=$('sd2PracticeBody');
+  if(!target) return;
+  const stage=vm.currentStage,rec=vm.recommendation;
+  if(!stage){target.className='sd2-empty';target.textContent=vm.path.pathMastered?'คุณสำเร็จ Learning Path ที่กำหนดแล้ว':'ยังไม่พบแบบฝึกหัดที่พร้อมเริ่ม';return;}
+  const actionType=rec?.actionType||(stage.stage_status==='mastered'?'review':'practice');
+  const sessionMode=actionType==='diagnostic'?'pretest':'practice';
+  const actionLabel=actionType==='diagnostic'?'เริ่มประเมินก่อนเรียน':actionType==='completed'?'ทบทวนผลการเรียน':actionType==='review'?'ทบทวน':'เริ่มฝึก';
+  const canLaunch=stage.exercise_code&&stage.stage_code&&actionType!=='completed';
+  target.className='sd2-practice-layout';
+  target.innerHTML=`<div><div class="sd2-eyebrow">Practice</div><h2 id="sd2PracticeHeading">${escapeHtml(stage.exercise_name||vm.path.exerciseName)}</h2><p class="sd2-subtle">Stage ${vm.currentOrdinal||'—'} of ${vm.path.totalStages||'—'} · ${escapeHtml(stage.stage_name||stage.stage_code||'Current Stage')}</p><p class="sd2-focus-line">${escapeHtml(rec?.reasonTh||'เลือกแบบฝึกหัดนี้ตาม Stage ปัจจุบันของคุณ')}</p></div>${canLaunch?`<button type="button" class="dashboard-continue sd2-continue-action" data-exercise-code="${escapeHtml(stage.exercise_code)}" data-stage-code="${escapeHtml(stage.stage_code)}" data-session-mode="${escapeHtml(sessionMode)}">${actionLabel}</button>`:'<div class="sd2-empty">ยังไม่มีแบบฝึกหัดที่เปิดให้เริ่มในขณะนี้</div>'}`;
+}
+
 function summaryMarkup(vm){
   return `<article class="sd2-summary-card"><div class="sd2-eyebrow">Current Stage</div><strong>${vm.currentOrdinal||'—'} / ${vm.path.totalStages||'—'}</strong><span>${escapeHtml(vm.currentStage?.stage_name||'ยังไม่เริ่ม')}</span></article><article class="sd2-summary-card"><div class="sd2-eyebrow">Mastered Skills</div><strong>${vm.masteredSkills} / ${SKILL_ORDER.length}</strong><span>ตามเกณฑ์ Mastery ของ Stage ปัจจุบัน</span></article><article class="sd2-summary-card"><div class="sd2-eyebrow">Practice Sessions</div><strong>${vm.history.totalPracticeSessions}</strong><span>จำนวน session ที่บันทึกในระบบ</span></article><article class="sd2-summary-card"><div class="sd2-eyebrow">Overall Progress</div><strong>${vm.path.overallProgress}%</strong><span>ผ่าน ${vm.path.masteredCount} จาก ${vm.path.totalStages} Stage</span><div class="sd2-mini-progress"><div class="sd2-progress-track"><i class="sd2-progress-fill" style="width:${vm.path.overallProgress}%"></i></div></div></article>`;
 }
@@ -403,6 +426,7 @@ function renderSessionHistory(vm){
 
 function renderAll(vm){
   renderContinue(vm);
+  renderPractice(vm);
   renderSummary(vm);
   renderSkills(vm);
   renderLearningPath(vm);
@@ -457,11 +481,6 @@ function scheduleRefresh(delay=80){clearTimeout(refreshTimer);refreshTimer=setTi
 
 function handleNavigation(action){
   if(action==='logout'){$('dashboardLogoutButton')?.click();return;}
-  if(action==='practice'){
-    const launch=$('sd2Continue')?.querySelector('.dashboard-continue')||$('dashboardRecommendation')?.querySelector('.dashboard-continue');
-    if(launch){launch.click();return;}
-    return;
-  }
   const target=$(NAV_TARGETS[action]);
   if(!target) return;
   window.location.hash=NAV_TARGETS[action];

@@ -1,23 +1,23 @@
 /* Student learning IA: Dashboard = next action, Progress = evidence/history, Profile = profile data only. */
 :root{
-  --sd2-ink:#172033;
-  --sd2-muted:#667085;
-  --sd2-line:#d8dee9;
-  --sd2-surface:#ffffff;
-  --sd2-surface-soft:#f7f9fc;
-  --sd2-primary:#2456d6;
-  --sd2-primary-strong:#173f9d;
-  --sd2-mastered:#167044;
+  --sd2-ink:var(--text);
+  --sd2-muted:var(--muted);
+  --sd2-line:var(--line);
+  --sd2-surface:var(--surface);
+  --sd2-surface-soft:var(--surface2);
+  --sd2-primary:var(--accent);
+  --sd2-primary-strong:var(--accent);
+  --sd2-mastered:var(--good);
   --sd2-developing:#9a6400;
-  --sd2-needs:#b42318;
+  --sd2-needs:var(--bad);
   --sd2-locked:#7b8495;
-  --sd2-current:#2456d6;
-  --sd2-shadow:0 10px 28px rgba(23,32,51,.07);
+  --sd2-current:var(--accent);
+  --sd2-shadow:var(--shadow);
 }
 
-.student-dashboard-shell.dashboard-v2-enabled{background:linear-gradient(180deg,#f8fafc 0,#f2f5f9 100%);padding-bottom:32px;}
+.student-dashboard-shell.dashboard-v2-enabled{background:var(--bg);padding-bottom:32px;}
 .dashboard-v2-enabled .student-dashboard-inner{width:min(1180px,calc(100% - 24px));}
-.dashboard-v2-enabled .student-dashboard-header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;margin:0 0 20px;padding:16px!important;border:1px solid var(--sd2-line);border-radius:16px;background:var(--sd2-surface);color:var(--sd2-ink);}
+.dashboard-v2-enabled .student-dashboard-header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;margin:0 0 20px;padding:16px!important;border:1px solid var(--sd2-line);border-radius:16px;background:var(--sd2-surface);color:var(--sd2-ink);position:sticky;top:0;z-index:20;box-shadow:var(--sd2-shadow);}
 .dashboard-v2-enabled .student-dashboard-brand{min-width:0;}
 .dashboard-v2-enabled .student-dashboard-brand h1{font-size:1.1rem;line-height:1.3;letter-spacing:0;overflow-wrap:anywhere;}
 .dashboard-v2-enabled .student-dashboard-brand p{display:none;}
@@ -30,8 +30,8 @@
 .sd2-nav-button{display:flex;align-items:center;justify-content:center;min-height:44px;box-sizing:border-box;border-radius:10px;padding:8px 14px;color:#475467;text-decoration:none;font:inherit;font-size:.85rem;font-weight:750;}
 .sd2-nav-button[aria-current="page"]{background:#eef3ff;color:var(--sd2-primary-strong);box-shadow:inset 0 -3px 0 var(--sd2-primary);}
 
-.sd2-page[hidden],.sd2-profile-panel[hidden],.sd2-progress-page[hidden]{display:none!important;}
-.sd2-dashboard,.sd2-progress-page{display:grid;gap:16px;min-width:0;max-width:100%;}
+.sd2-page[hidden],.sd2-profile-panel[hidden],.sd2-progress-page[hidden],.sd2-practice-page[hidden]{display:none!important;}
+.sd2-dashboard,.sd2-practice-page,.sd2-progress-page{display:grid;gap:16px;min-width:0;max-width:100%;}
 .sd2-card{min-width:0;max-width:100%;box-sizing:border-box;border:1px solid var(--sd2-line);border-radius:18px;background:var(--sd2-surface);box-shadow:var(--sd2-shadow);padding:16px;}
 .sd2-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;}
 .sd2-eyebrow{font-size:.72rem;letter-spacing:.07em;text-transform:uppercase;color:var(--sd2-muted);font-weight:850;}
@@ -52,6 +52,7 @@
 .sd2-continue-side{display:grid;gap:10px;align-content:end;}
 .sd2-continue-action.dashboard-continue{min-height:48px;width:100%;border:0;border-radius:12px;background:var(--sd2-primary);color:#fff;font-weight:850;padding:11px 18px;}
 .sd2-continue-action.dashboard-continue:hover{background:var(--sd2-primary-strong);}
+.sd2-practice-layout{display:grid;gap:16px;}.sd2-practice-layout h2{margin:4px 0 5px;font-size:clamp(1.25rem,3vw,1.65rem);}
 .sd2-progress-meta{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:6px;font-size:.78rem;color:var(--sd2-muted);}
 .sd2-progress-meta strong{color:var(--sd2-ink);}
 .sd2-progress-track{height:9px;overflow:hidden;border-radius:999px;background:#e8edf5;}
@@ -144,6 +145,7 @@
 
 @media(min-width:760px){
   .sd2-continue-layout{grid-template-columns:minmax(0,1fr) minmax(230px,32%);align-items:end;}
+  .sd2-practice-layout{grid-template-columns:minmax(0,1fr) minmax(220px,32%);align-items:end;}
   .sd2-summary-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
   .sd2-skill-list{grid-template-columns:repeat(5,minmax(0,1fr));}
   .sd2-skill{grid-template-columns:minmax(0,1fr);align-content:start;}.sd2-skill-score{grid-row:1;justify-self:end;}.sd2-skill>div:first-child{padding-right:42px;}.sd2-progress-skill-list{grid-template-columns:repeat(2,minmax(0,1fr));}

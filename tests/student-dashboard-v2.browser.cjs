@@ -165,9 +165,14 @@ function learningHistory(){
       if(process.env.QA_SCREENSHOTS) await page.screenshot({path:path.join(process.env.QA_SCREENSHOTS,`student-dashboard-${viewport.width}.png`),fullPage:true});
     }
 
-    await page.evaluate(()=>{window.__launches=0;document.querySelector('#sd2Continue .dashboard-continue').addEventListener('click',()=>window.__launches++);});
+    await page.evaluate(()=>{window.__launches=0;document.addEventListener('click',event=>{if(event.target.closest('#sd2PracticePage .dashboard-continue'))window.__launches++;});});
     await page.locator('#sd2TopNav [data-sd2-nav="practice"]').click();
-    assert.equal(await page.evaluate(()=>window.__launches),1,'Practice delegates to existing CTA once');
+    assert.equal(await page.evaluate(()=>window.__launches),0,'Practice navigation opens its own page without launching');
+    assert.equal(await page.locator('#sd2PracticePage').isVisible(),true);
+    assert.equal(await page.locator('#dashboardContent').isVisible(),false);
+    assert.equal(await page.locator('#sd2ProgressPage').isVisible(),false);
+    await page.locator('#sd2PracticePage .dashboard-continue').click();
+    assert.equal(await page.evaluate(()=>window.__launches),1,'Practice page delegates to the existing CTA once');
 
     for(const statuses of [['mastered','mastered','in_progress','locked'],['mastered','mastered','mastered','mastered'],['available','locked','locked','locked'],[]]){
       await page.evaluate(async statuses=>{
