@@ -57,7 +57,7 @@ function learningHistory(){
         <div class="student-dashboard-inner">
           <header class="student-dashboard-header">
             <div class="student-dashboard-brand"><div class="student-dashboard-kicker">Student Dashboard</div><h1>Learning Path</h1><p>Legacy dashboard</p></div>
-            <div class="student-dashboard-user"><span id="dashboardUserName">QA Student</span><button id="dashboardLogoutButton" type="button">ออกจากระบบ</button></div>
+            <div class="student-dashboard-actions"><span id="dashboardUserName">QA Student</span><button id="dashboardLogoutButton" type="button">ออกจากระบบ</button></div>
           </header>
           <main id="dashboardContent">
             <div id="dashboardPathList"><button type="button" class="dashboard-continue" data-exercise-code="MAJOR_SCALE_NOTATION" data-stage-code="STAGE_2" data-session-mode="practice">ฝึกต่อ</button></div>
@@ -70,6 +70,7 @@ function learningHistory(){
         </div>
       </section>
     </body></html>`);
+    await page.addStyleTag({content:read('styles/app.css')});
     await page.addStyleTag({content:read('styles/student-dashboard-v2.css')});
     await page.evaluate(({dashboardRows,skills,mastery,history})=>{
       window.MajorScaleApp={
@@ -105,19 +106,61 @@ function learningHistory(){
     const desktopOrder=await page.evaluate(()=>['sd2Continue','sd2Summary','sd2Skills','sd2Trend','sd2Recent','sd2Achievements'].map(id=>[id,document.getElementById(id).getBoundingClientRect().top]));
     for(let i=1;i<desktopOrder.length;i++) assert(desktopOrder[i][1]>=desktopOrder[i-1][1],`${desktopOrder[i][0]} should not appear above ${desktopOrder[i-1][0]}`);
     assert.equal(await page.locator('#sd2TopNav').isVisible(),true);
-    assert.equal(await page.locator('#sd2BottomNav').isVisible(),false);
+    assert.equal(await page.locator('#sd2BottomNav').count(),0);
 
     await page.locator('[data-sd2-skill="MS03_SCALE_ACCIDENTAL"]').click();
     assert.equal(await page.locator('#sd2TrendFilter').inputValue(),'MS03_SCALE_ACCIDENTAL');
 
     await page.setViewportSize({width:390,height:844});
-    assert.equal(await page.locator('#sd2TopNav').isVisible(),false);
-    assert.equal(await page.locator('#sd2BottomNav').isVisible(),true);
+    assert.equal(await page.locator('#sd2TopNav').isVisible(),true);
+    assert.equal(await page.locator('#sd2BottomNav').count(),0);
     const mobileOrder=await page.evaluate(()=>['sd2Continue','sd2Summary','sd2Skills','sd2LearningPath','sd2Trend','sd2Recent','sd2Achievements'].map(id=>[id,document.getElementById(id).getBoundingClientRect().top]));
     for(let i=1;i<mobileOrder.length;i++) assert(mobileOrder[i][1]>=mobileOrder[i-1][1],`${mobileOrder[i][0]} should follow ${mobileOrder[i-1][0]} on mobile`);
-    const practiceBox=await page.locator('#sd2BottomNav [data-sd2-nav="practice"]').boundingBox();
-    assert(practiceBox && practiceBox.height>=48,'mobile Practice action must meet touch-target height');
+    const practiceBox=await page.locator('#sd2TopNav [data-sd2-nav="practice"]').boundingBox();
+    assert(practiceBox && practiceBox.height>=44,'mobile Practice action must meet touch-target height');
     assert.equal(await page.locator('#sd2Recent').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'recent activity should not require horizontal scrolling');
+    assert.equal(await page.locator('header > nav[aria-label="Main"]').count(),1);
+    assert.equal(await page.locator('#sd2TopNav > a').count(),4);
+    assert.equal(await page.locator('#sd2TopNav button, #sd2TopNav #dashboardUserName').count(),0);
+    assert.equal(await page.locator('ol#sd2StageList > li').count(),4);
+    assert.equal(await page.locator('#sd2StageList [aria-current="step"]').count(),1);
+    assert.equal(await page.locator('#sd2StageList [aria-current="page"]').count(),0);
+    assert.equal(await page.locator('#sd2StageList [aria-current="step"] .sd2-stage-icon').textContent(),'2');
+    assert.equal(await page.locator('#sd2StageList .completed .sd2-stage-icon').textContent(),'✓');
+    for(const viewport of [{width:1440,height:1000},{width:820,height:1180},{width:390,height:844},{width:320,height:740}]){
+      await page.setViewportSize(viewport);
+      const boxes=await page.locator('#sd2StageList > li').evaluateAll(items=>items.map(item=>({x:item.getBoundingClientRect().x,y:item.getBoundingClientRect().y})));
+      assert(viewport.width>=980?boxes[1].x>boxes[0].x:boxes[1].y>boxes[0].y,'Steps orientation follows available width');
+      assert(await page.locator('#studentDashboard').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Dashboard must fit viewport');
+      await page.locator('#sd2TopNav [data-sd2-nav="progress"]').focus();
+      await page.keyboard.press('Enter');
+      assert.equal(await page.locator('#sd2TopNav [aria-current="page"]').textContent(),'Progress');
+      assert.equal(await page.evaluate(()=>document.activeElement.id),'sd2Skills');
+      await page.locator('#sd2TopNav [data-sd2-nav="profile"]').click();
+      assert(await page.locator('#sd2ProfilePanel').isVisible());
+      assert.equal(await page.locator('#sd2TopNav [aria-current="page"]').textContent(),'Profile');
+      await page.locator('#sd2TopNav [data-sd2-nav="dashboard"]').click();
+      assert.equal(await page.locator('#sd2TopNav [aria-current="page"]').textContent(),'Dashboard');
+      assert.equal(await page.locator('#sd2ProfilePanel').isVisible(),false);
+      if(process.env.QA_SCREENSHOTS){await page.screenshot({path:path.join(process.env.QA_SCREENSHOTS,`student-dashboard-${viewport.width}.png`),fullPage:true});}
+      console.log(`PASS semantic header / keyboard navigation / steps / overflow: ${viewport.width}×${viewport.height}`);
+    }
+    await page.evaluate(()=>{
+      window.__launches=0;
+      document.querySelector('#sd2Continue .dashboard-continue').addEventListener('click',()=>window.__launches++);
+    });
+    await page.locator('#sd2TopNav [data-sd2-nav="practice"]').click();
+    assert.equal(await page.evaluate(()=>window.__launches),1,'Practice delegates to existing CTA once');
+    for(const statuses of [['mastered','mastered','in_progress','locked'],['mastered','mastered','mastered','mastered'],['available','locked','locked','locked'],[]]){
+      await page.evaluate(async statuses=>{
+        const rows=window.__studentDashboardV2Model.path.rows.slice(0,statuses.length).map((row,i)=>({...row,stage_status:statuses[i]}));
+        window.MajorScaleApp.dashboardRepository.getStudentDashboard=async()=>({data:rows,error:null});
+        await window.MajorScaleApp.studentDashboardV2.refresh();
+      },statuses);
+      assert.equal(await page.locator('#sd2StageList [aria-current="step"]').count(),statuses.includes('in_progress')?1:0);
+      if(statuses.includes('available'))assert.equal(await page.locator('#sd2StageList .upcoming').count(),1);
+      if(statuses.includes('in_progress'))assert.equal(await page.locator('#sd2StageList [aria-current="step"] .sd2-stage-icon').textContent(),'3');
+    }
     assert.deepEqual(errors,[]);
 
     console.log('PASS Student Dashboard V2 browser: actionable hierarchy, mastery/status, stage path, trend, recent activity, achievements and responsive navigation');

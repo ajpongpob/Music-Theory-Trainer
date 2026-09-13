@@ -31,14 +31,20 @@ function ensureStylesheet(){
   document.head.appendChild(link);
 }
 
-function navButtons(mobile){
-  const button=(symbol,label,action,classes='')=>`<button type="button" class="sd2-nav-button ${classes}" data-sd2-nav="${action}">${mobile?`<b aria-hidden="true">${symbol}</b>`:''}<span>${label}</span></button>`;
-  return [
-    button('⌂','Dashboard','dashboard','is-active'),
-    button('▶','Practice','practice','is-primary'),
-    button('↗','Progress','progress'),
-    button('●','Profile','profile')
-  ].join('');
+// These are destinations within the existing single-page dashboard, not new routes.
+const NAV_TARGETS={dashboard:'dashboardContent',practice:'sd2Continue',progress:'sd2Skills',profile:'sd2ProfilePanel'};
+function navLinks(){
+  const link=(label,action)=>`<a class="sd2-nav-button" href="#${NAV_TARGETS[action]}" data-sd2-nav="${action}">${label}</a>`;
+  return [link('Dashboard','dashboard'),link('Practice','practice'),link('Progress','progress'),link('Profile','profile')].join('');
+}
+function syncNavigation(){
+  const action=Object.keys(NAV_TARGETS).find(key=>`#${NAV_TARGETS[key]}`===window.location.hash)||'dashboard';
+  document.querySelectorAll('#sd2TopNav a').forEach(link=>{
+    if(link.dataset.sd2Nav===action)link.setAttribute('aria-current','page');
+    else link.removeAttribute('aria-current');
+  });
+  profileOpen=action==='profile';
+  $('sd2ProfilePanel')?.classList.toggle('is-open',profileOpen);
 }
 
 function syncLegacyFallbackAction(){
@@ -66,21 +72,22 @@ function ensureStructure(){
   const brand=shell.querySelector('.student-dashboard-brand');
   if(brand){
     const kicker=brand.querySelector('.student-dashboard-kicker'),title=brand.querySelector('h1'),description=brand.querySelector('p');
-    if(kicker) kicker.textContent='Major Scale Learning Dashboard';
-    if(title) title.textContent='เรียนต่อจากจุดที่สำคัญที่สุด';
+    if(kicker) kicker.textContent='Student Dashboard';
+    if(title) title.textContent='Major Scale Notation Trainer';
     if(description) description.textContent='ติดตาม Stage, Mastery รายทักษะ และกิจกรรมที่ควรทำต่อจากหลักฐานการฝึกของคุณ';
   }
 
   if(!$('sd2TopNav')){
     const nav=document.createElement('nav');
-    nav.id='sd2TopNav';nav.className='sd2-top-nav';nav.setAttribute('aria-label','เมนูผู้เรียน');nav.innerHTML=navButtons(false);
-    shell.querySelector('.student-dashboard-header')?.insertAdjacentElement('afterend',nav);
+    nav.id='sd2TopNav';nav.className='sd2-top-nav';nav.setAttribute('aria-label','Main');nav.innerHTML=navLinks();
+    brand?.insertAdjacentElement('afterend',nav);
   }
   if(!$('sd2ProfilePanel')){
     const panel=document.createElement('section');
     panel.id='sd2ProfilePanel';panel.className='sd2-profile-panel';panel.setAttribute('aria-label','โปรไฟล์ผู้เรียน');
     panel.innerHTML='<div><strong id="sd2ProfileName">ผู้เรียน</strong><span>บัญชีผู้เรียน · Major Scale Notation Trainer</span></div><button type="button" class="btn" data-sd2-nav="logout">ออกจากระบบ</button>';
-    $('sd2TopNav')?.insertAdjacentElement('afterend',panel);
+    shell.querySelector('.student-dashboard-header')?.insertAdjacentElement('afterend',panel);
+    panel.tabIndex=-1;
   }
 
   if(!content.classList.contains('sd2-dashboard')){
@@ -104,7 +111,7 @@ function ensureStructure(){
       <section id="sd2Summary" class="sd2-summary-grid" aria-label="ภาพรวมความก้าวหน้า"></section>
       <div class="sd2-primary-grid">
         <section id="sd2Skills" class="sd2-card" aria-labelledby="sd2SkillsHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Skill Mastery</div><h2 id="sd2SkillsHeading">ทักษะที่ทำได้ดีและทักษะที่ควรพัฒนา</h2></div></div><div id="sd2SkillList" class="sd2-skill-list"></div></section>
-        <section id="sd2LearningPath" class="sd2-card" aria-labelledby="sd2PathHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Learning Path</div><h2 id="sd2PathHeading">ตำแหน่งปัจจุบันในเส้นทางการเรียน</h2></div></div><div id="sd2StageList" class="sd2-stage-list"></div></section>
+        <section id="sd2LearningPath" class="sd2-card" aria-labelledby="sd2PathHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Learning Path Steps</div><h2 id="sd2PathHeading">ตำแหน่งปัจจุบันในเส้นทางการเรียน</h2></div></div><ol id="sd2StageList" class="sd2-stage-list" role="list" aria-labelledby="sd2PathHeading"></ol></section>
       </div>
       <section id="sd2Trend" class="sd2-card" aria-labelledby="sd2TrendHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Learning Trend</div><h2 id="sd2TrendHeading">แนวโน้มผลการฝึกล่าสุด</h2></div><select id="sd2TrendFilter" class="sd2-filter" aria-label="เลือกทักษะสำหรับกราฟ"></select></div><div id="sd2TrendChart" class="sd2-chart-wrap"></div></section>
       <section id="sd2Recent" class="sd2-card" aria-labelledby="sd2RecentHeading"><div class="sd2-section-head"><div><div class="sd2-eyebrow">Recent Activity</div><h2 id="sd2RecentHeading">กิจกรรมการฝึกล่าสุด</h2></div><button id="sd2ViewAll" type="button" class="sd2-view-all">ดูทั้งหมด</button></div><div id="sd2RecentList" class="sd2-recent-list"></div></section>
@@ -121,10 +128,7 @@ function ensureStructure(){
     }
   }
 
-  if(!$('sd2BottomNav')){
-    const nav=document.createElement('nav');
-    nav.id='sd2BottomNav';nav.className='sd2-bottom-nav';nav.setAttribute('aria-label','เมนูผู้เรียนบนมือถือ');nav.innerHTML=navButtons(true);shell.appendChild(nav);
-  }
+  syncNavigation();
   return true;
 }
 
@@ -214,18 +218,18 @@ function renderSkills(vm){
 }
 
 function stageState(stage,current){
-  if(stage.stage_status==='mastered')return{cls:'is-mastered',status:'mastered',icon:'✓',label:'Mastered'};
-  if(current&&(stage.stage_id||stage.stage_code)===(current.stage_id||current.stage_code))return{cls:'is-current',status:'current',icon:'●',label:'Current'};
-  if(stage.stage_status==='locked')return{cls:'is-locked',status:'locked',icon:'🔒',label:'Locked'};
-  return{cls:'',status:'available',icon:'○',label:stage.stage_status==='in_progress'?'Current':'Available'};
+  if(stage.stage_status==='mastered')return{cls:'is-mastered completed',status:'mastered',icon:'✓',label:'Completed'};
+  if(current&&(stage.stage_id||stage.stage_code)===(current.stage_id||current.stage_code))return{cls:'is-current current',status:'current',icon:stage.ordinal,label:'Current'};
+  if(stage.stage_status==='locked')return{cls:'is-locked locked',status:'locked',icon:stage.ordinal,label:'🔒 Locked'};
+  return{cls:'upcoming',status:'upcoming',icon:stage.ordinal,label:'Upcoming'};
 }
 function renderLearningPath(vm){
   const target=$('sd2StageList');if(!target)return;
   target.innerHTML=vm.path.stages.length?vm.path.stages.map(stage=>{
     const state=stageState(stage,vm.path.current),current=(stage.stage_id||stage.stage_code)===(vm.currentStage?.stage_id||vm.currentStage?.stage_code);
     const score=current?vm.stageMastery:(stage.last_mastery_score==null?null:Number(stage.last_mastery_score));
-    return `<div class="sd2-stage ${state.cls}"><div class="sd2-stage-icon" aria-hidden="true">${state.icon}</div><div><div class="sd2-stage-title">Stage ${stage.ordinal} — ${escapeHtml(stage.stage_name||stage.stage_code||'')}</div><div class="sd2-stage-meta">${escapeHtml(stage.exercise_name||stage.exercise_code||'')}</div></div><div><span class="sd2-status ${state.status}">${state.label}</span>${Number.isFinite(score)?`<div class="sd2-stage-score">${percentText(score)}</div>`:''}</div></div>`;
-  }).join(''):'<div class="sd2-empty">ยังไม่มี Stage ใน Learning Path นี้</div>';
+    return `<li class="sd2-stage ${state.cls}"${state.status==='current'?' aria-current="step"':''}><div class="sd2-stage-icon" aria-hidden="true">${state.icon}</div><div><div class="sd2-stage-title">Stage ${stage.ordinal} — ${escapeHtml(stage.stage_name||stage.stage_code||'')}</div><div class="sd2-stage-meta">${escapeHtml(stage.exercise_name||stage.exercise_code||'')}</div></div><div><span class="sd2-status ${state.status}">${state.label}</span>${Number.isFinite(score)?`<div class="sd2-stage-score">${percentText(score)}</div>`:''}</div></li>`;
+  }).join(''):'<li class="sd2-empty">ยังไม่มี Stage ใน Learning Path นี้</li>';
 }
 
 function sessionTrendPoints(vm,skillCode){return [...vm.history.sessions].filter(session=>session.mode==='practice').sort((a,b)=>new Date(a.started_at)-new Date(b.started_at)).slice(-8).map(session=>({date:session.started_at,value:skillCode==='ALL'?session.score:session.skillScores?.[skillCode]?.score})).filter(point=>Number.isFinite(Number(point.value)));}
@@ -279,16 +283,25 @@ async function refresh(){
 }
 function scheduleRefresh(delay=80){clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>refresh(),delay);}
 function handleNavigation(action){
-  if(action==='dashboard')$('sd2Continue')?.scrollIntoView({behavior:'smooth',block:'start'});
-  if(action==='progress')$('sd2Skills')?.scrollIntoView({behavior:'smooth',block:'start'});
-  if(action==='practice')($('sd2Continue')?.querySelector('.dashboard-continue')||$('dashboardRecommendation')?.querySelector('.dashboard-continue'))?.click();
-  if(action==='profile'){profileOpen=!profileOpen;$('sd2ProfilePanel')?.classList.toggle('is-open',profileOpen);if(profileOpen)$('sd2ProfilePanel')?.scrollIntoView({behavior:'smooth',block:'nearest'});}
-  if(action==='logout')$('dashboardLogoutButton')?.click();
+  if(action==='logout'){$('dashboardLogoutButton')?.click();return;}
+  const target=$(NAV_TARGETS[action]);if(!target)return;
+  // Keep the existing launch handler and its authoritative stage/session attributes.
+  if(action==='practice'){
+    const launch=$('sd2Continue')?.querySelector('.dashboard-continue')||$('dashboardRecommendation')?.querySelector('.dashboard-continue');
+    if(launch){launch.click();return;}
+  }
+  window.location.hash=NAV_TARGETS[action];
+  syncNavigation();
+  target.tabIndex=-1;
+  target.focus({preventScroll:true});
+  target.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
 }
+
 function bind(){
   if(initialized)return;initialized=true;
+  window.addEventListener('hashchange',syncNavigation);
   document.addEventListener('click',event=>{
-    const nav=event.target.closest?.('[data-sd2-nav]');if(nav){event.preventDefault();handleNavigation(nav.dataset.sd2Nav);return;}
+    const nav=event.target.closest?.('[data-sd2-nav]');if(nav){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();handleNavigation(nav.dataset.sd2Nav);return;}
     const skill=event.target.closest?.('[data-sd2-skill]');if(skill){trendSkill=skill.dataset.sd2Skill||'ALL';const vm=window.__studentDashboardV2Model;if(vm)renderTrendChart(vm);$('sd2Trend')?.scrollIntoView({behavior:'smooth',block:'start'});}
     if(event.target?.id==='sd2ViewAll'){showAllRecent=!showAllRecent;const vm=window.__studentDashboardV2Model;if(vm)renderRecent(vm);}
   });

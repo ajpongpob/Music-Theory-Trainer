@@ -42,7 +42,9 @@ assert(repository.includes("from('attempts')"), 'History repository must read at
 assert(repository.includes("from('attempt_skill_results')"), 'History repository must read attempt skill evidence');
 assert(repository.includes("select('id', {count: 'exact', head: true})"), 'Session count must be data-backed rather than inferred from the recent page');
 
-assert(css.includes('.sd2-bottom-nav'), 'Mobile bottom navigation styles must exist');
+assert(source.includes("setAttribute('aria-label','Main')"), 'Main navigation must have an accessible landmark');
+assert(source.includes('aria-current="step"'), 'Current stage must expose step semantics');
+assert(css.includes('[aria-current="page"]'), 'Current destination styles must use aria-current');
 assert(css.includes('@media(min-width:760px)'), 'Dashboard must define a desktop enhancement breakpoint');
 assert(css.includes('grid-template-columns:repeat(4,minmax(0,1fr))'), 'Desktop summary cards must become four columns');
 assert(css.includes('--sd2-mastered'), 'Status color semantics must include Mastered');
