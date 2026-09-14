@@ -3,7 +3,8 @@ const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('ass
 const ctx={window:{}};vm.createContext(ctx);vm.runInContext(fs.readFileSync(path.join(__dirname,'../src/domain/mastery/mastery-learning-core.js'),'utf8'),ctx);
 const api=ctx.window.MajorScaleApp.masteryLearningCore;
 assert(api && Object.isFrozen(api));
-assert.equal(api.normalizeSessionMode('PRETEST'),'pretest');
+assert.strictEqual(api.PRETEST_ENABLED,false);
+assert.equal(api.normalizeSessionMode('PRETEST'),'practice','legacy pretest requests must fall back to practice');
 assert.equal(api.normalizeSessionMode('teacher_demo'),'teacher_demo');
 assert.equal(api.normalizeSessionMode('mastery_test'),'practice');
 assert.equal(api.normalizeSessionMode('mastery_test',{allowMasteryTest:true}),'mastery_test');
@@ -11,5 +12,7 @@ assert.deepStrictEqual(JSON.parse(JSON.stringify(api.buildDiagnosticItemCodes([{
 assert.deepStrictEqual(JSON.parse(JSON.stringify(api.buildDiagnosticItemCodes([],['D','D','A']))),['D','A']);
 const r=api.normalizeRecommendation([{learning_path_code:'P',exercise_code:'E',stage_code:'S',action_type:'target_skill',target_skill_code:'BN01',reason_code:'WEAK',reason_th:'ฝึก',overall_score:'81',overall_threshold:'90',attempts_found:10,rolling_window:10}]);
 assert.equal(r.actionType,'target_skill');assert.equal(r.overallScore,81);assert.equal(api.recommendationActionLabel(r),'ฝึกทักษะที่ควรพัฒนา');
+const legacy=api.normalizeRecommendation([{learning_path_code:'P',exercise_code:'E',stage_code:'S',action_type:'diagnostic',reason_code:'NO_STAGE_EVIDENCE',reason_th:'เริ่มแบบประเมินก่อนเรียน'}]);
+assert.equal(legacy.actionType,'continue');assert.equal(legacy.reasonCode,'PRETEST_DISABLED');assert.equal(api.recommendationActionLabel(legacy),'เรียนต่อ');
 assert(api.diagnosticComplete(5,5));assert(!api.diagnosticComplete(4,5));
-console.log('PASS mastery learning core: modes, diagnostic plan, normalized recommendation and learner-facing completion labels');
+console.log('PASS mastery learning core: practice-only modes, retained diagnostic helpers, normalized recommendation and learner-facing completion labels');
