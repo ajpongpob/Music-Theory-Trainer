@@ -7,7 +7,7 @@
   isolation:isolate;
   overflow:hidden;
   border:0;
-  background:conic-gradient(var(--sd2-stage-ring-color) var(--sd2-stage-progress),var(--sd2-stage-ring-track) 0);
+  background:conic-gradient(from 0deg,var(--sd2-stage-ring-color) 0 var(--sd2-stage-progress),var(--sd2-stage-ring-track) var(--sd2-stage-progress) 100%)!important;
   color:transparent;
   font-size:0;
   box-shadow:none;
@@ -38,18 +38,21 @@
 .sd2-stage.is-mastered .sd2-stage-icon.sd2-stage-progress-ring{
   --sd2-stage-ring-color:var(--sd2-mastered,#168244);
   --sd2-stage-ring-track:#dcefe4;
-  background:conic-gradient(var(--sd2-stage-ring-color) var(--sd2-stage-progress),var(--sd2-stage-ring-track) 0);
+  background:conic-gradient(from 0deg,var(--sd2-stage-ring-color) 0 var(--sd2-stage-progress),var(--sd2-stage-ring-track) var(--sd2-stage-progress) 100%)!important;
 }
 .sd2-stage.is-mastered .sd2-stage-icon.sd2-stage-progress-ring::after{
+  content:"✓";
   color:var(--sd2-mastered,#168244);
+  font-size:1.05rem;
+  letter-spacing:0;
 }
 .sd2-stage[aria-current="step"] .sd2-stage-icon.sd2-stage-progress-ring{
-  --sd2-stage-ring-color:var(--sd2-current,var(--accent,#e5a900));
+  --sd2-stage-ring-color:var(--unity-accent-strong,var(--sd2-current,var(--accent,#d99b00)));
   --sd2-stage-ring-track:#f2e5b5;
   border:0;
-  background:conic-gradient(var(--sd2-stage-ring-color) var(--sd2-stage-progress),var(--sd2-stage-ring-track) 0);
+  background:conic-gradient(from 0deg,var(--sd2-stage-ring-color) 0 var(--sd2-stage-progress),var(--sd2-stage-ring-track) var(--sd2-stage-progress) 100%)!important;
   color:transparent;
-  box-shadow:0 0 0 4px rgba(229,169,0,.14);
+  box-shadow:0 0 0 4px rgba(229,169,0,.14)!important;
 }
 .sd2-stage[aria-current="step"] .sd2-stage-icon.sd2-stage-progress-ring::after{
   color:var(--sd2-ink,#101828);
@@ -59,8 +62,8 @@
   --sd2-stage-ring-track:#e8ebef;
   border:0;
   border-style:solid;
-  background:conic-gradient(var(--sd2-stage-ring-color) 100%,var(--sd2-stage-ring-track) 0);
-  box-shadow:none;
+  background:conic-gradient(from 0deg,var(--sd2-stage-ring-color) 0 100%,var(--sd2-stage-ring-track) 100% 100%)!important;
+  box-shadow:none!important;
 }
 .sd2-stage-icon.sd2-stage-progress-ring.is-locked-ring::before{
   background:#f5f6f8;
