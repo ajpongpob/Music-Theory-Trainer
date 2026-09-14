@@ -271,12 +271,12 @@ function loadOptionalStylesheet(href, dataAttribute) {
 // scripts so notation, scoring and the authenticated exercise host stay frozen.
 if (typeof window.addEventListener === 'function' && typeof document !== 'undefined') {
   window.addEventListener('load', () => {
-    loadOptionalStylesheet('./styles/student-dashboard-v2.css?v=20260914-exercise-index-1', 'data-student-dashboard-v2-style');
+    loadOptionalStylesheet('./styles/student-dashboard-v2.css?v=20260914-exercise-index-3', 'data-student-dashboard-v2-style');
     loadOptionalStylesheet('./styles/teacher-dashboard-v2.css?v=20260913-teacher-v2', 'data-teacher-dashboard-v2-style');
-    const dashboardV2 = loadOptionalScript('./src/dashboard/student-dashboard-v2.js?v=20260914-exercise-index-1', 'data-student-dashboard-v2');
+    const dashboardV2 = loadOptionalScript('./src/dashboard/student-dashboard-v2.js?v=20260914-exercise-index-3', 'data-student-dashboard-v2');
     const loadDashboardAddons = () => {
-      loadOptionalScript('./src/dashboard/student-dashboard-v2-compat.js?v=20260914-exercise-index-1', 'data-student-dashboard-v2-compat');
-      loadOptionalScript('./src/dashboard/exercise-index.js?v=20260914-exercise-index-1', 'data-exercise-index');
+      loadOptionalScript('./src/dashboard/student-dashboard-v2-compat.js?v=20260914-exercise-index-3', 'data-student-dashboard-v2-compat');
+      loadOptionalScript('./src/dashboard/exercise-index.js?v=20260914-exercise-index-3', 'data-exercise-index');
     };
     if (dashboardV2) dashboardV2.addEventListener('load', loadDashboardAddons, {once:true});
     else loadDashboardAddons();
@@ -292,13 +292,6 @@ if (typeof window.addEventListener === 'function' && typeof document !== 'undefi
       const hardening = document.createElement('script');
       hardening.src = './src/m15-learning-feedback-hardening.js';
       hardening.dataset.m15FeedbackHardening = 'true';
-      hardening.addEventListener('load', () => {
-        if (document.querySelector('script[data-m16-pretest-flow]')) return;
-        const pretest = document.createElement('script');
-        pretest.src = './src/m16-pretest-flow.js';
-        pretest.dataset.m16PretestFlow = 'true';
-        document.body.appendChild(pretest);
-      }, {once:true});
       document.body.appendChild(hardening);
     }, {once:true});
     document.body.appendChild(feedback);
