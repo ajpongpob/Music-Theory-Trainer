@@ -27,31 +27,7 @@ const server=http.createServer((req,res)=>{
     page.on('response',r=>{if(r.url().includes('/checkpoint/')&&r.status()!==200)badAssets.push(r.url());});
     page.on('dialog',d=>d.accept());
     await page.route('**/*supabase-js*',r=>r.fulfill({contentType:'application/javascript',body:`${sdk}
-window.supabase={createClient:()=>{
-  const client=makeClient('student',window);
-  const baseRpc=client.rpc.bind(client);
-  client.rpc=async(name,args)=>{
-    if(name==='get_my_latest_diagnostic_feedback'){
-      return {data:[{
-        session_id:'diag-session-1',evaluated_stage_code:'STAGE_2',evaluated_stage_name:'ขั้นที่ 2',session_questions:2,
-        session_overall_score:100,diagnostic_passed:true,overall_threshold:90,
-        skill_results:[
-          {skill_code:'BN01_TREBLE_PITCH',score:100,threshold:90,passed:true},
-          {skill_code:'BN06_STEM_DIRECTION',score:100,threshold:85,passed:true},
-          {skill_code:'RH01_DURATION_VALUE',score:100,threshold:85,passed:true},
-          {skill_code:'GR02_PRIMARY_BEAM',score:100,threshold:85,passed:true},
-          {skill_code:'MS03_SCALE_ACCIDENTAL',score:100,threshold:90,passed:true}
-        ],
-        question_scores:[{question_number:1,item_code:'C',score:100},{question_number:2,item_code:'G',score:100}],
-        placement_stage_code:'STAGE_2',placement_stage_name:'ขั้นที่ 2',mastered_stage_codes:['STAGE_1'],
-        recommendation_action_type:'continue',recommendation_reason_code:'DIAGNOSTIC_NEEDS_PRACTICE',
-        recommendation_reason_th:'ผลประเมินใช้กำหนดจุดเริ่มต้นที่เหมาะสม'
-      }],error:null};
-    }
-    return baseRpc(name,args);
-  };
-  return client;
-}};`}));
+window.supabase={createClient:()=>makeClient('student',window)};`}));
     await page.route('**/src/trainer.js',r=>{
       const source=read('src/trainer.js').replace('initializeTrainerAfterMusicFont();\n})();','window.__qa={state,buildExpected,render,check,selectNoteRange,drawBeams};\ninitializeTrainerAfterMusicFont();\n})();');
       return r.fulfill({contentType:'application/javascript',body:injection+source});
@@ -126,40 +102,20 @@ window.supabase={createClient:()=>{
     await page.locator('[data-app-nav-action="dashboard"]').click();
     await page.waitForFunction(()=>!document.getElementById('studentDashboard').hidden);
     assert.equal(await page.evaluate(()=>MajorScaleApp.exerciseHost.getCurrentContext()),null);
-    // Dashboard V2 intentionally moves the legacy recommendation into a hidden
-    // compatibility container. Exercise routing still owns that action, so use
-    // the native DOM click here to keep the legacy diagnostic route covered;
-    // visible V2 interaction is tested by the Dashboard V2-specific contracts.
-    const diagnostic=page.locator('#dashboardRecommendation .dashboard-continue');
-    await diagnostic.evaluate(button=>button.click());
-    await page.waitForFunction(()=>!document.getElementById('trainerApp').hidden && __qa.state.sessionMode==='pretest');
-    assert.equal(await page.evaluate(()=>MajorScaleApp.exerciseHost.getCurrentContext().sessionMode),'pretest','Host carries diagnostic mode');
-    assert.equal(await page.locator('#levelSelect').isDisabled(),true,'Diagnostic path Stage must also lock Level');
-    assert.equal(await page.evaluate(()=>__qa.state.sessionLength),2,'diagnostic plan uses required Stage items');
-    for(let q=0;q<2;q++){
-      await page.evaluate(questionIndex=>{__qa.state.notes=__qa.buildExpected(__qa.state.key).map((n,i)=>({...n,id:'diag'+questionIndex+'-'+i}));__qa.render();},q);
-      await page.locator('#checkAnswer').click();
-      await page.locator('#questionResultOverlay').waitFor({state:'visible'});
-      await page.waitForFunction(()=>!document.getElementById('questionResultContinue').disabled);
-      if(q===0){
-        await page.locator('#questionResultContinue').click();
-        await page.waitForFunction(()=>document.getElementById('questionResultOverlay').hidden && __qa.state.questionIndex===1);
-      }else{
-        await page.waitForFunction(()=>document.getElementById('questionResultContinue').dataset.m15==='diagnostic');
-        assert.equal(await page.locator('#questionResultContinue').textContent(),'ดูผลประเมินก่อนเรียน');
-        await page.locator('#questionResultContinue').click();
-        await page.locator('#sessionSummary').waitFor({state:'visible'});
-        assert.equal(await page.locator('#summaryTitle').textContent(),'ผลประเมินก่อนเรียน');
-        assert(await page.locator('#summaryMasteryStatus').evaluate(el=>el.textContent.includes('จุดเริ่มต้น') || el.textContent.includes('กำหนดจุดเริ่มต้น')),'diagnostic feedback must explain placement purpose');
-        await page.locator('#m15Dashboard').click();
-      }
-    }
-    await page.waitForFunction(()=>!document.getElementById('studentDashboard').hidden);
-    assert(await page.evaluate(()=>__qaCalls.some(c=>c[0]==='learning.applyDiagnosticPlacement')),'diagnostic placement persisted after final pretest item');
-    assert(await page.evaluate(()=>__qaCalls.some(c=>c[0]==='practice.createPracticeSession' && c[1]?.mode==='pretest')),'pretest session persisted with explicit mode');
-    await page.locator('.dashboard-continue').first().click();
-    await page.waitForFunction(()=>!document.getElementById('trainerApp').hidden);
+
+    // Pretest is retired. Even the legacy compatibility recommendation must
+    // route through the standard practice session and must never persist a
+    // pretest session or diagnostic placement.
+    const legacyAction=page.locator('#dashboardRecommendation .dashboard-continue');
+    assert.equal(await legacyAction.getAttribute('data-session-mode'),'practice');
+    await legacyAction.evaluate(button=>button.click());
+    await page.waitForFunction(()=>!document.getElementById('trainerApp').hidden && __qa.state.sessionMode==='practice');
+    assert.equal(await page.evaluate(()=>MajorScaleApp.exerciseHost.getCurrentContext().sessionMode),'practice','Host normalizes learner flow to practice');
+    assert.equal(await page.locator('#levelSelect').isDisabled(),true,'Practice path Stage remains locked to the authoritative Stage');
+    assert.equal(await page.evaluate(()=>__qaCalls.some(c=>c[0]==='practice.createPracticeSession' && c[1]?.mode==='pretest')),false,'retired pretest mode must never persist');
+    assert.equal(await page.evaluate(()=>__qaCalls.some(c=>c[0]==='learning.applyDiagnosticPlacement')),false,'retired diagnostic placement must never run');
     assert.equal(await page.evaluate(()=>__qa.state.notes.filter(Boolean).length),0,'reopen clears answer');
+
     await page.setViewportSize({width:390,height:844});
     await page.evaluate(()=>{__qa.state.notes=__qa.buildExpected(__qa.state.key).map((n,i)=>({...n,id:'mobile'+i}));__qa.render();});
     const mobileScoreBox=await page.locator('#scoreSvg').boundingBox();
@@ -176,6 +132,6 @@ window.supabase={createClient:()=>{
     const reviewBox=await page.locator('#questionResultNotation svg').boundingBox();
     assert(reviewBox && reviewBox.width>320,'narrow review notation should use the available popup width');
     assert.deepEqual(errors,[]);assert.deepEqual(badAssets,[]);
-    console.log('PASS browser: HTTP subpath, Dashboard recommendation → diagnostic feedback/placement → Dashboard, double click → Host → legacy runtime, A-G, click, drag, Shift/mobile selection, accidentals, durations, stems, beams/remove, 100% answer, popup, narrow score sizing + compact review, attempt save, return/reopen');
+    console.log('PASS browser: HTTP subpath, practice-only Dashboard routing, double click → Host → legacy runtime, A-G, click, drag, Shift/mobile selection, accidentals, durations, stems, beams/remove, 100% answer, popup, narrow score sizing + compact review, attempt save, return/reopen');
   }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(()=>server.close());
