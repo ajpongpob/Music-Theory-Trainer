@@ -18,6 +18,10 @@ vm.runInContext(fs.readFileSync(path.join(ROOT,'src/domain/mastery/mastery-learn
 const core=masteryContext.window.MajorScaleApp.masteryLearningCore;
 assert.equal(core.recommendationActionLabel({actionType:'target_item',targetItemCode:'Bb'}),'ฝึกบันไดเสียง Bb');
 assert.equal(core.recommendationActionLabel({actionType:'target_skill'}),'ฝึกทักษะที่ควรพัฒนา');
-assert.equal(core.recommendationActionLabel({actionType:'diagnostic'}),'เริ่มแบบประเมินก่อนเรียน');
+assert.equal(core.recommendationActionLabel({actionType:'diagnostic'}),'เริ่มฝึก','legacy diagnostic labels must not reintroduce the retired pretest flow');
+const normalizedLegacyDiagnostic=core.normalizeRecommendation([{exercise_code:'MAJOR_SCALE_NOTATION',stage_code:'STAGE_2',action_type:'diagnostic',reason_code:'NO_STAGE_EVIDENCE',reason_th:'เริ่มแบบประเมินก่อนเรียน'}]);
+assert.equal(normalizedLegacyDiagnostic.actionType,'continue');
+assert.equal(normalizedLegacyDiagnostic.reasonCode,'PRETEST_DISABLED');
+assert.equal(normalizedLegacyDiagnostic.reasonTh,'เริ่มทำแบบฝึกของขั้นนี้ตามเงื่อนไขหลักของระบบ');
 assert.equal(core.recommendationActionLabel({actionType:'advance'}),'ไปขั้นถัดไป');
-console.log('PASS M1.2 learning-flow UX: Pitch Name terminology and actionable recommendation copy with unchanged mastery/progression/dashboard data boundaries');
+console.log('PASS M1.2 learning-flow UX: Pitch Name terminology, practice-only legacy fallback and actionable recommendation copy with unchanged mastery/progression/dashboard data boundaries');
