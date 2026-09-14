@@ -150,6 +150,32 @@ function decorateStageIcon(stage,item,progress){
   }
 }
 
+function decorateContinueProgress(stage,progress){
+  const body=document.getElementById('sd2ContinueBody');
+  const meta=body?.querySelector('.sd2-progress-meta');
+  const track=body?.querySelector('.sd2-progress-track');
+  const fill=track?.querySelector('.sd2-progress-fill');
+  if(!meta || !track || !fill || progress?.locked) return false;
+
+  const value=Math.round(clampPercent(progress?.progress));
+  const label=meta.querySelector('strong');
+  if(label) label.textContent=`${value}%`;
+  fill.style.width=`${value}%`;
+  track.setAttribute('aria-valuemin','0');
+  track.setAttribute('aria-valuemax','100');
+  track.setAttribute('aria-valuenow',String(value));
+  track.setAttribute('aria-label',`${stage?.stage_name||stage?.stage_code||'Stage'} ความก้าวหน้าตามจำนวนข้อที่ใช้ประเมิน`);
+  if(Number.isFinite(progress?.completed)&&Number.isFinite(progress?.total)&&progress.total>0){
+    const completed=Math.min(progress.completed,progress.total);
+    track.setAttribute('aria-valuetext',`${value}% (${completed} จาก ${progress.total} ข้อ)`);
+    track.title=`${completed} / ${progress.total} ข้อที่ใช้ประเมินขั้นนี้`;
+  }else{
+    track.setAttribute('aria-valuetext',`${value}%`);
+    track.title=`${value}%`;
+  }
+  return true;
+}
+
 function masteryForStage(stage){
   const app=window.MajorScaleApp || {};
   const repo=app.dashboardRepository;
@@ -181,16 +207,24 @@ async function syncProgressRings(){
   const items=[...list.querySelectorAll(':scope > .sd2-stage')];
   if(!stages.length || !items.length) return false;
 
+  const currentStage=model.currentStage || model.path?.current || null;
+  const currentKey=currentStage?.stage_id || currentStage?.stage_code || null;
+
   await Promise.all(stages.map(async(stage,index)=>{
     const item=items[index];
     if(!item) return;
+    const stageKey=stage?.stage_id || stage?.stage_code || null;
     if(stage.stage_status==='mastered' || stage.stage_status==='locked'){
-      decorateStageIcon(stage,item,stageProgressFromMastery(stage,null));
+      const progress=stageProgressFromMastery(stage,null);
+      decorateStageIcon(stage,item,progress);
+      if(currentKey && stageKey===currentKey) decorateContinueProgress(stage,progress);
       return;
     }
     const mastery=await masteryForStage(stage);
     if(window.__studentDashboardV2Model!==model) return;
-    decorateStageIcon(stage,item,stageProgressFromMastery(stage,mastery));
+    const progress=stageProgressFromMastery(stage,mastery);
+    decorateStageIcon(stage,item,progress);
+    if(currentKey && stageKey===currentKey) decorateContinueProgress(stage,progress);
   }));
   return true;
 }
@@ -224,6 +258,7 @@ window.MajorScaleApp.studentDashboardV2Compat=Object.freeze({
   legacyPrimaryAction,
   syncPrimaryFallback,
   stageProgressFromMastery,
+  decorateContinueProgress,
   syncProgressRings
 });
 })();
