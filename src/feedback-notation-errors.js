@@ -1,7 +1,6 @@
 (() => {
 'use strict';
 
-const WRONG_COLOR='#c62828';
 let scheduled=false;
 
 function parseWrongNotePositions(text){
@@ -19,54 +18,32 @@ function parseWrongNotePositions(text){
   return [...positions].sort((a,b)=>a-b);
 }
 
-function visibleNoteGroups(snapshot){
-  const heads=[...snapshot.querySelectorAll('.smufl-notehead, ellipse')].filter(node=>{
-    if(node.closest('defs')) return false;
-    const fill=(node.getAttribute('fill')||'').toLowerCase();
-    return fill!=='transparent' && fill!=='none';
-  });
-  const groups=[];
-  const seen=new Set();
-  heads.forEach(head=>{
-    const group=head.closest('g');
-    if(!group || seen.has(group)) return;
-    seen.add(group);
-    groups.push(group);
-  });
-  return groups;
-}
+function clearLegacyWrongNoteColors(){
+  const snapshot=document.querySelector('#questionResultNotation .question-result-score-snapshot');
+  if(!snapshot) return false;
 
-function recolorVisibleNode(node){
-  const fill=node.getAttribute('fill');
-  if(fill && !['none','transparent'].includes(fill.toLowerCase())) node.setAttribute('fill',WRONG_COLOR);
-  const stroke=node.getAttribute('stroke');
-  if(stroke && !['none','transparent'].includes(stroke.toLowerCase())) node.setAttribute('stroke',WRONG_COLOR);
-}
+  snapshot.querySelectorAll('.feedback-wrong-note').forEach(node=>{
+    node.classList.remove('feedback-wrong-note');
+  });
 
-function markGroupWrong(group){
-  group.classList.add('feedback-wrong-note');
-  recolorVisibleNode(group);
-  group.querySelectorAll('text,ellipse,line,path,polygon').forEach(recolorVisibleNode);
+  // Defensive cleanup for snapshots that may have been recolored by an older
+  // cached version of this module before the current code loaded.
+  snapshot.querySelectorAll('[fill="#c62828"],[fill="#C62828"]').forEach(node=>{
+    node.setAttribute('fill','#111');
+  });
+  snapshot.querySelectorAll('[stroke="#c62828"],[stroke="#C62828"]').forEach(node=>{
+    node.setAttribute('stroke','#111');
+  });
+
+  snapshot.setAttribute('aria-label','คำตอบของผู้เรียนข้อนี้');
+  return true;
 }
 
 function applyWrongNoteColors(){
-  const overlay=document.getElementById('questionResultOverlay');
-  if(!overlay || overlay.hidden) return false;
-  const feedback=document.getElementById('questionResultFeedback');
-  const snapshot=document.querySelector('#questionResultNotation .question-result-score-snapshot');
-  if(!feedback || !snapshot) return false;
-
-  const positions=parseWrongNotePositions(feedback.textContent);
-  const groups=visibleNoteGroups(snapshot);
-  groups.forEach(group=>group.classList.remove('feedback-wrong-note'));
-  if(!positions.length || !groups.length) return false;
-
-  positions.forEach(position=>{
-    const group=groups[position-1];
-    if(group) markGroupWrong(group);
-  });
-  snapshot.setAttribute('aria-label',`คำตอบของผู้เรียนข้อนี้ โน้ตที่ผิด ${positions.length} ตำแหน่งแสดงด้วยสีแดง`);
-  return true;
+  // Intentionally do not mark incorrect notes. The result view keeps the
+  // learner's submitted notation unchanged and feedback remains textual only.
+  clearLegacyWrongNoteColors();
+  return false;
 }
 
 function schedule(){
@@ -96,6 +73,7 @@ else bind();
 window.MajorScaleApp=window.MajorScaleApp || {};
 window.MajorScaleApp.feedbackNotationErrors=Object.freeze({
   parseWrongNotePositions,
-  applyWrongNoteColors
+  applyWrongNoteColors,
+  clearLegacyWrongNoteColors
 });
 })();
