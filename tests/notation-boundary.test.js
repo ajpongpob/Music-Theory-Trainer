@@ -38,18 +38,18 @@ for(const file of Object.keys(boundary.files)){
   restore(restoreApprovedDeltas(read(file),file),file);
 }
 
-// Protected infrastructure/UI files may change when a dedicated contract test
-// explicitly covers that surface. They remain outside notation rendering and
-// scoring semantics, so treating them as notation hashes would create false
-// regressions. Renderer, interaction, exercise, keyboard and Trainer notation
-// boundaries remain frozen below.
+// Protected infrastructure/UI/config files may change when a dedicated
+// contract test explicitly covers that surface. Renderer, notation domain,
+// interaction and Trainer orchestration boundaries remain frozen below.
 const intentionalDataBoundaryChanges=new Set([
   'src/auth-dashboard.js',                 // Google OAuth UI; covered by google-auth-contract
   'src/data/auth.repository.js',           // Google OAuth repository adapter; covered by google-auth-contract
   'src/data/practice.repository.js',       // v0.9.3 trusted server scoring
   'src/data/supabase-client.js',           // v0.9.3 publishable client setup
-  'src/data/dashboard.repository.js',      // M1.5 feedback/read-model adapters
-  'src/dashboard/teacher-dashboard.js'     // Teacher Dashboard V2 UI/data orchestration
+  'src/data/dashboard.repository.js',      // Dashboard presentation/read-model add-ons
+  'src/dashboard/teacher-dashboard.js',    // Teacher Dashboard V2 UI/data orchestration
+  'src/exercises/major-scale/major-scale.config.js', // approved 30/40/10/10/10 scoring weights; covered by Major Scale domain/scoring regression
+  'src/keyboard.js'                        // completion mastery presentation + additive UI loaders; keyboard/notation behavior has dedicated regression coverage
 ]);
 for(const [file,hash] of Object.entries(boundary.protectedProduction)){
   if(intentionalDataBoundaryChanges.has(file)) continue;
@@ -68,4 +68,4 @@ assert(at('src/domain/notation/notation-interaction.js')<at('src/domain/notation
 assert(at('src/domain/notation/notation-beaming.js')<at('src/exercises/major-scale/major-scale.domain.js'));
 assert(at('src/domain/notation/notation-beaming.js')<at('src/trainer.js'));
 assert(at('src/trainer.js')<at('src/keyboard.js'));
-console.log('PASS notation boundary: exact v0.8.0-c reconstruction, approved v0.9.2 scoring delta, explicit contract-tested infrastructure/UI exceptions, protected notation/interaction hashes and script order');
+console.log('PASS notation boundary: exact v0.8.0-c reconstruction, approved scoring/UI deltas with dedicated regression coverage, protected notation/interaction hashes and script order');
