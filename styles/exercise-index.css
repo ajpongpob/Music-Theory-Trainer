@@ -1,14 +1,9 @@
 /* Exercise Index V1 + centered Learning Path presentation. */
 
-/* Center the horizontal Learning Path as a complete visual instead of anchoring
-   each Stage at the left edge of its quarter. Mobile keeps the proven vertical
+/* Center the horizontal Learning Path graphic as a complete visual instead of
+   anchoring each Stage at the left edge of its quarter. Keep the section title
+   aligned with the rest of the Dashboard. Mobile keeps the proven vertical
    timeline layout. */
-#sd2LearningPath .sd2-section-head{
-  justify-content:center;
-  text-align:center;
-}
-#sd2LearningPath .sd2-section-head>div{width:100%;}
-
 @media(min-width:980px){
   #sd2LearningPath .sd2-stage-list{
     width:min(100%,1480px);
