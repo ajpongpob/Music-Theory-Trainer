@@ -216,3 +216,14 @@
     init();
   }
 })();
+
+/* Mastery badge V1 loader. Keeping this as a separate module lets the badge
+   presentation evolve without coupling reward UI to notation keyboard input. */
+(function(){
+  if(document.querySelector('script[data-major-scale-badge-system]')) return;
+  const script=document.createElement('script');
+  script.src='./src/badge-system.js?v=20260914-1';
+  script.async=false;
+  script.setAttribute('data-major-scale-badge-system','true');
+  document.head.appendChild(script);
+})();
