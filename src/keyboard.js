@@ -217,14 +217,22 @@
   }
 })();
 
-/* Mastery badge V1 loader. Keeping this as a separate module lets the badge
-   presentation evolve without coupling reward UI to notation keyboard input. */
+/* Additive presentation modules. They are deliberately kept outside the
+   notation and mastery domain layers. Guards make lightweight Node DOM mocks
+   safe while browsers receive the full UI. */
 (function(){
   if(typeof document==='undefined' || typeof document.querySelector!=='function' || !document.head) return;
-  if(document.querySelector('script[data-major-scale-badge-system]')) return;
-  const script=document.createElement('script');
-  script.src='./src/badge-system.js?v=20260914-2';
-  script.async=false;
-  script.setAttribute('data-major-scale-badge-system','true');
-  document.head.appendChild(script);
+
+  function load(src,attribute){
+    if(document.querySelector(`script[${attribute}]`)) return;
+    const script=document.createElement('script');
+    script.src=src;
+    script.async=false;
+    script.setAttribute(attribute,'true');
+    document.head.appendChild(script);
+  }
+
+  load('./src/badge-system.js?v=20260914-3','data-major-scale-badge-system');
+  load('./src/disabled-feature-ui-guards.js?v=20260914-1','data-disabled-feature-ui-guards');
+  load('./src/dashboard/exercise-index-drawer.js?v=20260914-1','data-exercise-index-drawer-addon');
 })();
