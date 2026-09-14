@@ -10,12 +10,14 @@ export const SUPPORTED_TONICS=Object.freeze([
   'Fb','Bbb','Ebb','Abb','Dbb','Gbb','Cbb'
 ]);
 
+// Keep authoritative server scoring identical to the current exercise contract:
+// Pitch 30%, Accidental 40%, Duration 10%, Primary Beam 10%, Stem 10%.
 export const LO_WEIGHTS=Object.freeze({
   BN01_TREBLE_PITCH:30,
   BN06_STEM_DIRECTION:10,
-  RH01_DURATION_VALUE:15,
-  GR02_PRIMARY_BEAM:15,
-  MS03_SCALE_ACCIDENTAL:30
+  RH01_DURATION_VALUE:10,
+  GR02_PRIMARY_BEAM:10,
+  MS03_SCALE_ACCIDENTAL:40
 });
 
 export class ScoringValidationError extends Error {
