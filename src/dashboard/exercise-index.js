@@ -4,7 +4,7 @@
 const app=window.MajorScaleApp=window.MajorScaleApp || {};
 const PAGE_ID='sd2ExerciseIndexPage';
 const HASH=`#${PAGE_ID}`;
-const STYLE_VERSION='20260914-exercise-index-1';
+const STYLE_VERSION='20260914-exercise-index-2';
 
 /* These are intentionally presentation-only future slots. If a real exercise
    with the same code is later registered, the registry definition wins and the
@@ -31,7 +31,7 @@ const FUTURE_SLOTS=Object.freeze([
 ]);
 
 const $=id=>document.getElementById(id);
-const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));
 const first=data=>Array.isArray(data)?(data[0]||null):(data||null);
 const clamp=value=>Number.isFinite(Number(value))?Math.max(0,Math.min(100,Number(value))):0;
 
@@ -195,7 +195,8 @@ function exerciseState(item){
   if(item.availability==='coming-soon') return {cls:'is-coming',label:'กำลังเตรียม'};
   const stages=item.stages||[];
   if(stages.length && stages.every(stage=>stage?.stage_status==='mastered')) return {cls:'is-complete',label:'สำเร็จแล้ว'};
-  if(stages.some(stage=>currentStageMatches(stage))) return {cls:'is-current',label:'กำลังเรียน'};
+  if(stages.some(stage=>currentStageMatches(stage) || stage?.stage_status==='in_progress')) return {cls:'is-current',label:'กำลังเรียน'};
+  if(stages.length && stages.every(stage=>stage?.stage_status==='locked')) return {cls:'is-locked',label:'ยังไม่ปลดล็อก'};
   return {cls:'is-available',label:'ใช้งานได้'};
 }
 
@@ -303,10 +304,12 @@ function render(){
     lastModel=vm;
   }
   const items=catalog();
-  const available=items.filter(item=>item.availability!=='coming-soon').length;
-  const coming=items.length-available;
-  const completed=items.filter(item=>exerciseState(item).cls==='is-complete').length;
-  summary.innerHTML=`<span class="exi-summary-chip"><strong>${items.length}</strong> หัวข้อทั้งหมด</span><span class="exi-summary-chip"><strong>${available}</strong> ใช้งานได้</span><span class="exi-summary-chip"><strong>${completed}</strong> สำเร็จแล้ว</span><span class="exi-summary-chip"><strong>${coming}</strong> เตรียมรองรับ</span>`;
+  const states=items.map(item=>exerciseState(item).cls);
+  const available=states.filter(state=>['is-available','is-current','is-complete'].includes(state)).length;
+  const locked=states.filter(state=>state==='is-locked').length;
+  const coming=states.filter(state=>state==='is-coming').length;
+  const completed=states.filter(state=>state==='is-complete').length;
+  summary.innerHTML=`<span class="exi-summary-chip"><strong>${items.length}</strong> หัวข้อทั้งหมด</span><span class="exi-summary-chip"><strong>${available}</strong> ใช้งานได้</span><span class="exi-summary-chip"><strong>${completed}</strong> สำเร็จแล้ว</span><span class="exi-summary-chip"><strong>${locked}</strong> ยังล็อก</span><span class="exi-summary-chip"><strong>${coming}</strong> เตรียมรองรับ</span>`;
   list.innerHTML=items.map(exerciseMarkup).join('');
   applyNavigation();
   return true;
