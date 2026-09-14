@@ -271,12 +271,15 @@ function loadOptionalStylesheet(href, dataAttribute) {
 // scripts so notation, scoring and the authenticated exercise host stay frozen.
 if (typeof window.addEventListener === 'function' && typeof document !== 'undefined') {
   window.addEventListener('load', () => {
-    loadOptionalStylesheet('./styles/student-dashboard-v2.css?v=20260914-stage-progress-2', 'data-student-dashboard-v2-style');
+    loadOptionalStylesheet('./styles/student-dashboard-v2.css?v=20260914-exercise-index-1', 'data-student-dashboard-v2-style');
     loadOptionalStylesheet('./styles/teacher-dashboard-v2.css?v=20260913-teacher-v2', 'data-teacher-dashboard-v2-style');
-    const dashboardV2 = loadOptionalScript('./src/dashboard/student-dashboard-v2.js?v=20260914-stage-progress-2', 'data-student-dashboard-v2');
-    const loadDashboardCompat = () => loadOptionalScript('./src/dashboard/student-dashboard-v2-compat.js?v=20260914-stage-progress-2', 'data-student-dashboard-v2-compat');
-    if (dashboardV2) dashboardV2.addEventListener('load', loadDashboardCompat, {once:true});
-    else loadDashboardCompat();
+    const dashboardV2 = loadOptionalScript('./src/dashboard/student-dashboard-v2.js?v=20260914-exercise-index-1', 'data-student-dashboard-v2');
+    const loadDashboardAddons = () => {
+      loadOptionalScript('./src/dashboard/student-dashboard-v2-compat.js?v=20260914-exercise-index-1', 'data-student-dashboard-v2-compat');
+      loadOptionalScript('./src/dashboard/exercise-index.js?v=20260914-exercise-index-1', 'data-exercise-index');
+    };
+    if (dashboardV2) dashboardV2.addEventListener('load', loadDashboardAddons, {once:true});
+    else loadDashboardAddons();
 
     loadOptionalScript('./src/feedback-notation-errors.js', 'data-feedback-notation-errors');
 
