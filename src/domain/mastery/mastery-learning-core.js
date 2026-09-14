@@ -2,11 +2,14 @@
 'use strict';
 const app=window.MajorScaleApp=window.MajorScaleApp || {};
 
-const MODES=Object.freeze(['practice','pretest','mastery_test','teacher_demo']);
+// Pre-test is intentionally disabled. Any legacy request for pretest is
+// normalized to the main practice flow so the learner always follows the
+// standard mastery exercise conditions.
+const PRETEST_ENABLED=false;
+const MODES=Object.freeze(['practice','mastery_test','teacher_demo']);
 
 function normalizeSessionMode(value,{allowMasteryTest=false}={}){
   const mode=String(value || 'practice').trim().toLowerCase();
-  if(mode==='pretest') return 'pretest';
   if(mode==='teacher_demo') return 'teacher_demo';
   if(allowMasteryTest && mode==='mastery_test') return 'mastery_test';
   return 'practice';
@@ -31,15 +34,19 @@ function firstResult(data){
 function normalizeRecommendation(data){
   const row=firstResult(data);
   if(!row) return null;
+  const rawActionType=row.action_type || 'continue';
+  const diagnosticSuppressed=rawActionType==='diagnostic';
   return Object.freeze({
     pathCode:row.learning_path_code || null,
     exerciseCode:row.exercise_code || null,
     stageCode:row.stage_code || null,
-    actionType:row.action_type || 'continue',
+    actionType:diagnosticSuppressed ? 'continue' : rawActionType,
     targetSkillCode:row.target_skill_code || null,
     targetItemCode:row.target_item_code || null,
-    reasonCode:row.reason_code || null,
-    reasonTh:row.reason_th || '',
+    reasonCode:diagnosticSuppressed ? 'PRETEST_DISABLED' : (row.reason_code || null),
+    reasonTh:diagnosticSuppressed
+      ? 'เริ่มทำแบบฝึกของขั้นนี้ตามเงื่อนไขหลักของระบบ'
+      : (row.reason_th || ''),
     overallScore:row.overall_score==null ? null : Number(row.overall_score),
     overallThreshold:row.overall_threshold==null ? null : Number(row.overall_threshold),
     attemptsFound:Number(row.attempts_found || 0),
@@ -49,7 +56,8 @@ function normalizeRecommendation(data){
 
 function recommendationActionLabel(recommendation){
   switch(recommendation?.actionType){
-    case 'diagnostic': return 'เริ่มแบบประเมินก่อนเรียน';
+    // Defensive fallback for stale callers that bypass normalizeRecommendation.
+    case 'diagnostic': return 'เริ่มฝึก';
     case 'target_item': return recommendation.targetItemCode ? `ฝึกบันไดเสียง ${recommendation.targetItemCode}` : 'ฝึกบันไดเสียงที่ยังขาด';
     case 'target_skill': return 'ฝึกทักษะที่ควรพัฒนา';
     case 'advance': return 'ไปขั้นถัดไป';
@@ -64,6 +72,7 @@ function diagnosticComplete(completedQuestions,plannedQuestions){
 }
 
 app.masteryLearningCore=Object.freeze({
+  PRETEST_ENABLED,
   MODES,
   normalizeSessionMode,
   buildDiagnosticItemCodes,
