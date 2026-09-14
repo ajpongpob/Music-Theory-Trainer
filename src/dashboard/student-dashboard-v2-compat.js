@@ -78,7 +78,7 @@ function ensureProgressRingStyles(){
   if(document.querySelector('link[data-student-dashboard-progress-rings]')) return;
   const link=document.createElement('link');
   link.rel='stylesheet';
-  link.href='./styles/student-dashboard-progress-rings.css?v=20260914-1';
+  link.href='./styles/student-dashboard-progress-rings.css?v=20260914-2';
   link.setAttribute('data-student-dashboard-progress-rings','true');
   document.head.appendChild(link);
 }
