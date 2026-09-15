@@ -79,6 +79,35 @@ function refreshEditorHint(){
   hint.innerHTML='คลิก/แตะเพื่อเขียน • โน้ตที่ไฮไลต์สามารถเปลี่ยนค่า Rhythm ได้ทันที • <kbd>Shift</kbd>+Click เพื่อเลือกช่วง';
 }
 
+let masteryStatusCopyObserver=null;
+
+function normalizeMasteryStatusCopy(){
+  const status=document.getElementById('masteryProgressStatus');
+  if(!status) return false;
+  const current=status.textContent || '';
+  const normalized=current.replace(
+    'ฝึก Score เพิ่มอีกเล็กน้อย',
+    'ฝึกแบบฝึกหัดเพิ่มอีกเล็กน้อย'
+  );
+  if(normalized===current) return false;
+  status.textContent=normalized;
+  return true;
+}
+
+function observeMasteryStatusCopy(){
+  const status=document.getElementById('masteryProgressStatus');
+  if(!status) return false;
+  normalizeMasteryStatusCopy();
+  if(masteryStatusCopyObserver) return true;
+  masteryStatusCopyObserver=new MutationObserver(normalizeMasteryStatusCopy);
+  masteryStatusCopyObserver.observe(status,{
+    childList:true,
+    subtree:true,
+    characterData:true
+  });
+  return true;
+}
+
 // Dashboard transitions may also be used as a recovery path when an optional
 // feedback read fails. Never let a review dialog survive into the next launch.
 document.addEventListener('click',event=>{
@@ -107,6 +136,7 @@ document.addEventListener('keydown',event=>{
 
 installEditorRegressionStyles();
 refreshEditorHint();
+observeMasteryStatusCopy();
 
 // Exercise Host dispatches this when the Trainer is shown. This second guard
 // prevents any stale review layer from a previous, interrupted session from
@@ -115,12 +145,16 @@ window.addEventListener('major-scale-trainer-visible',()=>{
   clearQuestionResultOverlay();
   installEditorRegressionStyles();
   refreshEditorHint();
+  observeMasteryStatusCopy();
+  normalizeMasteryStatusCopy();
 });
 
 window.MajorScaleApp.m15FeedbackHardening=Object.freeze({
   clearQuestionResultOverlay,
   installEditorRegressionStyles,
   promoteSingleHighlightedNoteToExplicitSelection,
-  refreshEditorHint
+  refreshEditorHint,
+  normalizeMasteryStatusCopy,
+  observeMasteryStatusCopy
 });
 })();
