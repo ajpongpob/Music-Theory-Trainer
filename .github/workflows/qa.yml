@@ -54,6 +54,12 @@ jobs:
           BROWSER_CHANNEL: chrome
         run: node tests/navigation-drawer.browser.cjs
 
+      - name: Run Thai-English language consistency E2E
+        env:
+          PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
+          BROWSER_CHANNEL: chrome
+        run: node tests/i18n-mode-consistency.browser.cjs
+
       - name: Run Diagnostic Feedback responsive E2E
         env:
           PLAYWRIGHT_MODULE: ${{ github.workspace }}/node_modules/playwright
