@@ -180,13 +180,21 @@ async function syncProgressRings(){
   const stages=Array.isArray(model.path?.stages)?model.path.stages:[];
   const items=[...list.querySelectorAll(':scope > .sd2-stage')];
   if(!stages.length || !items.length) return false;
+  const currentStage=model.currentStage||model.path?.current||null;
+  const currentKey=currentStage?.stage_id||currentStage?.stage_code||null;
+  const readiness=Number(model.masteryReadiness);
 
   await Promise.all(stages.map(async(stage,index)=>{
     const item=items[index];
     if(!item) return;
+    const stageKey=stage?.stage_id||stage?.stage_code||null;
     if(stage.stage_status==='mastered' || stage.stage_status==='locked'){
       const progress=stageProgressFromMastery(stage,null);
       decorateStageIcon(stage,item,progress);
+      return;
+    }
+    if(currentKey&&stageKey===currentKey&&Number.isFinite(readiness)){
+      decorateStageIcon(stage,item,{locked:false,progress:readiness,completed:null,total:null});
       return;
     }
     const mastery=await masteryForStage(stage);

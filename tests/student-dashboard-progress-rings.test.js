@@ -17,6 +17,7 @@ assert(compat.includes("dataset.progressLabel=`${value}%`"),'Unlocked stages mus
 assert(compat.includes("icon.setAttribute('role','progressbar')"),'Unlocked stage rings must expose accessible progress semantics');
 assert(compat.includes("icon.setAttribute('aria-valuenow',String(value))"),'Progress rings must expose their current percentage to assistive technology');
 assert(compat.includes('masteryCache.clear()'),'Stage progress evidence must refresh when the dashboard model refreshes');
+assert(compat.includes('model.masteryReadiness'),'Current-stage ring must use the same composite readiness as the Dashboard bar');
 assert(compat.includes('MutationObserver'),'Progress rings must survive V2 dashboard rerenders');
 assert(compat.includes('student-dashboard-progress-rings.css'),'Compatibility layer must load the ring stylesheet');
 

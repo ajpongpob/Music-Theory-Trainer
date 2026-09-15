@@ -108,6 +108,7 @@ function learningHistory(){
     assert.equal(await page.locator('#sd2Continue .sd2-readiness-track').count(),1);
     assert.equal(await page.locator('#sd2Continue .sd2-readiness-status').count(),1);
     assert.equal(await page.locator('#sd2Continue .sd2-mastery-track').count(),0);
+    assert.equal(await page.locator('#sd2StageList [aria-current="step"] .sd2-stage-icon').getAttribute('aria-valuenow'),'91','Current-stage ring must use the same readiness value as the Dashboard bar');
     assert.equal(await page.locator('#sd2SkillList .sd2-skill').count(),5);
     assert.equal(await page.locator('#sd2SkillList .sd2-status.mastered').count(),2);
     assert.equal(await page.locator('#sd2SkillList .sd2-status.needs-practice').count(),3);
