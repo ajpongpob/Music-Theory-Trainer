@@ -28,6 +28,11 @@ const first=data=>Array.isArray(data)?(data[0]||null):(data||null);
 const clampPercent=value=>Number.isFinite(Number(value))?Math.max(0,Math.min(100,Number(value))):0;
 const percentText=value=>Number.isFinite(Number(value))?`${Number(value).toFixed(1).replace(/\.0$/,'')}%`:'—';
 const average=values=>{const nums=values.map(Number).filter(Number.isFinite);return nums.length?nums.reduce((sum,value)=>sum+value,0)/nums.length:null;};
+function resolveWithin(promise,timeoutMs,label){
+  const request=Promise.resolve(promise).then(value=>({value,timedOut:false}),error=>({value:{data:null,error},timedOut:false}));
+  const timeout=new Promise(resolve=>setTimeout(()=>resolve({value:{data:null,error:new Error(`${label} timeout`)},timedOut:true}),timeoutMs));
+  return Promise.race([request,timeout]);
+}
 const currentLanguage=()=>app.i18n?.getLanguage?.()==='en'?'en':'th';
 
 function skillDisplayName(code,meta=activeSkillMeta.get(code)||{}){
@@ -472,17 +477,27 @@ async function refresh(){
   if(!ensureStructure()) return;
   const token=++revision;
   try{
-    const authResult=await authRepo?.getUser?.();
+    const authLoad=await resolveWithin(Promise.resolve().then(()=>authRepo?.getUser?.()),2000,'auth');
+    const authResult=authLoad.value||{data:{user:null},error:null};
     const authUser=authResult?.data?.user||null;
     profileState.user=authUser;
     const historyPromise=Promise.resolve(repo.getStudentLearningHistory({limit:12})).catch(error=>({data:null,error}));
     const profilePromise=authUser?Promise.resolve(repo.getStudentProfileDetails(authUser.id)).catch(error=>({data:null,error})):Promise.resolve({data:null,error:null});
-    const [dashboardResult,skillsResult,recommendationResult]=await Promise.all([
-      repo.getStudentDashboard(),repo.getActiveSkills(),learningRepo.getRecommendedNextAction()
+    const dashboardRequest=Promise.resolve().then(()=>repo.getStudentDashboard());
+    const skillsRequest=Promise.resolve().then(()=>repo.getActiveSkills());
+    const recommendationRequest=Promise.resolve().then(()=>learningRepo.getRecommendedNextAction());
+    const [dashboardLoad,skillsLoad,recommendationLoad]=await Promise.all([
+      resolveWithin(dashboardRequest,2500,'dashboard'),resolveWithin(skillsRequest,2000,'skills'),resolveWithin(recommendationRequest,2000,'recommendation')
     ]);
     if(token!==revision) return;
-    if(dashboardResult.error) throw dashboardResult.error;
-    if(skillsResult.error) throw skillsResult.error;
+    const dashboardResult=dashboardLoad.value||{data:[],error:null};
+    const skillsResult=skillsLoad.value||{data:[],error:null};
+    const recommendationResult=recommendationLoad.value||{data:null,error:null};
+    if(dashboardLoad.timedOut) dashboardRequest.then(()=>{if(token===revision)scheduleRefresh(0);}).catch(()=>{});
+    if(skillsLoad.timedOut) skillsRequest.then(()=>{if(token===revision)scheduleRefresh(0);}).catch(()=>{});
+    if(recommendationLoad.timedOut) recommendationRequest.then(()=>{if(token===revision)scheduleRefresh(0);}).catch(()=>{});
+    if(dashboardResult.error) console.warn('STUDENT DASHBOARD V2:',dashboardResult.error);
+    if(skillsResult.error) console.warn('STUDENT DASHBOARD V2 SKILLS:',skillsResult.error);
     if(recommendationResult.error) console.warn('STUDENT DASHBOARD V2 RECOMMENDATION:',recommendationResult.error);
     const rows=Array.isArray(dashboardResult.data)?dashboardResult.data:[];
     const path=buildPathModel(rows);

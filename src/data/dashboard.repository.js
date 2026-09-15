@@ -291,7 +291,7 @@ if (typeof window.addEventListener === 'function' && typeof document !== 'undefi
   window.addEventListener('load', () => {
   loadOptionalStylesheet('./styles/student-dashboard-v2.css?v=20260915-readiness-1', 'data-student-dashboard-v2-style');
     loadOptionalStylesheet('./styles/teacher-dashboard-v2.css?v=20260913-teacher-v2', 'data-teacher-dashboard-v2-style');
-  const dashboardV2 = loadOptionalScript('./src/dashboard/student-dashboard-v2.js?v=20260915-dashboard-speed-1', 'data-student-dashboard-v2');
+  const dashboardV2 = loadOptionalScript('./src/dashboard/student-dashboard-v2.js?v=20260915-dashboard-speed-2', 'data-student-dashboard-v2');
     const loadDashboardAddons = () => {
       loadOptionalScript('./src/dashboard/student-dashboard-v2-compat.js?v=20260915-readiness-3', 'data-student-dashboard-v2-compat');
       loadOptionalScript('./src/dashboard/exercise-index.js?v=20260914-exercise-index-3', 'data-exercise-index');
