@@ -101,10 +101,11 @@ function learningHistory(){
     assert.equal(await page.locator('#sd2ContinueHeading').textContent(),'Major Scale Notation');
     assert((await page.locator('#sd2Continue').textContent()).includes('Stage 2 of 4'));
     assert((await page.locator('#sd2Continue').textContent()).includes('ใช้เครื่องหมายแปลงเสียงของบันไดเสียง'));
+    assert.equal(await page.locator('#sd2Continue .sd2-progress-meta strong').count(),1);
     assert.equal(await page.locator('#sd2Continue .sd2-progress-meta strong').first().textContent(),'91.2% / 100%');
-    assert.equal(await page.locator('#sd2Continue .sd2-progress-meta strong').nth(1).textContent(),'68% / เกณฑ์ 90%');
-    assert.equal(await page.locator('#sd2Continue .sd2-progress-meta strong').nth(2).textContent(),'80.6% / เกณฑ์เฉลี่ย 87%');
-    assert.equal(await page.locator('#sd2Continue .sd2-mastery-track').count(),1);
+    assert.equal(await page.locator('#sd2Continue .sd2-readiness-track').count(),1);
+    assert.equal(await page.locator('#sd2Continue .sd2-readiness-status').count(),1);
+    assert.equal(await page.locator('#sd2Continue .sd2-mastery-track').count(),0);
     assert.equal(await page.locator('#sd2SkillList .sd2-skill').count(),5);
     assert.equal(await page.locator('#sd2SkillList .sd2-status.mastered').count(),2);
     assert.equal(await page.locator('#sd2SkillList .sd2-status.needs-practice').count(),3);
