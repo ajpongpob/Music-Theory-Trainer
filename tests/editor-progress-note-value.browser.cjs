@@ -30,7 +30,7 @@ const server=http.createServer((req,res)=>{
     page.on('dialog',d=>d.accept());
 
     await page.route('**/*supabase-js*',r=>r.fulfill({contentType:'application/javascript',body:`${sdk}\nwindow.supabase={createClient:()=>makeClient('student',window)};`}));
-    await page.route('**/src/trainer.js',r=>{
+    await page.route('**/src/trainer.js*',r=>{
       const source=read('src/trainer.js').replace(
         'initializeTrainerAfterMusicFont();\n})();',
         'window.__qa={state,render};\ninitializeTrainerAfterMusicFont();\n})();'

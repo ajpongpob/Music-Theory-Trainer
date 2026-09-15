@@ -17,7 +17,7 @@ const keyName=c=>c?`${String(c).replace(/##/g,'𝄪').replace(/bb/g,'𝄫').repl
 function ensureDiagnosticFeedback(){
   if(app.diagnosticFeedback || document.querySelector('script[data-diagnostic-feedback]')) return;
   const script=document.createElement('script');
-  script.src='./src/diagnostic-feedback.js?v=20260913-diagnostic-feedback-v1';
+  script.src='./src/diagnostic-feedback.js?v=20260915-feedback-details-1';
   script.setAttribute('data-diagnostic-feedback','true');
   script.addEventListener('error',()=>console.warn('DIAGNOSTIC FEEDBACK MODULE FAILED TO LOAD'),{once:true});
   document.body.appendChild(script);
