@@ -78,9 +78,15 @@
     ["BN01_TREBLE_PITCH","Pitch Name","ชื่อระดับเสียง"],
     ["MS03_SCALE_ACCIDENTAL","Accidental","เครื่องหมายแปลงเสียง"],
     ["RH01_DURATION_VALUE","Duration Value","ค่าความยาวตัวโน้ต"],
-    ["GR02_PRIMARY_BEAM","Primary Beam","การรวมเขบ็ต"],
-    ["BN06_STEM_DIRECTION","Stem Direction","ทิศทางก้านโน้ต"]
+    ["GR02_PRIMARY_BEAM","Primary Beam","การเชื่อมเขบ็ตหลัก"],
+    ["BN06_STEM_DIRECTION","Stem Direction","ทิศก้านโน้ต"]
   ];
+
+  function uiLanguage(){
+    const live=window.MajorScaleApp?.i18n?.getLanguage?.();
+    if(live==="th" || live==="en") return live;
+    try{return localStorage.getItem("major-scale-trainer.language")==="en"?"en":"th";}catch(_error){return "th";}
+  }
 
   function ensureSkillSummary(){
     const overlay=document.getElementById("levelMasteryOverlay");
@@ -93,23 +99,25 @@
     wrap=document.createElement("div");
     wrap.id="levelMasterySkillSummary";
     wrap.className="lo-summary-list";
-    wrap.setAttribute("aria-label","คะแนน Mastery รายทักษะ");
+    wrap.setAttribute("aria-label",uiLanguage()==="th"?"คะแนนการผ่านเกณฑ์รายทักษะ":"Skill mastery scores");
     button.parentNode.insertBefore(wrap,button);
     return wrap;
   }
 
   function completedLevelFromUi(){
     const title=document.getElementById("levelMasteryTitle")?.textContent || "";
-    const match=title.match(/Level\s*(\d+)/i);
+    const match=title.match(/(?:Level|ระดับที่|ขั้น(?:ที่)?)\s*(\d+)/i);
     return match ? Number(match[1]) : null;
   }
 
   function renderLoading(wrap){
+    const th=uiLanguage()==="th";
+    wrap.setAttribute("aria-label",th?"คะแนนการผ่านเกณฑ์รายทักษะ":"Skill mastery scores");
     wrap.innerHTML=`
       <div class="lo-summary-row developing">
         <div class="lo-summary-name">
-          <b>Skill Mastery</b>
-          <span>กำลังโหลดคะแนนรายทักษะ...</span>
+          <b>${th?"ผลการผ่านเกณฑ์รายทักษะ":"Skill Mastery"}</b>
+          <span>${th?"กำลังโหลดคะแนนรายทักษะ...":"Loading skill scores..."}</span>
         </div>
         <strong>—</strong>
       </div>
@@ -126,15 +134,17 @@
           item.score===null || item.score===undefined ? null : Number(item.score)
         ])
     );
+    const th=uiLanguage()==="th";
+    wrap.setAttribute("aria-label",th?"คะแนนการผ่านเกณฑ์รายทักษะ":"Skill mastery scores");
 
-    wrap.innerHTML=SKILLS.map(([code,label,thai])=>{
+    wrap.innerHTML=SKILLS.map(([code,english,thai])=>{
       const raw=scores.get(code);
       const score=Number.isFinite(raw) ? Math.max(0,Math.min(100,Math.round(raw))) : null;
+      const label=th?thai:english;
       return `
         <div class="lo-summary-row ${score===null?"not-assessed":"strong"}">
           <div class="lo-summary-name">
             <b>${label}</b>
-            <span>${thai}</span>
           </div>
           <div class="lo-summary-bar" role="progressbar"
                aria-label="${label}"
@@ -149,18 +159,19 @@
   }
 
   function renderError(wrap){
+    const th=uiLanguage()==="th";
     wrap.innerHTML=`
       <div class="lo-summary-row developing">
         <div class="lo-summary-name">
-          <b>Skill Mastery</b>
-          <span>ไม่สามารถโหลดคะแนนรายทักษะได้ในขณะนี้</span>
+          <b>${th?"ผลการผ่านเกณฑ์รายทักษะ":"Skill Mastery"}</b>
+          <span>${th?"ไม่สามารถโหลดคะแนนรายทักษะได้ในขณะนี้":"Unable to load skill scores right now"}</span>
         </div>
         <strong>—</strong>
       </div>
     `;
   }
 
-  async function refreshCompletedLevelSkills(){
+  async function refreshCompletedLevelSkills({force=false}={}){
     const overlay=document.getElementById("levelMasteryOverlay");
     if(!overlay || overlay.hidden) return;
 
@@ -170,9 +181,11 @@
 
     // STAGE_n is retained only as the stable legacy database identifier.
     const stageCode=`STAGE_${level}`;
-    if(wrap.dataset.stageCode===stageCode && wrap.dataset.loaded==="true") return;
+    const renderKey=`${stageCode}:${uiLanguage()}`;
+    if(!force && wrap.dataset.renderKey===renderKey && wrap.dataset.loaded==="true") return;
 
     wrap.dataset.stageCode=stageCode;
+    wrap.dataset.renderKey=renderKey;
     wrap.dataset.loaded="false";
     renderLoading(wrap);
 
@@ -193,6 +206,7 @@
       if(overlay.hidden || wrap.dataset.stageCode!==stageCode) return;
       renderScores(wrap,result);
       wrap.dataset.loaded="true";
+      wrap.dataset.renderKey=`${stageCode}:${uiLanguage()}`;
     }catch(error){
       console.error("LEVEL MASTERY SKILL SUMMARY ERROR:",error);
       if(!overlay.hidden && wrap.dataset.stageCode===stageCode) renderError(wrap);
@@ -207,6 +221,11 @@
     new MutationObserver(()=>{
       if(!overlay.hidden) refreshCompletedLevelSkills();
     }).observe(overlay,{attributes:true,attributeFilter:["hidden"]});
+    window.addEventListener("major-scale:languagechange",()=>{
+      const wrap=document.getElementById("levelMasterySkillSummary");
+      if(wrap) wrap.dataset.renderKey="";
+      if(!overlay.hidden) refreshCompletedLevelSkills({force:true});
+    });
 
     if(!overlay.hidden) refreshCompletedLevelSkills();
   };
