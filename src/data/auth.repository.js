@@ -165,7 +165,7 @@ function loadSkillLabelLocalization() {
   ) return;
   if (document.querySelector('script[data-skill-label-localization]')) return;
   const script = document.createElement('script');
-  script.src = './src/skill-label-localization.js?v=20260913-1';
+  script.src = './src/skill-label-localization.js?v=20260915-language-1';
   script.async = false;
   script.dataset.skillLabelLocalization = 'true';
   document.head.appendChild(script);
@@ -207,10 +207,26 @@ function loadNavigationDrawer() {
   }
 }
 
+function loadI18nModeConsistency() {
+  if (
+    typeof document === 'undefined' ||
+    typeof document.querySelector !== 'function' ||
+    typeof document.createElement !== 'function' ||
+    !document.head
+  ) return;
+  if (document.querySelector('script[data-i18n-mode-consistency]')) return;
+  const script = document.createElement('script');
+  script.src = './src/i18n-mode-consistency.js?v=20260915-language-1';
+  script.async = false;
+  script.dataset.i18nModeConsistency = 'true';
+  document.head.appendChild(script);
+}
+
 loadI18n();
 loadI18nUiPolish();
 loadSkillLabelLocalization();
 loadUnifiedTheme();
 loadProfileOnboardingV2();
 loadNavigationDrawer();
+loadI18nModeConsistency();
 })();
