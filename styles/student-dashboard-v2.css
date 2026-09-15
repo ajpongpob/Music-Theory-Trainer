@@ -61,10 +61,12 @@
 .sd2-progress-block{min-width:0;}
 .sd2-mastery-track{background:#eee7d2;}
 .sd2-mastery-track .sd2-progress-fill{background:linear-gradient(90deg,#d89a16,#f3c44e);}
-.sd2-readiness-block{padding:10px 11px;border:1px solid #ead59b;border-radius:11px;background:#fffaf0;}
-.sd2-readiness-track{height:11px;background:#eee7d2;}
+.sd2-readiness-block{padding:0;border:0;background:transparent;}
+.sd2-readiness-block .sd2-progress-meta{color:#f5f5f0;}
+.sd2-readiness-block .sd2-progress-meta strong{color:#fff;}
+.sd2-readiness-track{height:11px;background:#4b4d47;}
 .sd2-readiness-track .sd2-progress-fill{background:linear-gradient(90deg,#d89a16,#f4c542);}
-.sd2-readiness-status{margin-top:6px;color:#805b08;font-size:.7rem;line-height:1.4;}
+.sd2-readiness-status{margin-top:6px;color:#f3d98a;font-size:.7rem;line-height:1.4;}
 
 .sd2-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;}
 .sd2-summary-card{min-height:102px;padding:13px;border:1px solid var(--sd2-line);border-radius:14px;background:#fff;}

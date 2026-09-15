@@ -327,8 +327,6 @@ function renderContinue(vm){
   const sessionMode=actionType==='diagnostic'?'pretest':'practice';
   const actionLabel=actionType==='diagnostic'?'เริ่มประเมินก่อนเรียน':actionType==='completed'?'ทบทวนผลการเรียน':actionType==='review'?'ทบทวน':'ฝึกต่อ';
   const canLaunch=stage.exercise_code&&stage.stage_code&&actionType!=='completed';
-  const progress=Number.isFinite(vm.stageMastery)?clampPercent(vm.stageMastery):0;
-  const skillProgress=Number.isFinite(vm.skillAverage)?clampPercent(vm.skillAverage):0;
   const readinessProgress=Number.isFinite(vm.masteryReadiness)?clampPercent(vm.masteryReadiness):0;
   const focus=vm.focusSkill?.label||(rec?.targetItemCode?`โจทย์ ${rec.targetItemCode}`:'สะสมหลักฐานให้ครบเกณฑ์ของ Stage');
   target.className='sd2-continue-layout';
