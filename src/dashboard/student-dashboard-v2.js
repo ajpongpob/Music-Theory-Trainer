@@ -475,15 +475,15 @@ async function refresh(){
     const authResult=await authRepo?.getUser?.();
     const authUser=authResult?.data?.user||null;
     profileState.user=authUser;
-    const [dashboardResult,skillsResult,recommendationResult,historyResult,profileResult]=await Promise.all([
-      repo.getStudentDashboard(),repo.getActiveSkills(),learningRepo.getRecommendedNextAction(),repo.getStudentLearningHistory({limit:40}),authUser?repo.getStudentProfileDetails(authUser.id):Promise.resolve({data:null,error:null})
+    const historyPromise=Promise.resolve(repo.getStudentLearningHistory({limit:12})).catch(error=>({data:null,error}));
+    const profilePromise=authUser?Promise.resolve(repo.getStudentProfileDetails(authUser.id)).catch(error=>({data:null,error})):Promise.resolve({data:null,error:null});
+    const [dashboardResult,skillsResult,recommendationResult]=await Promise.all([
+      repo.getStudentDashboard(),repo.getActiveSkills(),learningRepo.getRecommendedNextAction()
     ]);
     if(token!==revision) return;
     if(dashboardResult.error) throw dashboardResult.error;
     if(skillsResult.error) throw skillsResult.error;
     if(recommendationResult.error) console.warn('STUDENT DASHBOARD V2 RECOMMENDATION:',recommendationResult.error);
-    if(historyResult.error) console.warn('STUDENT DASHBOARD V2 HISTORY:',historyResult.error);
-    if(profileResult.error) console.warn('STUDENT DASHBOARD V2 PROFILE:',profileResult.error); else profileState.data=profileResult.data||{};
     const rows=Array.isArray(dashboardResult.data)?dashboardResult.data:[];
     const path=buildPathModel(rows);
     let mastery=null;
@@ -492,7 +492,14 @@ async function refresh(){
       if(token!==revision) return;
       if(masteryResult.error) console.warn('STUDENT DASHBOARD V2 MASTERY:',masteryResult.error); else mastery=first(masteryResult.data);
     }
-    renderAll(buildDashboardViewModel({rows,activeSkills:skillsResult.data||[],recommendation:recommendationResult.data,mastery,history:historyResult.data||{sessions:[],attempts:[],skillResults:[],totalPracticeSessions:0}}));
+    const basicHistory={sessions:[],attempts:[],skillResults:[],totalPracticeSessions:0};
+    renderAll(buildDashboardViewModel({rows,activeSkills:skillsResult.data||[],recommendation:recommendationResult.data,mastery,history:basicHistory}));
+    Promise.all([historyPromise,profilePromise]).then(([historyResult,profileResult])=>{
+      if(token!==revision)return;
+      if(historyResult.error)console.warn('STUDENT DASHBOARD V2 HISTORY:',historyResult.error);
+      if(profileResult.error)console.warn('STUDENT DASHBOARD V2 PROFILE:',profileResult.error);else profileState.data=profileResult.data||{};
+      renderAll(buildDashboardViewModel({rows,activeSkills:skillsResult.data||[],recommendation:recommendationResult.data,mastery,history:historyResult.data||basicHistory}));
+    }).catch(error=>console.warn('STUDENT DASHBOARD V2 DEFERRED DATA:',error));
   }catch(error){
     console.warn('STUDENT DASHBOARD V2:',error);
     if(!syncLegacyFallbackAction()){

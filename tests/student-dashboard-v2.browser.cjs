@@ -84,7 +84,7 @@ function learningHistory(){
           getStudentDashboard:async()=>({data:dashboardRows,error:null}),
           getActiveSkills:async()=>({data:skills,error:null}),
           getStageMastery:async()=>({data:[mastery],error:null}),
-          getStudentLearningHistory:async()=>({data:history,error:null}),
+          getStudentLearningHistory:()=>new Promise(resolve=>setTimeout(()=>{window.__historyResolved=true;resolve({data:history,error:null});},800)),
           getStudentProfileDetails:async()=>({data:profile,error:null}),
           updateStudentProfile:async payload=>{window.__profileUpdates++;return {data:{...profile,first_name:String(payload.fullName).split('\u001f')[0],last_name:String(payload.fullName).split('\u001f')[1],nickname:payload.displayName,display_name:payload.displayName,student_id:payload.studentId,program:payload.program,avatar_url:payload.avatarUrl},error:null};}
         },
@@ -94,7 +94,8 @@ function learningHistory(){
     await page.addScriptTag({content:read('src/domain/mastery/mastery-learning-core.js')});
     await page.addScriptTag({content:read('src/dashboard/student-dashboard-v2.js')});
     await page.addScriptTag({content:read('src/dashboard/student-dashboard-v2-compat.js')});
-    await page.waitForFunction(()=>window.__studentDashboardV2Model && document.querySelector('#sd2ProgressTrendChart svg'));
+    await page.waitForFunction(()=>window.__studentDashboardV2Model && document.querySelector('#sd2ContinueHeading'));
+    assert.equal(await page.evaluate(()=>window.__historyResolved===true),false,'Dashboard summary must render before detailed history finishes loading');
     await page.waitForTimeout(300);
 
     assert.equal(await page.locator('#dashboardContent').isVisible(),true);
@@ -116,6 +117,8 @@ function learningHistory(){
     const thaiSkillSnapshot=await page.locator('#sd2SkillList').textContent();
     assert(thaiSkillSnapshot.includes('ระบุระดับเสียงบนบรรทัดห้าเส้น'));
     for(const skill of skills) assert(!thaiSkillSnapshot.includes(skill.code),`${skill.code} must remain internal-only`);
+    await page.waitForFunction(()=>document.querySelectorAll('#sd2RecentList .sd2-recent-item').length===3);
+    await page.waitForFunction(()=>document.querySelector('#sd2ProgressTrendChart svg'));
     assert.equal(await page.locator('#sd2RecentList .sd2-recent-item').count(),3,'Dashboard recent activity stays compact');
     assert.equal(await page.locator('#sd2Trend,#sd2Achievements').count(),0,'Dashboard must not duplicate analytical/history blocks');
     assert.equal(await page.locator('#sd2StageList .sd2-status.locked').count(),2);

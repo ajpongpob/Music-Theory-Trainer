@@ -127,6 +127,15 @@ assert(Object.isFrozen(repo), 'dashboardRepository should be frozen');
   assert(attemptRead && attemptRead.in[0][0]==='practice_session_id', 'history should read attempts by visible session ids');
   assert(skillRead && skillRead.in[0][0]==='attempt_id', 'history should read skill evidence by visible attempt ids');
 
+  const beforeCachedReads=calls.length;
+  await Promise.all([
+    repo.getStudentDashboard(),
+    repo.getStudentDashboard(),
+    repo.getStageMastery({exerciseCode:'EXERCISE_X',stageCode:'STAGE_X'}),
+    repo.getActiveSkills()
+  ]);
+  assert.equal(calls.length,beforeCachedReads,'Repeated dashboard metadata reads should reuse the recent response');
+
   const beforeTeacherWrites=calls.length;
   await repo.createTeacherClass({code:'MUS101-01',name:'Music Theory I',academicYear:'2569',term:'1'});
   await repo.addStudentToTeacherClass({classId:'class-1',email:'student@example.com'});

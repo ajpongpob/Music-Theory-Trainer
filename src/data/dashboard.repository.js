@@ -3,6 +3,24 @@
 
 const app = window.MajorScaleApp = window.MajorScaleApp || {};
 const PROFILE_NAME_SEPARATOR = '\u001f';
+const readCache = new Map();
+
+function cachedRead(key, factory, ttlMs = 1500) {
+  const now = Date.now();
+  const cached = readCache.get(key);
+  if (cached && now - cached.createdAt < ttlMs) return cached.promise;
+  const promise = Promise.resolve()
+    .then(factory)
+    .then(result => {
+      if (result?.error) readCache.delete(key);
+      return result;
+    }, error => {
+      readCache.delete(key);
+      throw error;
+    });
+  readCache.set(key, {createdAt: now, promise});
+  return promise;
+}
 
 function getClient() {
   if (!app.supabaseClient) {
@@ -32,14 +50,14 @@ const PROFILE_DETAILS_SELECT = 'id,first_name,last_name,nickname,full_name,displ
 
 const dashboardRepository = {
   getStudentDashboard() {
-    return getClient().rpc('get_my_student_dashboard');
+    return cachedRead('student-dashboard', () => getClient().rpc('get_my_student_dashboard'));
   },
 
   getStageMastery({exerciseCode, stageCode}) {
-    return getClient().rpc('get_my_stage_mastery', {
+    return cachedRead(`stage-mastery:${exerciseCode}:${stageCode}`, () => getClient().rpc('get_my_stage_mastery', {
       p_exercise_code: exerciseCode,
       p_stage_code: stageCode
-    });
+    }));
   },
 
   getStageEvidence({exerciseCode, stageCode}) {
@@ -112,10 +130,10 @@ const dashboardRepository = {
   },
 
   getActiveSkills() {
-    return getClient()
+    return cachedRead('active-skills', () => getClient()
       .from('skills')
       .select('code,short_name,name_th')
-      .eq('active', true);
+      .eq('active', true), 300000);
   },
 
   async getStudentLearningHistory({limit = 40} = {}) {
@@ -273,7 +291,7 @@ if (typeof window.addEventListener === 'function' && typeof document !== 'undefi
   window.addEventListener('load', () => {
   loadOptionalStylesheet('./styles/student-dashboard-v2.css?v=20260915-readiness-1', 'data-student-dashboard-v2-style');
     loadOptionalStylesheet('./styles/teacher-dashboard-v2.css?v=20260913-teacher-v2', 'data-teacher-dashboard-v2-style');
-  const dashboardV2 = loadOptionalScript('./src/dashboard/student-dashboard-v2.js?v=20260915-readiness-1', 'data-student-dashboard-v2');
+  const dashboardV2 = loadOptionalScript('./src/dashboard/student-dashboard-v2.js?v=20260915-dashboard-speed-1', 'data-student-dashboard-v2');
     const loadDashboardAddons = () => {
       loadOptionalScript('./src/dashboard/student-dashboard-v2-compat.js?v=20260915-readiness-3', 'data-student-dashboard-v2-compat');
       loadOptionalScript('./src/dashboard/exercise-index.js?v=20260914-exercise-index-3', 'data-exercise-index');
@@ -286,7 +304,7 @@ if (typeof window.addEventListener === 'function' && typeof document !== 'undefi
 
     if (document.querySelector('script[data-m15-learning-feedback]')) return;
     const feedback = document.createElement('script');
-    feedback.src = './src/m15-learning-feedback.js';
+    feedback.src = './src/m15-learning-feedback.js?v=20260915-dashboard-speed-1';
     feedback.dataset.m15LearningFeedback = 'true';
     feedback.addEventListener('load', () => {
       if (document.querySelector('script[data-m15-feedback-hardening]')) return;
