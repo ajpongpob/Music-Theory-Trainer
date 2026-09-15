@@ -76,7 +76,9 @@ function learningHistory(){
     await page.addStyleTag({content:read('styles/student-dashboard-v2.css')});
     await page.evaluate(({dashboardRows,skills,mastery,history,profile})=>{
       window.__profileUpdates=0;
+      window.__dashboardLanguage='th';
       window.MajorScaleApp={
+        i18n:{getLanguage:()=>window.__dashboardLanguage},
         authRepository:{getUser:async()=>({data:{user:{id:'student-1',email:'qa@example.com',user_metadata:{full_name:'QA Student'}}}})},
         dashboardRepository:{
           getStudentDashboard:async()=>({data:dashboardRows,error:null}),
@@ -98,11 +100,15 @@ function learningHistory(){
     assert.equal(await page.locator('#sd2ProfilePanel').isVisible(),false);
     assert.equal(await page.locator('#sd2ContinueHeading').textContent(),'Major Scale Notation');
     assert((await page.locator('#sd2Continue').textContent()).includes('Stage 2 of 4'));
-    assert((await page.locator('#sd2Continue').textContent()).includes('Scale Accidental'));
+    assert((await page.locator('#sd2Continue').textContent()).includes('ใช้เครื่องหมายแปลงเสียงของบันไดเสียง'));
     assert.equal(await page.locator('#sd2Continue .sd2-progress-meta strong').textContent(),'68% / เกณฑ์ 90%');
     assert.equal(await page.locator('#sd2SkillList .sd2-skill').count(),5);
     assert.equal(await page.locator('#sd2SkillList .sd2-status.mastered').count(),2);
     assert.equal(await page.locator('#sd2SkillList .sd2-status.needs-practice').count(),3);
+    assert.equal(await page.locator('#sd2SkillList .sd2-skill-code').count(),0,'Internal skill codes must not render in learner UI');
+    const thaiSkillSnapshot=await page.locator('#sd2SkillList').textContent();
+    assert(thaiSkillSnapshot.includes('ระบุระดับเสียงบนบรรทัดห้าเส้น'));
+    for(const skill of skills) assert(!thaiSkillSnapshot.includes(skill.code),`${skill.code} must remain internal-only`);
     assert.equal(await page.locator('#sd2RecentList .sd2-recent-item').count(),3,'Dashboard recent activity stays compact');
     assert.equal(await page.locator('#sd2Trend,#sd2Achievements').count(),0,'Dashboard must not duplicate analytical/history blocks');
     assert.equal(await page.locator('#sd2StageList .sd2-status.locked').count(),2);
@@ -113,12 +119,23 @@ function learningHistory(){
     assert.equal(await page.locator('#sd2ProgressTrendFilter').inputValue(),'MS03_SCALE_ACCIDENTAL');
     assert.equal(await page.locator('#sd2TopNav [aria-current="page"]').textContent(),'Progress');
     assert.equal(await page.locator('#sd2ProgressSkillList .sd2-progress-skill').count(),5);
+    assert.equal(await page.locator('#sd2ProgressSkillList .sd2-skill-code').count(),0,'Progress detail must not render internal skill codes');
     assert.equal(await page.locator('#sd2ProgressTrendChart svg').count(),1);
     assert.equal(await page.locator('#sd2ProgressStageList .sd2-stage-history-item').count(),4);
     assert.equal(await page.locator('#sd2SessionHistoryList .sd2-session').count(),6);
     await page.locator('#sd2SessionHistoryList .sd2-session').first().locator('summary').click();
     assert.equal(await page.locator('#sd2SessionHistoryList .sd2-session').first().locator('.sd2-attempt').count(),1,'Session drill-down exposes attempts only when expanded');
-    assert((await page.locator('#sd2SessionHistoryList .sd2-session').first().textContent()).includes('Scale Accidental'));
+    assert((await page.locator('#sd2SessionHistoryList .sd2-session').first().textContent()).includes('ใช้เครื่องหมายแปลงเสียงของบันไดเสียง'));
+
+    await page.evaluate(()=>{
+      window.__dashboardLanguage='en';
+      window.dispatchEvent(new CustomEvent('major-scale:languagechange',{detail:{language:'en'}}));
+    });
+    await page.waitForFunction(()=>document.querySelector('#sd2ProgressSkillList')?.textContent.includes('Scale Accidental'));
+    const englishProgressText=await page.locator('#sd2ProgressSkillList').textContent();
+    assert(englishProgressText.includes('Pitch Name'));
+    assert(englishProgressText.includes('Scale Accidental'));
+    for(const skill of skills) assert(!englishProgressText.includes(skill.code),`${skill.code} must remain internal-only in English mode`);
 
     await page.locator('#sd2TopNav [data-sd2-nav="profile"]').click();
     assert.equal(await page.locator('#dashboardContent').isVisible(),false);
@@ -186,7 +203,7 @@ function learningHistory(){
     }
 
     assert.deepEqual(errors,[]);
-    console.log('PASS Student learning browser: actionable Dashboard, analytical Progress, isolated Profile, evidence drill-down and responsive order');
+    console.log('PASS Student learning browser: localized skill labels, internal-code privacy, actionable Dashboard, analytical Progress, isolated Profile, evidence drill-down and responsive order');
   }finally{
     await browser.close();
   }
