@@ -6,17 +6,28 @@ if(typeof document==='undefined') return;
 
 const STORAGE_KEY='major-scale-trainer.language';
 const SKILLS=Object.freeze({
-  'Treble Pitch':'ระดับเสียงบนกุญแจซอล (Treble Pitch)',
-  'Stem Direction':'ทิศก้านโน้ต (Stem Direction)',
-  'Duration Value':'ค่าความยาวโน้ต (Duration Value)',
-  'Primary Beam':'การเชื่อมบีมหลัก (Primary Beam)',
-  'Scale Accidental':'เครื่องหมายแปลงเสียงของบันไดเสียง (Scale Accidental)'
+  'Treble Pitch':'ระดับเสียงบนกุญแจซอล',
+  'Stem Direction':'ทิศก้านโน้ต',
+  'Duration Value':'ค่าความยาวตัวโน้ต',
+  'Primary Beam':'การเชื่อมเขบ็ตหลัก',
+  'Scale Accidental':'เครื่องหมายแปลงเสียงของบันไดเสียง'
+});
+const LEGACY_THAI=Object.freeze({
+  'ระดับเสียงบนกุญแจซอล (Treble Pitch)':'Treble Pitch',
+  'ทิศก้านโน้ต (Stem Direction)':'Stem Direction',
+  'ค่าความยาวโน้ต (Duration Value)':'Duration Value',
+  'ค่าความยาวตัวโน้ต (Duration Value)':'Duration Value',
+  'การเชื่อมบีมหลัก (Primary Beam)':'Primary Beam',
+  'การเชื่อมเขบ็ตหลัก (Primary Beam)':'Primary Beam',
+  'เครื่องหมายแปลงเสียงของบันไดเสียง (Scale Accidental)':'Scale Accidental'
 });
 const THAI_ONLY=Object.freeze({
   'ระดับเสียงบนกุญแจซอล':'Treble Pitch',
   'ทิศก้านโน้ต':'Stem Direction',
   'ค่าความยาวโน้ต':'Duration Value',
+  'ค่าความยาวตัวโน้ต':'Duration Value',
   'การเชื่อมบีมหลัก':'Primary Beam',
+  'การเชื่อมเขบ็ตหลัก':'Primary Beam',
   'เครื่องหมายแปลงเสียงของบันไดเสียง':'Scale Accidental'
 });
 const REVERSE=new Map(Object.entries(SKILLS).map(([en,th])=>[th,en]));
@@ -33,19 +44,20 @@ function language(){
   }
 }
 
+function englishSkill(text){
+  if(SKILLS[text]) return text;
+  if(LEGACY_THAI[text]) return LEGACY_THAI[text];
+  if(THAI_ONLY[text]) return THAI_ONLY[text];
+  if(REVERSE.has(text)) return REVERSE.get(text);
+  return null;
+}
+
 function targetText(raw){
   const text=String(raw||'').trim();
   if(!text) return null;
-  const lang=language();
-  if(lang==='th'){
-    if(SKILLS[text]) return SKILLS[text];
-    const english=THAI_ONLY[text];
-    if(english) return SKILLS[english];
-    return null;
-  }
-  if(REVERSE.has(text)) return REVERSE.get(text);
-  if(THAI_ONLY[text]) return THAI_ONLY[text];
-  return null;
+  const english=englishSkill(text);
+  if(!english) return null;
+  return language()==='th' ? SKILLS[english] : english;
 }
 
 function apply(root=document){
@@ -53,8 +65,8 @@ function apply(root=document){
   applying=true;
   try{
     const scopes=[];
-    if(root.nodeType===Node.ELEMENT_NODE && root.matches?.('#dashboardContent,#sd2ProgressPage')) scopes.push(root);
-    root.querySelectorAll?.('#dashboardContent,#sd2ProgressPage').forEach(node=>scopes.push(node));
+    if(root.nodeType===Node.ELEMENT_NODE && root.matches?.('#dashboardContent,#sd2ProgressPage,#levelMasteryOverlay,#sessionSummary')) scopes.push(root);
+    root.querySelectorAll?.('#dashboardContent,#sd2ProgressPage,#levelMasteryOverlay,#sessionSummary').forEach(node=>scopes.push(node));
     for(const scope of scopes){
       const walker=document.createTreeWalker(scope,NodeFilter.SHOW_TEXT);
       let node=walker.nextNode();
@@ -97,7 +109,7 @@ const observer=new MutationObserver(mutations=>{
   if(applying) return;
   if(mutations.some(mutation=>{
     const target=mutation.target?.nodeType===Node.ELEMENT_NODE?mutation.target:mutation.target?.parentElement;
-    return !!target?.closest?.('#dashboardContent,#sd2ProgressPage');
+    return !!target?.closest?.('#dashboardContent,#sd2ProgressPage,#levelMasteryOverlay,#sessionSummary');
   })) queue();
 });
 observer.observe(document.documentElement,{subtree:true,childList:true,characterData:true});
