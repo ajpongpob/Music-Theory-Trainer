@@ -5,7 +5,7 @@ const app = window.MajorScaleApp = window.MajorScaleApp || {};
 
 const FALLBACK_LABELS = Object.freeze({
   BN01_TREBLE_PITCH: {
-    th: 'ชื่อระดับเสียง (Pitch Name — ไม่จำกัด Octave)',
+    th: 'ชื่อระดับเสียง (Pitch Name)',
     en: 'Pitch Name'
   },
   BN06_STEM_DIRECTION: {
