@@ -93,7 +93,9 @@ function learningHistory(){
     },{dashboardRows,skills,mastery,history:learningHistory(),profile});
     await page.addScriptTag({content:read('src/domain/mastery/mastery-learning-core.js')});
     await page.addScriptTag({content:read('src/dashboard/student-dashboard-v2.js')});
+    await page.addScriptTag({content:read('src/dashboard/student-dashboard-v2-compat.js')});
     await page.waitForFunction(()=>window.__studentDashboardV2Model && document.querySelector('#sd2ProgressTrendChart svg'));
+    await page.waitForTimeout(300);
 
     assert.equal(await page.locator('#dashboardContent').isVisible(),true);
     assert.equal(await page.locator('#sd2ProgressPage').isVisible(),false);
