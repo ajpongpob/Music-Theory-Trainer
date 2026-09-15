@@ -155,7 +155,7 @@ function renderPathBadgeThumbnails(){
 
 function levelFromMasteryOverlay(){
   const title=document.getElementById('levelMasteryTitle')?.textContent || '';
-  const match=title.match(/(?:Level|ขั้น(?:ที่)?)\s*(\d+)/i);
+  const match=title.match(/(?:Level|ระดับที่|ขั้น(?:ที่)?)\s*(\d+)/i);
   const level=match ? Number(match[1]) : null;
   return BADGES[level] ? level : null;
 }
