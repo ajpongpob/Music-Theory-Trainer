@@ -1553,11 +1553,10 @@ function renderQuestionFeedback(questionResult){
     if(!bySkill.has(error.skillCode))bySkill.set(error.skillCode,[]);
     bySkill.get(error.skillCode).push(error);
   });
-  const important=[...bySkill.entries()]
-    .sort((a,b)=>QUESTION_ERROR_PRIORITY.indexOf(a[0])-QUESTION_ERROR_PRIORITY.indexOf(b[0]))
-    .slice(0,3);
-  const diagnostic=important.length
-    ? `<div class="df-question-diagnostic"><h3>จุดที่ควรแก้ก่อน</h3>${important.map(([skillCode,errors])=>`<div class="df-diagnostic-item"><strong>${feedbackEscapeHtml(feedbackSkillName(skillCode))}</strong><span>${feedbackEscapeHtml(errors[0].message)}${errors.length>1?` · และอีก ${errors.length-1} จุด`:''}</span></div>`).join("")}</div>`
+  const groupedErrors=[...bySkill.entries()]
+    .sort((a,b)=>QUESTION_ERROR_PRIORITY.indexOf(a[0])-QUESTION_ERROR_PRIORITY.indexOf(b[0]));
+  const diagnostic=groupedErrors.length
+    ? `<div class="df-question-diagnostic"><h3>รายละเอียดจุดผิดทั้งหมด</h3>${groupedErrors.map(([skillCode,errors])=>`<div class="df-diagnostic-item"><strong>${feedbackEscapeHtml(feedbackSkillName(skillCode))}</strong><ul>${errors.map(error=>`<li>${feedbackEscapeHtml(error.message)}</li>`).join("")}</ul></div>`).join("")}</div>`
     : `<div class="df-question-good"><span aria-hidden="true">✓</span> ไม่พบข้อผิดพลาดในเกณฑ์ที่ประเมิน</div>`;
 
   const questionScores=state.sessionResults.map((item,i)=>

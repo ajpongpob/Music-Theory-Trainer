@@ -1049,6 +1049,7 @@ kbd{font:inherit;font-size:.76rem;padding:2px 6px;border-radius:6px;background:#
   border:1px solid var(--line);
   border-radius:12px;
   background:#fff;
+  color:#20221f;
   box-shadow:0 14px 32px rgba(23,32,51,.16);
 }
 
@@ -1061,7 +1062,7 @@ kbd{font:inherit;font-size:.76rem;padding:2px 6px;border-radius:6px;background:#
 }
 
 .mastery-details-head span{
-  color:var(--muted);
+  color:#64665f;
 }
 
 .mastery-detail-grid{
@@ -1102,13 +1103,14 @@ kbd{font:inherit;font-size:.76rem;padding:2px 6px;border-radius:6px;background:#
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  color:var(--muted);
+  color:#565951;
   font-size:.59rem;
 }
 
 .mastery-detail-top b{
   flex:none;
   font-size:.72rem;
+  color:#20221f;
 }
 
 .skill-power-track{
@@ -1130,7 +1132,7 @@ kbd{font:inherit;font-size:.76rem;padding:2px 6px;border-radius:6px;background:#
 }
 
 .mastery-detail-item small{
-  color:var(--muted);
+  color:#565951;
   font-size:.54rem;
 }
 

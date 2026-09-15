@@ -73,6 +73,17 @@ const server=http.createServer((req,res)=>{
     assert(progress.fillWidth/progress.trackWidth>0.60,'63% progress must render as a visible proportional fill');
     assert.notEqual(progress.display,'inline','progress fill must not remain inline');
 
+    // Regression 1b: expanded mastery detail inherits from a dark task card,
+    // so it must explicitly reset all text to an accessible dark foreground.
+    await page.evaluate(()=>{
+      const details=document.getElementById('masteryProgress');
+      details.open=true;
+      document.getElementById('masteryDetailGrid').innerHTML='<div class="mastery-detail-item fail"><div class="mastery-detail-top"><span>เครื่องหมายแปลงเสียง</span><b>47%</b></div><small>เป้าหมาย 90%</small></div>';
+    });
+    const detailColors=await page.evaluate(()=>[...document.querySelectorAll('.mastery-details,.mastery-details-head span,.mastery-detail-top span,.mastery-detail-top b,.mastery-detail-item small')]
+      .map(node=>getComputedStyle(node).color));
+    assert(detailColors.every(color=>color!=='rgb(255, 255, 255)'),`expanded mastery detail must not inherit white text: ${detailColors.join(', ')}`);
+
     // Regression 2: immediately after inserting a note, the visible highlight
     // must be editable without requiring an extra click on that note.
     await page.locator('#insertNote').click();
