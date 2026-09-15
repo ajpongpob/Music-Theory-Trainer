@@ -39,7 +39,7 @@ function ensureStylesheet(){
   if(document.querySelector('link[data-student-dashboard-v2-style]')) return;
   const link=document.createElement('link');
   link.rel='stylesheet';
-  link.href='./styles/student-dashboard-v2.css?v=20260913-ia';
+  link.href='./styles/student-dashboard-v2.css?v=20260915-readiness-1';
   link.setAttribute('data-student-dashboard-v2-style','true');
   document.head.appendChild(link);
 }
