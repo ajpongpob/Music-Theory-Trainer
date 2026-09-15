@@ -43,14 +43,22 @@ function currentStageHasStarted(viewModel){
   const stage=vm.currentStage;
   if(!stage) return false;
   if(stage.stage_status==='mastered') return true;
-  if(stage.stage_started_at || stage.started_at) return true;
+
+  // Stage progression is provisioned as in_progress before the learner submits
+  // any answer, so stage_started_at/status alone cannot mean "practice started".
+  // Use actual practice evidence instead.
+  if(Number(vm.recommendation?.attemptsFound || 0)>0) return true;
+
   const stageId=String(stage.stage_id || '');
   const stageCode=String(stage.stage_code || '');
   const sessions=Array.isArray(vm.history?.sessions) ? vm.history.sessions : [];
   return sessions.some(session=>{
-    if(stageId && String(session.stage_id || '')===stageId) return true;
-    const sessionStageCode=String(session.stageCode || session.stage_code || '');
-    return !!(stageCode && sessionStageCode===stageCode);
+    const matchesStage=(stageId && String(session.stage_id || '')===stageId)
+      || (stageCode && String(session.stageCode || session.stage_code || '')===stageCode);
+    if(!matchesStage || String(session.mode || 'practice')!=='practice') return false;
+    const attempts=Array.isArray(session.attempts) ? session.attempts.length : 0;
+    const completedQuestions=Number(session.completed_questions || 0);
+    return attempts>0 || completedQuestions>0;
   });
 }
 function startCriterionText(value,language){
