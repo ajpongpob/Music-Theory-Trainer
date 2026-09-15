@@ -487,13 +487,15 @@ async function refresh(){
     const rows=Array.isArray(dashboardResult.data)?dashboardResult.data:[];
     const path=buildPathModel(rows);
     let mastery=null;
-    if(path.active?.exercise_code&&path.active?.stage_code){
-      const masteryResult=await repo.getStageMastery({exerciseCode:path.active.exercise_code,stageCode:path.active.stage_code});
-      if(token!==revision) return;
-      if(masteryResult.error) console.warn('STUDENT DASHBOARD V2 MASTERY:',masteryResult.error); else mastery=first(masteryResult.data);
-    }
     const basicHistory={sessions:[],attempts:[],skillResults:[],totalPracticeSessions:0};
     renderAll(buildDashboardViewModel({rows,activeSkills:skillsResult.data||[],recommendation:recommendationResult.data,mastery,history:basicHistory}));
+    const masteryPromise=path.active?.exercise_code&&path.active?.stage_code
+      ? Promise.resolve().then(()=>repo.getStageMastery({exerciseCode:path.active.exercise_code,stageCode:path.active.stage_code})).then(masteryResult=>{
+        if(token!==revision)return;
+        if(masteryResult.error) console.warn('STUDENT DASHBOARD V2 MASTERY:',masteryResult.error); else mastery=first(masteryResult.data);
+        renderAll(buildDashboardViewModel({rows,activeSkills:skillsResult.data||[],recommendation:recommendationResult.data,mastery,history:basicHistory}));
+      }).catch(error=>console.warn('STUDENT DASHBOARD V2 MASTERY:',error))
+      : Promise.resolve();
     Promise.all([historyPromise,profilePromise]).then(([historyResult,profileResult])=>{
       if(token!==revision)return;
       if(historyResult.error)console.warn('STUDENT DASHBOARD V2 HISTORY:',historyResult.error);
