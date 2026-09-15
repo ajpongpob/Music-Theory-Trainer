@@ -71,7 +71,7 @@
 
 /* Level-completion mastery detail
    Reuse the existing Mastery source and summary-bar styling so the score shown
-   after a Stage pass is the authoritative rolling Mastery result, not a second
+   after a Level pass is the authoritative rolling Mastery result, not a second
    client-side calculation. */
 (function(){
   const SKILLS=[
@@ -168,6 +168,7 @@
     const wrap=ensureSkillSummary();
     if(!level || !wrap) return;
 
+    // STAGE_n is retained only as the stable legacy database identifier.
     const stageCode=`STAGE_${level}`;
     if(wrap.dataset.stageCode===stageCode && wrap.dataset.loaded==="true") return;
 
@@ -188,7 +189,7 @@
       const response=await repository.getStageMastery({exerciseCode,stageCode});
       if(response?.error) throw response.error;
       const result=Array.isArray(response?.data) ? response.data[0] : response?.data;
-      if(!result) throw new Error("No Stage Mastery result");
+      if(!result) throw new Error("No Level Mastery result");
       if(overlay.hidden || wrap.dataset.stageCode!==stageCode) return;
       renderScores(wrap,result);
       wrap.dataset.loaded="true";
@@ -234,5 +235,5 @@
 
   load('./src/badge-system.js?v=20260914-3','data-major-scale-badge-system');
   load('./src/disabled-feature-ui-guards.js?v=20260914-1','data-disabled-feature-ui-guards');
-  load('./src/dashboard/exercise-index-drawer.js?v=20260914-1','data-exercise-index-drawer-addon');
+  load('./src/dashboard/exercise-index-drawer.js?v=20260915-level-1','data-exercise-index-drawer-addon');
 })();
