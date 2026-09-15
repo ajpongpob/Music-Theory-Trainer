@@ -6,19 +6,10 @@ if(typeof document==='undefined') return;
 
 const STORAGE_KEY='major-scale-trainer.language';
 const ATTRS=['aria-label','title','placeholder'];
-let applying=false;
-let queued=false;
-let observer=null;
+let applying=false,queued=false,observer=null;
 
-/*
- * Final presentation guard.
- *
- * Older UI modules were created at different times and some still emit mixed
- * Thai/English copy or the retired Stage terminology. The shared i18n layer
- * remains the primary translator; this guard is the final, idempotent pass that
- * makes the selected language authoritative for visible application chrome.
- * User-entered identity data is intentionally not translated.
- */
+/* Final locale guard for legacy/dynamic UI. User identity and class names are
+   data, not UI copy, and are intentionally left unchanged. */
 const PAIRS=Object.freeze([
   ['ระดับที่กำลังเรียน','Current level'],
   ['ระดับปัจจุบัน','Current Level'],
@@ -39,12 +30,16 @@ const PAIRS=Object.freeze([
   ['ยังไม่มีระดับที่ต้องแสดงผลการเรียน','There is no current level to display'],
   ['ผ่านเกณฑ์ของระดับนี้','This level meets the threshold'],
   ['ติดตามผลการเรียนรายทักษะ ระดับ และประวัติการฝึก','Review progress by skill, level, and practice history'],
+  ['เริ่มทำแบบฝึกของระดับนี้ตามเงื่อนไขหลักของระบบ','Start practicing this level according to the core learning criteria'],
+  ['คุณผ่านเกณฑ์ของระดับนี้แล้ว ไประดับถัดไปได้','You have met this level’s criteria. Continue to the next level'],
+  ['ทักษะนี้ยังต่ำกว่าเกณฑ์ ควรระวังเป็นพิเศษในการฝึกข้อถัดไป','This skill is below the threshold. Pay special attention to it in the next item'],
 
-  ['แบบฝึกทั้งหมด','All exercises'],
+  ['แบบฝึกทั้งหมด','All Exercises'],
   ['คลังแบบฝึกหัด','Exercise Library'],
   ['คลังแบบฝึกหัดและระดับ','Exercise library and levels'],
-  ['รวมแบบฝึกทั้งหมดในระบบไว้ในที่เดียว เปิดแต่ละหัวข้อเพื่อดูระดับย่อย สถานะการเรียน และเข้าสู่แบบฝึกที่พร้อมใช้งาน','All exercises are collected here. Open a topic to view its levels, learning status, and available practice.'],
+  ['ดัชนีแบบฝึกหัด','Exercise Index'],
   ['แบบฝึกในระบบ','Exercises'],
+  ['รวมแบบฝึกทั้งหมดในระบบไว้ในที่เดียว เปิดแต่ละหัวข้อเพื่อดูระดับย่อย สถานะการเรียน และเข้าสู่แบบฝึกที่พร้อมใช้งาน','All exercises are collected here. Open a topic to view its levels, learning status, and available practice.'],
   ['หัวข้อทั้งหมด','total topics'],
   ['ใช้งานได้','available'],
   ['ยังล็อก','locked'],
@@ -55,6 +50,15 @@ const PAIRS=Object.freeze([
   ['คีย์ในระดับนี้:','Keys in this level:'],
   ['ยังไม่มีระดับ','No levels yet'],
   ['ผ่านแล้ว','completed'],
+  ['การเขียนบันไดเสียงไมเนอร์','Minor Scale Notation'],
+  ['เครื่องหมายกำหนดบันไดเสียง','Key Signature'],
+  ['จังหวะและอัตราจังหวะ','Rhythm and Meter'],
+  ['พื้นที่เตรียมรองรับแบบฝึกบันไดเสียงไมเนอร์ในอนาคต','Reserved for future minor-scale exercises'],
+  ['พื้นที่เตรียมรองรับการฝึกเครื่องหมายกำหนดบันไดเสียงและความสัมพันธ์ของบันไดเสียง','Reserved for future key-signature and scale-relationship practice'],
+  ['พื้นที่เตรียมรองรับแบบฝึกค่าความยาว จังหวะ และอัตราจังหวะในอนาคต','Reserved for future duration, beat, and meter practice'],
+  ['ฝึกเขียนบันไดเสียงเมเจอร์บนบรรทัดห้าเส้นตามระดับและเกณฑ์การผ่านที่กำหนด','Practice writing major scales on the staff according to the assigned level and mastery criteria'],
+  ['แบบฝึกนี้ลงทะเบียนแล้ว แต่บัญชีผู้เรียนยังไม่มีข้อมูลระดับในเส้นทางการเรียน','This exercise is registered, but the learner does not yet have level data in the learning path'],
+  ['โครงสร้างหน้านี้เตรียมไว้แล้ว เมื่อเพิ่มนิยามแบบฝึกหัดและเชื่อมเส้นทางการเรียน/ระดับ รายการระดับย่อยจะปรากฏในคลังนี้อัตโนมัติ','This section is ready. When an exercise definition and learning-path levels are connected, the levels will appear here automatically'],
 
   ['รางวัลความสำเร็จ','Achievements'],
   ['ตราความสำเร็จของฉัน','My Badges'],
@@ -64,6 +68,9 @@ const PAIRS=Object.freeze([
   ['ได้รับตราความสำเร็จใหม่!','New badge earned!'],
   ['ปลดล็อกรางวัลแล้ว','Achievement Unlocked'],
   ['ผ่านการเขียนบันไดเสียงเมเจอร์ครบทั้ง 4 ระดับแล้ว','Major Scale Mastery Completed'],
+  ['บรอนซ์','Bronze'],
+  ['เงิน','Silver'],
+  ['ทอง','Gold'],
 
   ['เส้นทางการเรียนรู้พื้นฐานทฤษฎีดนตรี','Music Theory Foundations'],
   ['การเขียนบันไดเสียงเมเจอร์','Major Scale Notation Trainer'],
@@ -125,7 +132,6 @@ const PAIRS=Object.freeze([
   ['การรวมเขบ็ต','Primary Beam'],
   ['ทิศก้านโน้ต','Stem Direction'],
   ['ชื่อระดับเสียง','Pitch Name'],
-
   ['ขาขึ้น–ขาลงตามรูปแบบจังหวะ โดยใส่เครื่องหมายแปลงเสียง ทิศก้านโน้ต และการเชื่อมเขบ็ตให้ถูกต้อง','Write ascending and descending according to the rhythm pattern with correct accidentals, stems, and beams'],
   ['รูปแบบจังหวะ','Rhythm Pattern'],
   ['เครื่องมือเขียนโน้ตบนมือถือ','Mobile notation tools'],
@@ -173,8 +179,16 @@ const PAIRS=Object.freeze([
 
 const TH_TO_EN=new Map(PAIRS);
 const EN_TO_TH=new Map(PAIRS.map(([th,en])=>[en,th]));
-
-const PURE_THAI_OVERRIDES=new Map([
+const MIXED_TO_THAI=new Map([
+  ['คลังแบบฝึกหัดและ Level','คลังแบบฝึกหัดและระดับ'],
+  ['ฝึกเขียนบันไดเสียงเมเจอร์บนบรรทัดห้าเส้นตาม Stage และเกณฑ์ Mastery ที่กำหนด','ฝึกเขียนบันไดเสียงเมเจอร์บนบรรทัดห้าเส้นตามระดับและเกณฑ์การผ่านที่กำหนด'],
+  ['ฝึกเขียนบันไดเสียงเมเจอร์บนบรรทัดห้าเส้นตาม Level และเกณฑ์ Mastery ที่กำหนด','ฝึกเขียนบันไดเสียงเมเจอร์บนบรรทัดห้าเส้นตามระดับและเกณฑ์การผ่านที่กำหนด'],
+  ['พื้นที่เตรียมรองรับการฝึก Key Signature และความสัมพันธ์ของบันไดเสียง','พื้นที่เตรียมรองรับการฝึกเครื่องหมายกำหนดบันไดเสียงและความสัมพันธ์ของบันไดเสียง'],
+  ['พื้นที่เตรียมรองรับแบบฝึก Duration, Beat และ Meter ในอนาคต','พื้นที่เตรียมรองรับแบบฝึกค่าความยาว จังหวะ และอัตราจังหวะในอนาคต'],
+  ['แบบฝึกนี้ลงทะเบียนแล้ว แต่บัญชีผู้เรียนยังไม่มีข้อมูล Stage ใน Learning Path','แบบฝึกนี้ลงทะเบียนแล้ว แต่บัญชีผู้เรียนยังไม่มีข้อมูลระดับในเส้นทางการเรียน'],
+  ['แบบฝึกนี้ลงทะเบียนแล้ว แต่บัญชีผู้เรียนยังไม่มีข้อมูล Level ใน Learning Path','แบบฝึกนี้ลงทะเบียนแล้ว แต่บัญชีผู้เรียนยังไม่มีข้อมูลระดับในเส้นทางการเรียน'],
+  ['โครงสร้างหน้านี้เตรียมไว้แล้ว เมื่อเพิ่ม Exercise Definition และเชื่อม Learning Path/Stage รายการระดับย่อยจะปรากฏในคลังนี้อัตโนมัติ','โครงสร้างหน้านี้เตรียมไว้แล้ว เมื่อเพิ่มนิยามแบบฝึกหัดและเชื่อมเส้นทางการเรียน/ระดับ รายการระดับย่อยจะปรากฏในคลังนี้อัตโนมัติ'],
+  ['โครงสร้างหน้านี้เตรียมไว้แล้ว เมื่อเพิ่ม Exercise Definition และเชื่อม Learning Path/Level รายการระดับย่อยจะปรากฏในคลังนี้อัตโนมัติ','โครงสร้างหน้านี้เตรียมไว้แล้ว เมื่อเพิ่มนิยามแบบฝึกหัดและเชื่อมเส้นทางการเรียน/ระดับ รายการระดับย่อยจะปรากฏในคลังนี้อัตโนมัติ'],
   ['พลังพิชิต Level','ความก้าวหน้าสู่การผ่านระดับ'],
   ['ความก้าวหน้า Level','ความก้าวหน้าของระดับ'],
   ['สรุปผล Mastery Session','สรุปผลการผ่านเกณฑ์'],
@@ -190,59 +204,44 @@ const PURE_THAI_OVERRIDES=new Map([
   ['My Badges','ตราความสำเร็จของฉัน'],
   ['Achievement Unlocked','ปลดล็อกรางวัลแล้ว'],
   ['New badge earned!','ได้รับตราความสำเร็จใหม่!'],
-  ['Major Scale Mastery Completed','ผ่านการเขียนบันไดเสียงเมเจอร์ครบทั้ง 4 ระดับแล้ว']
+  ['Major Scale Mastery Completed','ผ่านการเขียนบันไดเสียงเมเจอร์ครบทั้ง 4 ระดับแล้ว'],
+  ['Exercise Index','ดัชนีแบบฝึกหัด'],
+  ['All Exercises','แบบฝึกทั้งหมด'],
+  ['Teaching Tools','เครื่องมือการสอน'],
+  ['Class Learning Overview','ภาพรวมผลการเรียนของชั้นเรียน'],
+  ['Bronze','บรอนซ์'],
+  ['Silver','เงิน'],
+  ['Gold','ทอง']
 ]);
 
 function language(){
   const live=app.i18n?.getLanguage?.();
   if(live==='th'||live==='en') return live;
-  try{
-    const saved=localStorage.getItem(STORAGE_KEY);
-    if(saved==='th'||saved==='en') return saved;
-  }catch(_error){}
+  try{const saved=localStorage.getItem(STORAGE_KEY);if(saved==='th'||saved==='en')return saved;}catch(_error){}
   return document.documentElement.lang==='en'?'en':'th';
 }
-
-function preserve(raw,next){
-  const source=String(raw??'');
-  const lead=source.match(/^\s*/u)?.[0]||'';
-  const trail=source.match(/\s*$/u)?.[0]||'';
-  return `${lead}${next}${trail}`;
-}
-
-function baseTranslate(text,target){
-  const translated=app.i18n?.translateText?.(text,target);
-  return typeof translated==='string' ? translated.trim() : text;
-}
+function preserve(raw,next){const source=String(raw??''),lead=source.match(/^\s*/u)?.[0]||'',trail=source.match(/\s*$/u)?.[0]||'';return `${lead}${next}${trail}`;}
+function baseTranslate(text,target){const translated=app.i18n?.translateText?.(text,target);return typeof translated==='string'?translated.trim():text;}
 
 function englishText(raw){
   const original=String(raw??'').trim();
   if(!original) return original;
-  let text=baseTranslate(original,'en');
-  text=TH_TO_EN.get(text) ?? TH_TO_EN.get(original) ?? text;
-
+  const pureSeed=MIXED_TO_THAI.get(original)||original;
+  let text=baseTranslate(pureSeed,'en');
+  text=TH_TO_EN.get(text) ?? TH_TO_EN.get(pureSeed) ?? text;
   text=text
     .replace(/\b(?:STAGE|LEVEL)_(\d+)\b/giu,'Level $1')
     .replace(/(?:ขั้นที่|ระดับที่)\s*(\d+|—)/gu,'Level $1')
-    .replace(/\bStages\b/giu,'Levels')
-    .replace(/\bStage\b/giu,'Level')
-    .replace(/\bstages\b/gu,'levels')
-    .replace(/\bstage\b/gu,'level')
+    .replace(/\bStages\b/giu,'Levels').replace(/\bStage\b/giu,'Level')
+    .replace(/\bstages\b/gu,'levels').replace(/\bstage\b/gu,'level')
     .replace(/ผ่าน\s*(\d+)\s*จาก\s*(\d+)\s*(?:ขั้น|ระดับ)/gu,'Completed $1 of $2 levels')
-    .replace(/คีย์ในระดับนี้:/gu,'Keys in this level:')
-    .replace(/ระดับนี้/gu,'this level')
-    .replace(/ระดับถัดไป/gu,'next level');
-
-  const thaiSkill={
-    'ระดับเสียงบนกุญแจซอล':'Treble Pitch',
-    'ชื่อระดับเสียง':'Pitch Name',
-    'เครื่องหมายแปลงเสียงของบันไดเสียง':'Scale Accidental',
-    'เครื่องหมายแปลงเสียง':'Accidental',
-    'ค่าความยาวตัวโน้ต':'Duration Value',
-    'การเชื่อมเขบ็ตหลัก':'Primary Beam',
-    'การรวมเขบ็ต':'Primary Beam',
-    'ทิศก้านโน้ต':'Stem Direction'
-  };
+    .replace(/^(\d+)\/(\d+)\s+(?:Level|ระดับ)\s+ผ่านแล้ว$/u,'$1/$2 levels completed')
+    .replace(/^ยังไม่มี\s+(?:Level|Stage|ระดับ)$/u,'No levels yet')
+    .replace(/คีย์ในระดับนี้:/gu,'Keys in this level:');
+  text=text.replace(/^ทำแบบฝึกเพิ่มอีก\s*(\d+)\s*ข้อ\s*เพื่อให้ระบบมีผลการฝึกเพียงพอสำหรับประเมิน(?:ระดับ|this level)นี้?$/u,(_m,n)=>`Complete ${n} more practice item${n==='1'?'':'s'} so the system has enough evidence to evaluate this level`);
+  text=text.replace(/^ยังมีบันไดเสียงที่ต้องฝึกให้ครบ(?:\s*ลองฝึก\s*(.+)\s*ต่อ)?$/u,(_m,key)=>key?`Some required scales are still missing. Practice ${key} next`:'Some required scales are still missing');
+  text=text.replace(/^คะแนนรวมยังไม่ถึงเกณฑ์\s*(\d+(?:\.\d+)?)%\s*ทำแบบฝึกต่อเพื่อเพิ่มความแม่นยำ$/u,(_m,n)=>`Overall score is below the ${n}% threshold. Continue practicing to improve accuracy`);
+  const thaiSkill={'ระดับเสียงบนกุญแจซอล':'Treble Pitch','ชื่อระดับเสียง':'Pitch Name','เครื่องหมายแปลงเสียงของบันไดเสียง':'Scale Accidental','เครื่องหมายแปลงเสียง':'Accidental','ค่าความยาวตัวโน้ต':'Duration Value','การเชื่อมเขบ็ตหลัก':'Primary Beam','การรวมเขบ็ต':'Primary Beam','ทิศก้านโน้ต':'Stem Direction'};
   for(const [th,en] of Object.entries(thaiSkill)) text=text.replaceAll(th,en);
   return text;
 }
@@ -250,9 +249,9 @@ function englishText(raw){
 function thaiText(raw){
   const original=String(raw??'').trim();
   if(!original) return original;
-  let text=baseTranslate(original,'th');
-  text=PURE_THAI_OVERRIDES.get(text) ?? PURE_THAI_OVERRIDES.get(original) ?? EN_TO_TH.get(text) ?? text;
-
+  const pureSeed=MIXED_TO_THAI.get(original)||original;
+  let text=baseTranslate(pureSeed,'th');
+  text=MIXED_TO_THAI.get(text) ?? EN_TO_TH.get(text) ?? text;
   text=text
     .replace(/\b(?:STAGE|LEVEL)_(\d+)\b/giu,'ระดับที่ $1')
     .replace(/(?:Stage|Level)\s+(\d+|—)\s+of\s+(\d+|—)/giu,'ระดับที่ $1 จาก $2')
@@ -260,134 +259,58 @@ function thaiText(raw){
     .replace(/ขั้นที่\s*(\d+|—)/gu,'ระดับที่ $1')
     .replace(/ผ่าน\s*(\d+)\s*จาก\s*(\d+)\s*ขั้น/gu,'ผ่าน $1 จาก $2 ระดับ')
     .replace(/Completed\s*(\d+)\s+of\s*(\d+)\s+(?:stages|levels)/giu,'ผ่าน $1 จาก $2 ระดับ')
-    .replace(/\bStage Progress \/ History\b/gu,'ความก้าวหน้า / ประวัติระดับ')
-    .replace(/\bLevel Progress \/ History\b/gu,'ความก้าวหน้า / ประวัติระดับ')
-    .replace(/\bStage Progress\b/gu,'ความก้าวหน้าของระดับ')
-    .replace(/\bLevel Progress\b/gu,'ความก้าวหน้าของระดับ')
-    .replace(/\bCurrent Stage\b/gu,'ระดับปัจจุบัน')
-    .replace(/\bCurrent Level\b/gu,'ระดับปัจจุบัน')
-    .replace(/\bStages\b/gu,'ระดับ')
-    .replace(/\bLevels\b/gu,'ระดับ')
-    .replace(/\bStage\b/gu,'ระดับ')
-    .replace(/\bLevel\b/gu,'ระดับ')
-    .replace(/\bstages\b/gu,'ระดับ')
-    .replace(/\blevels\b/gu,'ระดับ')
-    .replace(/\bstage\b/gu,'ระดับ')
-    .replace(/\blevel\b/gu,'ระดับ')
-    .replace(/ขั้น/g,'ระดับ');
-
+    .replace(/\b(?:Stage|Level) Progress \/ History\b/gu,'ความก้าวหน้า / ประวัติระดับ')
+    .replace(/\b(?:Stage|Level) Progress\b/gu,'ความก้าวหน้าของระดับ')
+    .replace(/\bCurrent (?:Stage|Level)\b/gu,'ระดับปัจจุบัน')
+    .replace(/\b(?:Stages|Levels|Stage|Level)\b/gu,'ระดับ')
+    .replace(/\b(?:stages|levels|stage|level)\b/gu,'ระดับ')
+    .replace(/ขั้น/g,'ระดับ')
+    .replace(/Major Scale\s+ระดับที่\s*(\d+)/gu,'บันไดเสียงเมเจอร์ ระดับที่ $1');
   const tokenPairs=[
-    [/\bLearning Path\b/gu,'เส้นทางการเรียน'],
-    [/\bDashboard\b/gu,'แดชบอร์ด'],
-    [/\bProfile\b/gu,'ข้อมูลผู้ใช้'],
-    [/\bPractice Sessions?\b/gu,'การฝึก'],
-    [/\bSession History\b/gu,'ประวัติการฝึก'],
-    [/\bSessions?\b/gu,'การฝึก'],
-    [/\bMastery\b/gu,'การผ่านเกณฑ์'],
-    [/\bExercise(?:s)?\b/gu,'แบบฝึกหัด'],
-    [/\bProgress\b/gu,'ความก้าวหน้า'],
-    [/\bSkill Focus\b/gu,'ทักษะที่ควรเน้น'],
-    [/\bSkills?\b/gu,'ทักษะ'],
-    [/\bStatus\b/gu,'สถานะ'],
-    [/\bTrend\b/gu,'แนวโน้ม'],
-    [/\bAttempts?\b/gu,'การตอบ'],
-    [/\bFeedback\b/giu,'ข้อเสนอแนะ'],
-    [/\bBadge\b/gu,'ตราความสำเร็จ']
+    [/\bLearning Path\b/gu,'เส้นทางการเรียน'],[/\bDashboard\b/gu,'แดชบอร์ด'],[/\bProfile\b/gu,'ข้อมูลผู้ใช้'],
+    [/\bPractice Sessions?\b/gu,'การฝึก'],[/\bSession History\b/gu,'ประวัติการฝึก'],[/\bSessions?\b/gu,'การฝึก'],
+    [/\bMastery\b/gu,'การผ่านเกณฑ์'],[/\bExercise(?:s)?\b/gu,'แบบฝึกหัด'],[/\bProgress\b/gu,'ความก้าวหน้า'],
+    [/\bSkill Focus\b/gu,'ทักษะที่ควรเน้น'],[/\bSkills?\b/gu,'ทักษะ'],[/\bStatus\b/gu,'สถานะ'],[/\bTrend\b/gu,'แนวโน้ม'],
+    [/\bAttempts?\b/gu,'การตอบ'],[/\bFeedback\b/giu,'ข้อเสนอแนะ'],[/\bBadge\b/gu,'ตราความสำเร็จ']
   ];
   for(const [pattern,replacement] of tokenPairs) text=text.replace(pattern,replacement);
   return text;
 }
 
 function translate(raw,target=language()){
-  const source=String(raw??'');
-  const trimmed=source.trim();
-  if(!trimmed) return source;
+  const source=String(raw??''),trimmed=source.trim();if(!trimmed)return source;
   const next=target==='en'?englishText(trimmed):thaiText(trimmed);
   return next===trimmed?source:preserve(source,next);
 }
-
 function skip(element){
-  if(!element) return true;
-  if(element.closest('script,style,noscript,svg,#appLanguageControl')) return true;
-  if(element.closest('#dashboardUserName,#teacherDashboardUserName,#appNavigationUserName')) return true;
+  if(!element)return true;
+  if(element.closest('script,style,noscript,svg,#appLanguageControl'))return true;
+  if(element.closest('#dashboardUserName,#teacherDashboardUserName,#appNavigationUserName'))return true;
   return false;
 }
-
 function applyNode(node){
-  if(!node) return;
-  if(node.nodeType===Node.TEXT_NODE){
-    const parent=node.parentElement;
-    if(skip(parent)) return;
-    const next=translate(node.nodeValue);
-    if(next!==node.nodeValue) node.nodeValue=next;
-    return;
-  }
-  if(node.nodeType!==Node.ELEMENT_NODE) return;
-  if(skip(node)) return;
-  for(const attr of ATTRS){
-    if(!node.hasAttribute(attr)) continue;
-    const before=node.getAttribute(attr);
-    const after=translate(before);
-    if(after!==before) node.setAttribute(attr,after);
-  }
+  if(!node)return;
+  if(node.nodeType===Node.TEXT_NODE){const parent=node.parentElement;if(skip(parent))return;const next=translate(node.nodeValue);if(next!==node.nodeValue)node.nodeValue=next;return;}
+  if(node.nodeType!==Node.ELEMENT_NODE||skip(node))return;
+  for(const attr of ATTRS){if(!node.hasAttribute(attr))continue;const before=node.getAttribute(attr),after=translate(before);if(after!==before)node.setAttribute(attr,after);}
 }
-
 function apply(root=document.body||document.documentElement){
-  if(applying||!root) return;
-  applying=true;
-  try{
-    document.documentElement.lang=language();
-    if(root.nodeType===Node.TEXT_NODE){applyNode(root);return;}
-    applyNode(root);
-    const walker=document.createTreeWalker(root,NodeFilter.SHOW_ELEMENT|NodeFilter.SHOW_TEXT);
-    let node=walker.nextNode();
-    while(node){applyNode(node);node=walker.nextNode();}
-  }finally{
-    applying=false;
-  }
+  if(applying||!root)return;applying=true;
+  try{document.documentElement.lang=language();if(root.nodeType===Node.TEXT_NODE){applyNode(root);return;}applyNode(root);const walker=document.createTreeWalker(root,NodeFilter.SHOW_ELEMENT|NodeFilter.SHOW_TEXT);let node=walker.nextNode();while(node){applyNode(node);node=walker.nextNode();}}
+  finally{applying=false;}
 }
-
-function queue(){
-  if(queued) return;
-  queued=true;
-  requestAnimationFrame(()=>{
-    queued=false;
-    apply();
-  });
-}
-
+function queue(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;apply();});}
 function audit(root=document.body){
-  const lang=language();
-  const leaks=[];
-  if(!root) return leaks;
-  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
-  let node=walker.nextNode();
-  while(node){
-    const parent=node.parentElement;
-    const value=node.nodeValue?.trim()||'';
-    if(value && !skip(parent)){
-      if(lang==='en' && /(?:ระดับที่|ขั้นที่|ความก้าวหน้า|แบบฝึกหัด|เข้าสู่ระบบ|ออกจากระบบ)/u.test(value)) leaks.push(value);
-      if(lang==='th' && /\b(?:Stage|Stages|Level\s*\d|Dashboard|Profile|Practice Session|Session History)\b/u.test(value)) leaks.push(value);
-    }
-    node=walker.nextNode();
-  }
+  const lang=language(),leaks=[];if(!root)return leaks;const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node=walker.nextNode();
+  while(node){const parent=node.parentElement,value=node.nodeValue?.trim()||'';if(value&&!skip(parent)){if(lang==='en'&&/(?:ระดับที่|ขั้นที่|ความก้าวหน้า|แบบฝึกหัด|เข้าสู่ระบบ|ออกจากระบบ|กำลังเรียน|คีย์ในระดับ)/u.test(value))leaks.push(value);if(lang==='th'&&/\b(?:Stage|Stages|Level\s*\d|Dashboard|Profile|Practice Session|Session History|Exercise Index|All Exercises)\b/u.test(value))leaks.push(value);}node=walker.nextNode();}
   return [...new Set(leaks)];
 }
-
 function start(){
   apply();
   ['major-scale:languagechange','major-scale-trainer-visible','major-scale-question-result','hashchange','pageshow'].forEach(event=>window.addEventListener(event,queue));
-  observer=new MutationObserver(mutations=>{
-    if(applying) return;
-    if(mutations.some(mutation=>{
-      const target=mutation.target?.nodeType===Node.ELEMENT_NODE?mutation.target:mutation.target?.parentElement;
-      return !target?.closest?.('#appLanguageControl');
-    })) queue();
-  });
+  observer=new MutationObserver(mutations=>{if(applying)return;if(mutations.some(m=>{const target=m.target?.nodeType===Node.ELEMENT_NODE?m.target:m.target?.parentElement;return !target?.closest?.('#appLanguageControl');}))queue();});
   observer.observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['hidden','aria-label','title','placeholder']});
 }
-
 app.i18nModeConsistency=Object.freeze({translateText:translate,apply,audit});
-if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true});
-else start();
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
