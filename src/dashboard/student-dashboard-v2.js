@@ -273,7 +273,23 @@ function buildDashboardViewModel({rows,activeSkills,recommendation,mastery,histo
   const focusSkill=skills.find(skill=>skill.code===focusCode)||null;
   const active=path.current||path.active;
   const currentOrdinal=active?path.stages.findIndex(stage=>(stage.stage_id||stage.stage_code)===(active.stage_id||active.stage_code))+1:0;
-  return {path,skills,history:historyModel,recommendation:rec,focusSkill,currentStage:active,currentOrdinal,stageMastery:mastery?.overall_score==null?null:Number(mastery.overall_score),stageThreshold:mastery?.overall_threshold==null?null:Number(mastery.overall_threshold),masteredSkills:skills.filter(skill=>skill.passed).length};
+  const scoredSkills=skills.filter(skill=>Number.isFinite(skill.score));
+  const skillAverage=scoredSkills.length?Math.round(scoredSkills.reduce((sum,skill)=>sum+skill.score,0)/scoredSkills.length*100)/100:null;
+  const skillAverageThreshold=skills.filter(skill=>Number.isFinite(skill.threshold)).length
+    ? Math.round(skills.filter(skill=>Number.isFinite(skill.threshold)).reduce((sum,skill)=>sum+skill.threshold,0)/skills.filter(skill=>Number.isFinite(skill.threshold)).length*100)/100
+    : null;
+  const attemptCount=Number(mastery?.attempts_found),attemptTarget=Number(mastery?.rolling_window);
+  const itemCount=Number(mastery?.covered_items),itemTarget=Number(mastery?.required_items);
+  const evidenceRatio=Number.isFinite(attemptCount)&&attemptTarget>0?Math.min(1,attemptCount/attemptTarget):null;
+  const coverageRatio=Number.isFinite(itemCount)&&itemTarget>0?Math.min(1,itemCount/itemTarget):null;
+  const skillRatios=scoredSkills.filter(skill=>Number.isFinite(skill.threshold)&&skill.threshold>0).map(skill=>Math.min(1,skill.score/skill.threshold));
+  const readinessParts=[evidenceRatio,coverageRatio,...skillRatios].filter(Number.isFinite);
+  const masteryReadiness=readinessParts.length?Math.round(readinessParts.reduce((sum,value)=>sum+value,0)/readinessParts.length*10000)/100:null;
+  const readinessStatus=[];
+  if(Number.isFinite(attemptCount)&&attemptTarget>0&&attemptCount<attemptTarget) readinessStatus.push(`ทำแบบฝึกอีก ${attemptTarget-attemptCount} ครั้ง`);
+  if(Number.isFinite(itemCount)&&itemTarget>0&&itemCount<itemTarget) readinessStatus.push(`ทำโจทย์ให้ครบอีก ${itemTarget-itemCount} คีย์`);
+  skills.filter(skill=>Number.isFinite(skill.score)&&Number.isFinite(skill.threshold)&&skill.score<skill.threshold).slice(0,2).forEach(skill=>readinessStatus.push(`${skill.label} อีก ${Math.ceil(skill.threshold-skill.score)}%`));
+  return {path,skills,history:historyModel,recommendation:rec,focusSkill,currentStage:active,currentOrdinal,stageMastery:mastery?.overall_score==null?null:Number(mastery.overall_score),stageThreshold:mastery?.overall_threshold==null?null:Number(mastery.overall_threshold),skillAverage,skillAverageThreshold,masteryReadiness,readinessStatus,masteredSkills:skills.filter(skill=>skill.passed).length};
 }
 
 function statusLabel(status){
@@ -312,9 +328,12 @@ function renderContinue(vm){
   const actionLabel=actionType==='diagnostic'?'เริ่มประเมินก่อนเรียน':actionType==='completed'?'ทบทวนผลการเรียน':actionType==='review'?'ทบทวน':'ฝึกต่อ';
   const canLaunch=stage.exercise_code&&stage.stage_code&&actionType!=='completed';
   const progress=Number.isFinite(vm.stageMastery)?clampPercent(vm.stageMastery):0;
+  const skillProgress=Number.isFinite(vm.skillAverage)?clampPercent(vm.skillAverage):0;
+  const readinessProgress=Number.isFinite(vm.masteryReadiness)?clampPercent(vm.masteryReadiness):0;
   const focus=vm.focusSkill?.label||(rec?.targetItemCode?`โจทย์ ${rec.targetItemCode}`:'สะสมหลักฐานให้ครบเกณฑ์ของ Stage');
   target.className='sd2-continue-layout';
-  target.innerHTML=`<div class="sd2-continue-main"><div class="sd2-eyebrow">Continue Learning</div><div class="sd2-stage-line">Stage ${vm.currentOrdinal||'—'} of ${vm.path.totalStages||'—'} · ${escapeHtml(stage.stage_name||stage.stage_code||'Current Stage')}</div><h2 id="sd2ContinueHeading">${escapeHtml(stage.exercise_name||vm.path.exerciseName)}</h2><div class="sd2-subtle">${escapeHtml(rec?.reasonTh||'เรียนต่อจาก Stage ปัจจุบันตามหลักฐาน Mastery ของคุณ')}</div><div class="sd2-focus-line">Skill Focus: <strong>${escapeHtml(focus)}</strong></div></div><div class="sd2-continue-side"><div><div class="sd2-progress-meta"><span>Stage Progress</span><strong>${percentText(vm.stageMastery)}${Number.isFinite(vm.stageThreshold)?` / เกณฑ์ ${percentText(vm.stageThreshold)}`:''}</strong></div><div class="sd2-progress-track" role="progressbar" aria-label="Stage Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><i class="sd2-progress-fill" style="width:${progress}%"></i></div></div>${canLaunch?`<button type="button" class="dashboard-continue sd2-continue-action" data-exercise-code="${escapeHtml(stage.exercise_code)}" data-stage-code="${escapeHtml(stage.stage_code)}" data-session-mode="${sessionMode}">${escapeHtml(actionLabel)}</button>`:''}</div>`;
+  const readinessText=vm.readinessStatus.length?`ยังไม่ผ่าน: ${vm.readinessStatus.join(' • ')}`:'ผ่านเกณฑ์ครบทุกด้านแล้ว';
+  target.innerHTML=`<div class="sd2-continue-main"><div class="sd2-eyebrow">Continue Learning</div><div class="sd2-stage-line">Stage ${vm.currentOrdinal||'—'} of ${vm.path.totalStages||'—'} · ${escapeHtml(stage.stage_name||stage.stage_code||'Current Stage')}</div><h2 id="sd2ContinueHeading">${escapeHtml(stage.exercise_name||vm.path.exerciseName)}</h2><div class="sd2-subtle">${escapeHtml(rec?.reasonTh||'เรียนต่อจาก Stage ปัจจุบันตามหลักฐาน Mastery ของคุณ')}</div><div class="sd2-focus-line">Skill Focus: <strong>${escapeHtml(focus)}</strong></div></div><div class="sd2-continue-side"><div class="sd2-progress-stack"><div class="sd2-progress-block sd2-readiness-block"><div class="sd2-progress-meta"><span>ความพร้อมผ่านระดับ · เฉลี่ยทุกเกณฑ์</span><strong>${percentText(vm.masteryReadiness)} / 100%</strong></div><div class="sd2-progress-track sd2-readiness-track" role="progressbar" aria-label="ความพร้อมผ่านระดับ เฉลี่ยทุกเกณฑ์" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${readinessProgress}"><i class="sd2-progress-fill" style="width:${readinessProgress}%"></i></div><div class="sd2-readiness-status">${escapeHtml(readinessText)}</div></div><div class="sd2-progress-block"><div class="sd2-progress-meta"><span>Stage Progress · ความครอบคลุมการทำแบบฝึก</span><strong>${percentText(vm.stageMastery)}${Number.isFinite(vm.stageThreshold)?` / เกณฑ์ ${percentText(vm.stageThreshold)}`:''}</strong></div><div class="sd2-progress-track" role="progressbar" aria-label="Stage Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><i class="sd2-progress-fill" style="width:${progress}%"></i></div></div><div class="sd2-progress-block"><div class="sd2-progress-meta"><span>Mastery เฉลี่ยทุกทักษะ</span><strong>${percentText(vm.skillAverage)}${Number.isFinite(vm.skillAverageThreshold)?` / เกณฑ์เฉลี่ย ${percentText(vm.skillAverageThreshold)}`:''}</strong></div><div class="sd2-progress-track sd2-mastery-track" role="progressbar" aria-label="Mastery เฉลี่ยทุกทักษะ" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${skillProgress}"><i class="sd2-progress-fill" style="width:${skillProgress}%"></i></div></div></div>${canLaunch?`<button type="button" class="dashboard-continue sd2-continue-action" data-exercise-code="${escapeHtml(stage.exercise_code)}" data-stage-code="${escapeHtml(stage.stage_code)}" data-session-mode="${sessionMode}">${escapeHtml(actionLabel)}</button>`:''}</div>`;
 }
 
 function renderPractice(vm){
