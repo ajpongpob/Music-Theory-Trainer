@@ -277,6 +277,7 @@ if (typeof window.addEventListener === 'function' && typeof document !== 'undefi
     const loadDashboardAddons = () => {
       loadOptionalScript('./src/dashboard/student-dashboard-v2-compat.js?v=20260914-exercise-index-3', 'data-student-dashboard-v2-compat');
       loadOptionalScript('./src/dashboard/exercise-index.js?v=20260914-exercise-index-3', 'data-exercise-index');
+      loadOptionalScript('./src/dashboard/skill-label-ui.js?v=20260915-skill-labels-1', 'data-skill-label-ui');
     };
     if (dashboardV2) dashboardV2.addEventListener('load', loadDashboardAddons, {once:true});
     else loadDashboardAddons();
