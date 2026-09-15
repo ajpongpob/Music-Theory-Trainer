@@ -7,6 +7,7 @@ const ROOT=path.resolve(__dirname,'..');
 const source=fs.readFileSync(path.join(ROOT,'src/dashboard/student-dashboard-v2.js'),'utf8');
 const css=fs.readFileSync(path.join(ROOT,'styles/student-dashboard-v2.css'),'utf8');
 const repository=fs.readFileSync(path.join(ROOT,'src/data/dashboard.repository.js'),'utf8');
+const dashboardUtils=fs.readFileSync(path.join(ROOT,'src/dashboard/dashboard-utils.js'),'utf8');
 
 const dashboardIds=['sd2Continue','sd2Summary','sd2SkillSnapshot','sd2LearningPath','sd2Recent'];
 let last=-1;
@@ -63,6 +64,14 @@ assert(repository.includes("from('attempt_skill_results')"),'History repository 
 assert(repository.includes("from('skills')"),'Skill metadata must come from skills');
 assert(repository.includes("from('profiles')"),'Profile must come from profiles');
 assert(repository.includes("select('id', {count: 'exact', head: true})"),'Session count must be data-backed rather than inferred from the recent page');
+
+assert(dashboardUtils.includes("language==='en'?'Start Practice':'เริ่มฝึก'"),'Never-started learners must see Start Practice / เริ่มฝึก');
+assert(dashboardUtils.includes("language==='en'?'Continue Practice':'ฝึกต่อ'"),'Learners with practice evidence must see Continue Practice / ฝึกต่อ');
+assert(dashboardUtils.includes('vm.recommendation?.attemptsFound'),'Start-state detection must use actual attempt evidence from the recommendation');
+assert(dashboardUtils.includes('session.attempts'),'Start-state fallback must inspect real session attempts');
+assert(!dashboardUtils.includes("if(stage.stage_started_at || stage.started_at) return true"),'Provisioned stage timestamps must not be treated as evidence that practice has started');
+assert(dashboardUtils.includes("'เกณฑ์ของระดับ'"),'Never-started readiness copy must present requirements rather than a failure state');
+assert(dashboardUtils.includes("'Level requirements'"),'English never-started readiness copy must present requirements rather than a failure state');
 
 assert(source.includes("setAttribute('aria-label','Main')"),'Main navigation must have an accessible landmark');
 assert(source.includes('aria-current="step"'),'Current stage must expose step semantics');
