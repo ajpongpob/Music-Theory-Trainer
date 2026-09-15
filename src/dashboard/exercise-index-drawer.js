@@ -150,6 +150,14 @@ function enhanceExerciseIndexKeys(){
   return rows.length>0;
 }
 
+function resetTrainerMasteryDisclosure(){
+  const trainer=document.getElementById('trainerApp');
+  const disclosure=document.getElementById('masteryProgress');
+  if(!trainer || trainer.hidden || !disclosure) return false;
+  if(disclosure.open) disclosure.open=false;
+  return true;
+}
+
 function installLevelTerminology(){
   normalizeSubtree(document);
   enhanceExerciseIndexKeys();
@@ -208,6 +216,10 @@ function init(){
     navigate();
   });
   window.addEventListener('hashchange',()=>scheduleSync(0));
+  window.addEventListener('major-scale-trainer-visible',()=>{
+    resetTrainerMasteryDisclosure();
+    scheduleSync(0);
+  });
 
   const wait=()=>{
     ensureItem();
@@ -221,11 +233,17 @@ function init(){
   if(dashboard){
     new MutationObserver(()=>scheduleSync(0)).observe(dashboard,{attributes:true,attributeFilter:['hidden']});
   }
+  const trainer=document.getElementById('trainerApp');
+  if(trainer){
+    new MutationObserver(()=>{
+      if(!trainer.hidden) resetTrainerMasteryDisclosure();
+    }).observe(trainer,{attributes:true,attributeFilter:['hidden']});
+  }
   setTimeout(()=>scheduleSync(0),150);
   setTimeout(()=>scheduleSync(0),500);
 }
 
-app.exerciseIndexDrawer=Object.freeze({ensureItem,navigate,enhanceExerciseIndexKeys,canonicalizeVisibleText});
+app.exerciseIndexDrawer=Object.freeze({ensureItem,navigate,enhanceExerciseIndexKeys,canonicalizeVisibleText,resetTrainerMasteryDisclosure});
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
 else init();
 })();
