@@ -11,7 +11,7 @@ const PROFILE_NAME_SEPARATOR='\u001f';
 
 const SKILL_ORDER=['BN01_TREBLE_PITCH','BN06_STEM_DIRECTION','RH01_DURATION_VALUE','GR02_PRIMARY_BEAM','MS03_SCALE_ACCIDENTAL'];
 const SKILL_LABELS=Object.freeze({
-  BN01_TREBLE_PITCH:'Treble Pitch',
+  BN01_TREBLE_PITCH:'Pitch Name',
   BN06_STEM_DIRECTION:'Stem Direction',
   RH01_DURATION_VALUE:'Duration Value',
   GR02_PRIMARY_BEAM:'Primary Beam',
@@ -21,12 +21,19 @@ const SKILL_LABELS=Object.freeze({
 const NAV_TARGETS=Object.freeze({dashboard:'dashboardContent',practice:'sd2PracticePage',progress:'sd2ProgressPage',profile:'sd2ProfilePanel'});
 let revision=0,initialized=false,trendSkill='ALL',refreshTimer=null,legacyObserver=null;
 let profileState={data:null,user:null,message:'',error:false,busy:false};
+let activeSkillMeta=new Map();
 
-const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[char]));
 const first=data=>Array.isArray(data)?(data[0]||null):(data||null);
 const clampPercent=value=>Number.isFinite(Number(value))?Math.max(0,Math.min(100,Number(value))):0;
 const percentText=value=>Number.isFinite(Number(value))?`${Number(value).toFixed(1).replace(/\.0$/,'')}%`:'—';
 const average=values=>{const nums=values.map(Number).filter(Number.isFinite);return nums.length?nums.reduce((sum,value)=>sum+value,0)/nums.length:null;};
+const currentLanguage=()=>app.i18n?.getLanguage?.()==='en'?'en':'th';
+
+function skillDisplayName(code,meta=activeSkillMeta.get(code)||{}){
+  if(currentLanguage()==='en') return meta.short_name||SKILL_LABELS[code]||'Skill';
+  return meta.name_th||meta.short_name||SKILL_LABELS[code]||'ทักษะ';
+}
 
 function ensureStylesheet(){
   if(document.querySelector('link[data-student-dashboard-v2-style]')) return;
@@ -246,6 +253,7 @@ function buildHistoryModel(history,pathModel){
 
 function buildSkillModel(activeSkills,mastery){
   const activeMap=new Map((activeSkills||[]).map(skill=>[skill.code,skill]));
+  activeSkillMeta=activeMap;
   const resultMap=new Map((mastery?.skill_results||[]).map(skill=>[skill.skill_code,skill]));
   return SKILL_ORDER.map(code=>{
     const meta=activeMap.get(code)||{},result=resultMap.get(code)||{};
@@ -253,7 +261,7 @@ function buildSkillModel(activeSkills,mastery){
     const threshold=result.threshold==null?null:Number(result.threshold);
     const hasScore=Number.isFinite(score),passed=result.passed===true;
     const status=passed?'mastered':!hasScore?'no-data':Number.isFinite(threshold)&&score<threshold?'needs-practice':'developing';
-    return {code,label:SKILL_LABELS[code]||meta.short_name||code,description:meta.name_th||meta.short_name||code,score:hasScore?score:null,threshold:Number.isFinite(threshold)?threshold:null,passed,status};
+    return {code,label:skillDisplayName(code,meta),description:meta.name_th||meta.short_name||'',score:hasScore?score:null,threshold:Number.isFinite(threshold)?threshold:null,passed,status};
   });
 }
 
@@ -331,7 +339,7 @@ function renderSummary(vm){const target=$('sd2Summary');if(target)target.innerHT
 function renderSkills(vm){
   const target=$('sd2SkillList');
   if(!target) return;
-  target.innerHTML=vm.skills.map(skill=>`<button type="button" class="sd2-skill" data-sd2-skill-filter="${escapeHtml(skill.code)}" aria-label="เปิด Progress ของ ${escapeHtml(skill.label)}"><div><div class="sd2-skill-name">${escapeHtml(skill.label)}</div><div class="sd2-skill-code">${escapeHtml(skill.code)}</div></div><div class="sd2-skill-score">${percentText(skill.score)}</div><div class="sd2-skill-bar"><i style="width:${clampPercent(skill.score)}%"></i></div><div class="sd2-skill-footer"><span>${Number.isFinite(skill.threshold)?`เกณฑ์ ${percentText(skill.threshold)}`:'ยังไม่มีคะแนนเพียงพอ'}</span><span class="sd2-status ${skill.status}">${statusLabel(skill.status)}</span></div></button>`).join('');
+  target.innerHTML=vm.skills.map(skill=>`<button type="button" class="sd2-skill" data-sd2-skill-filter="${escapeHtml(skill.code)}" aria-label="${currentLanguage()==='en'?'Open progress for':'เปิดความก้าวหน้าของ'} ${escapeHtml(skill.label)}"><div><div class="sd2-skill-name">${escapeHtml(skill.label)}</div></div><div class="sd2-skill-score">${percentText(skill.score)}</div><div class="sd2-skill-bar"><i style="width:${clampPercent(skill.score)}%"></i></div><div class="sd2-skill-footer"><span>${Number.isFinite(skill.threshold)?`เกณฑ์ ${percentText(skill.threshold)}`:'ยังไม่มีคะแนนเพียงพอ'}</span><span class="sd2-status ${skill.status}">${statusLabel(skill.status)}</span></div></button>`).join('');
 }
 
 function stageState(stage,current){
@@ -366,7 +374,7 @@ function renderProgressSkills(vm){
   if(!target) return;
   target.innerHTML=vm.skills.map(skill=>{
     const trend=skillTrend(vm,skill.code);
-    return `<article class="sd2-progress-skill" data-progress-skill="${escapeHtml(skill.code)}"><div class="sd2-progress-skill-head"><div><div class="sd2-skill-name">${escapeHtml(skill.label)}</div><div class="sd2-skill-code">${escapeHtml(skill.code)}</div></div><div class="sd2-skill-score">${percentText(skill.score)}</div></div><div class="sd2-skill-bar"><i style="width:${clampPercent(skill.score)}%"></i></div><div class="sd2-progress-skill-metrics"><div><span>Status</span><strong class="sd2-status ${skill.status}">${statusLabel(skill.status)}</strong></div><div><span>Trend</span><strong class="sd2-trend ${trend.direction}">${escapeHtml(trend.label)}</strong></div><div><span>Recent performance</span><strong>${percentText(trend.recent)}</strong></div><div><span>Mastery threshold</span><strong>${percentText(skill.threshold)}</strong></div></div></article>`;
+    return `<article class="sd2-progress-skill" data-progress-skill="${escapeHtml(skill.code)}"><div class="sd2-progress-skill-head"><div><div class="sd2-skill-name">${escapeHtml(skill.label)}</div></div><div class="sd2-skill-score">${percentText(skill.score)}</div></div><div class="sd2-skill-bar"><i style="width:${clampPercent(skill.score)}%"></i></div><div class="sd2-progress-skill-metrics"><div><span>Status</span><strong class="sd2-status ${skill.status}">${statusLabel(skill.status)}</strong></div><div><span>Trend</span><strong class="sd2-trend ${trend.direction}">${escapeHtml(trend.label)}</strong></div><div><span>Recent performance</span><strong>${percentText(trend.recent)}</strong></div><div><span>Mastery threshold</span><strong>${percentText(skill.threshold)}</strong></div></div></article>`;
   }).join('');
 }
 
@@ -410,7 +418,7 @@ function renderProgressStages(vm){
 
 function renderAttempt(attempt){
   const skills=Array.isArray(attempt.skillResults)?attempt.skillResults:[];
-  const skillHtml=skills.length?skills.map(skill=>`<span class="sd2-attempt-skill"><strong>${escapeHtml(SKILL_LABELS[skill.skill_code]||skill.skill_code)}</strong> ${Number(skill.correct_count||0)}/${Number(skill.total_count||0)} · ${percentText(skill.score==null?(Number(skill.total_count)>0?Number(skill.correct_count)/Number(skill.total_count)*100:null):skill.score)}</span>`).join(''):'<span class="sd2-subtle">ไม่มี skill result รายข้อที่บันทึกไว้</span>';
+  const skillHtml=skills.length?skills.map(skill=>`<span class="sd2-attempt-skill"><strong>${escapeHtml(skillDisplayName(skill.skill_code))}</strong> ${Number(skill.correct_count||0)}/${Number(skill.total_count||0)} · ${percentText(skill.score==null?(Number(skill.total_count)>0?Number(skill.correct_count)/Number(skill.total_count)*100:null):skill.score)}</span>`).join(''):'<span class="sd2-subtle">ไม่มี skill result รายข้อที่บันทึกไว้</span>';
   return `<article class="sd2-attempt"><div class="sd2-attempt-head"><strong>ข้อ ${Number(attempt.question_number||0)||'—'}</strong><span>${escapeHtml(attempt.item_code||'ไม่ระบุ item')}</span><b>${percentText(attempt.score)}</b></div><div class="sd2-attempt-skills">${skillHtml}</div></article>`;
 }
 
@@ -507,6 +515,7 @@ function bind(){
   if(initialized) return;
   initialized=true;
   window.addEventListener('hashchange',syncNavigation);
+  window.addEventListener('major-scale:languagechange',()=>scheduleRefresh(0));
   document.addEventListener('click',event=>{
     const nav=event.target.closest?.('[data-sd2-nav]');
     if(nav){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();handleNavigation(nav.dataset.sd2Nav);return;}
