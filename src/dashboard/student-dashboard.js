@@ -312,8 +312,9 @@ async function loadStudentDashboard() {
     if(!user) throw new Error('Authentication required');
 
     if(learningRepository){
-      const progression=await learningRepository.ensureProgression();
-      if(progression?.error) console.warn('ENSURE LEARNING PROGRESSION WARNING:',progression.error);
+      Promise.resolve(learningRepository.ensureProgression()).then(progression=>{
+        if(progression?.error) console.warn('ENSURE LEARNING PROGRESSION WARNING:',progression.error);
+      }).catch(error=>console.warn('ENSURE LEARNING PROGRESSION WARNING:',error));
     }
 
     const [dashboardResult,profileResult,skillsResult,recommendationResult]=await Promise.all([
