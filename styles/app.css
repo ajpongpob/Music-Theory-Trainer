@@ -3803,9 +3803,9 @@ body{min-height:100dvh;}
 /* Keep the Rhythm Pattern visible on short landscape phones/tablets.
    The workspace may scroll internally so notation remains readable instead
    of forcing the example card off-screen or hiding it completely. */
-@media (orientation: landscape) and (max-height:540px) and (max-width:1024px){
+@media (orientation: landscape) and (max-height:540px) and (max-width:1024px) and (pointer:coarse){
   .session-main{
-    grid-template-rows:auto clamp(58px,17dvh,72px) minmax(0,1fr) !important;
+    grid-template-rows:auto clamp(82px,24dvh,100px) minmax(0,1fr) !important;
   }
 
   .example-compact-card{
