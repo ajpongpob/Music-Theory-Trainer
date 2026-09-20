@@ -3798,3 +3798,63 @@ body{min-height:100dvh;}
     background:linear-gradient(90deg,#f5b916 0 72px,#e9edf3 72px 100%);
   }
 }
+
+/* ===== v0.9.2 mobile landscape rhythm visibility fix ===== */
+/* Keep the Rhythm Pattern visible on short landscape phones/tablets.
+   The workspace may scroll internally so notation remains readable instead
+   of forcing the example card off-screen or hiding it completely. */
+@media (orientation: landscape) and (max-height:540px) and (max-width:1024px){
+  .session-main{
+    grid-template-rows:auto clamp(58px,17dvh,72px) minmax(0,1fr) !important;
+  }
+
+  .example-compact-card{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    min-height:0 !important;
+    padding:2px 6px !important;
+    overflow:hidden !important;
+  }
+
+  .example-compact-card .example-title{
+    display:none !important;
+  }
+
+  .example-canvas{
+    width:100% !important;
+    height:100% !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+  }
+
+  #exampleSvg{
+    width:100% !important;
+    height:100% !important;
+    min-height:0 !important;
+    max-height:100% !important;
+  }
+
+  .workspace-card{
+    min-height:0 !important;
+    overflow-y:auto !important;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .workspace-card .score-stage{
+    height:auto !important;
+    min-height:min(68vw,420px) !important;
+    overflow:hidden !important;
+  }
+
+  .workspace-card #scoreSvg{
+    height:min(68vw,420px) !important;
+    min-height:min(68vw,420px) !important;
+    max-height:none !important;
+  }
+
+  .compact-hint{
+    display:none !important;
+  }
+}
+
